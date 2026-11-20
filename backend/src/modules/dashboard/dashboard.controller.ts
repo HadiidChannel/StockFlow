@@ -23,10 +23,12 @@ export class DashboardController {
       if (!req.user) throw new UnauthorizedError();
 
       const days = req.query.days ? Number(req.query.days) : 7;
+      const warehouseId = req.query.warehouseId as string | undefined;
       const result = await dashboardService.getMovementChart(
         req.user.organizationId,
         req.allowedWarehouseIds,
-        days
+        days,
+        warehouseId
       );
 
       return res.status(200).json({ data: result });

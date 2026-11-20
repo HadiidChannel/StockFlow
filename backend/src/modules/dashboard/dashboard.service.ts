@@ -66,26 +66,38 @@ export class DashboardService {
     };
   }
 
-  async getMovementChart(organizationId: string, allowedWarehouseIds?: string[], days = 7) {
+  async getMovementChart(
+    organizationId: string,
+    allowedWarehouseIds?: string[],
+    days = 7,
+    warehouseId?: string
+  ) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
 
     const where: any = {
-      product: { organizationId },
-      createdAt: { gte: startDate },
+      organizationId,
+      status: 'POSTED',
+      postedAt: { gte: startDate },
     };
-    if (allowedWarehouseIds !== undefined) {
+
+    if (warehouseId) {
+      if (allowedWarehouseIds !== undefined && !allowedWarehouseIds.includes(warehouseId)) {
+        throw new ForbiddenError('Akses ditolak: Anda tidak memiliki akses ke gudang ini.');
+      }
+      where.warehouseId = warehouseId;
+    } else if (allowedWarehouseIds !== undefined) {
       where.warehouseId = { in: allowedWarehouseIds };
     }
 
-    const movements = await prisma.stockMovement.findMany({
+    const transactions = await prisma.stockTransaction.findMany({
       where,
       select: {
         type: true,
-        createdAt: true,
+        postedAt: true,
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { postedAt: 'asc' },
     });
 
     // Group by date (YYYY-MM-DD)
@@ -98,12 +110,14 @@ export class DashboardService {
       map.set(dateKey, { date: dateKey, inCount: 0, outCount: 0 });
     }
 
-    for (const m of movements) {
-      const dateKey = m.createdAt.toISOString().split('T')[0];
-      const entry = map.get(dateKey);
-      if (entry) {
-        if (m.type === 'IN') entry.inCount++;
-        else if (m.type === 'OUT') entry.outCount++;
+    for (const tx of transactions) {
+      if (tx.postedAt) {
+        const dateKey = tx.postedAt.toISOString().split('T')[0];
+        const entry = map.get(dateKey);
+        if (entry) {
+          if (tx.type === 'IN') entry.inCount++;
+          else if (tx.type === 'OUT') entry.outCount++;
+        }
       }
     }
 

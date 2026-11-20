@@ -129,10 +129,16 @@ export class InventoryService {
       }
     }
 
+    const org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { timezone: true },
+    });
+    const timeZone = org?.timezone || 'Asia/Makassar';
+
     return await withDeadlockRetry(async () => {
       return await prisma.$transaction(async (tx) => {
-        // 1. Generate sequence number
-        const referenceNumber = await getNextSequenceNumber(tx, 'IN');
+        // 1. Generate sequence number with organization timezone
+        const referenceNumber = await getNextSequenceNumber(tx, 'IN', timeZone);
 
         // 2. Create Header
         const header = await tx.stockTransaction.create({
@@ -327,6 +333,12 @@ export class InventoryService {
       }
     }
 
+    const org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { timezone: true },
+    });
+    const timeZone = org?.timezone || 'Asia/Makassar';
+
     return await withDeadlockRetry(async () => {
       return await prisma.$transaction(async (tx) => {
         // 1. Validate available stock for ALL items first with pessimistic lock in deterministic sorted order
@@ -396,8 +408,8 @@ export class InventoryService {
           });
         }
 
-        // 2. Generate sequence number
-        const referenceNumber = await getNextSequenceNumber(tx, 'OUT');
+        // 2. Generate sequence number with organization timezone
+        const referenceNumber = await getNextSequenceNumber(tx, 'OUT', timeZone);
 
         // 3. Create Transaction Header
         const header = await tx.stockTransaction.create({
@@ -546,6 +558,12 @@ export class InventoryService {
       a.productId.localeCompare(b.productId)
     );
 
+    const org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { timezone: true },
+    });
+    const timeZone = org?.timezone || 'Asia/Makassar';
+
     return await withDeadlockRetry(async () => {
       return await prisma.$transaction(async (tx) => {
         // Double check if original transaction was reversed concurrently inside transaction
@@ -616,8 +634,8 @@ export class InventoryService {
           });
         }
 
-        // Generate sequence number for reversal
-        const referenceNumber = await getNextSequenceNumber(tx, reversalType);
+        // Generate sequence number for reversal with organization timezone
+        const referenceNumber = await getNextSequenceNumber(tx, reversalType, timeZone);
 
         // Create Reversal Transaction Header linked to original
         const reversalHeader = await tx.stockTransaction.create({
