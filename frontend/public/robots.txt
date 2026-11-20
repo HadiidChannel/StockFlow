@@ -1,0 +1,12 @@
+# User-agent rules for StockFlow Inventory & Warehouse Management
+User-agent: *
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /products/
+Disallow: /warehouses/
+Disallow: /inventory/
+Disallow: /movements/
+Disallow: /users/
+Disallow: /settings/
+Allow: /
+Allow: /auth/login
