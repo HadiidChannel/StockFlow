@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-describe('StockFlow End-to-End Business Flow Scenarios', () => {
+describe('StockFlow Business Workflow Logic and Invariant Unit Tests', () => {
   it('Alur 1: Bootstrap & Kredensial Awal', () => {
     // Memverifikasi bahwa kredensial default admin terkonfigurasi dengan force password change
     const defaultAdmin = {
