@@ -7,6 +7,12 @@ const prisma = new PrismaClient();
 const inventoryService = new InventoryService();
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('CRITICAL SECURITY ERROR: Demo seeder dilarang dijalankan pada production environment.');
+    console.error('Gunakan script production bootstrap (npm run db:bootstrap) untuk inisialisasi awal sistem.');
+    process.exit(1);
+  }
+
   console.log('--- Memulai Seeding Data Demo StockFlow ---');
 
   // 1. Seed Roles

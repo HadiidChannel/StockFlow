@@ -6,16 +6,16 @@ services:
     container_name: stockflow_db_prod
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secure_password_2026}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD wajib diisi}
       MYSQL_DATABASE: stockflow_db
       MYSQL_USER: ${DB_USER:-stockflow_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-stockflow_pass123}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi}
     volumes:
       - mysql_prod_data:/var/lib/mysql
     networks:
       - stockflow_net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_secure_password_2026}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD wajib diisi}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,13 +29,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:-stockflow_pass123}@db:3306/stockflow_db
+      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       COOKIE_SECURE: "true"
       COOKIE_SAME_SITE: "lax"
-      SESSION_SECRET: ${SESSION_SECRET:-super-secret-production-key-at-least-32-chars}
-      CSRF_SECRET: ${CSRF_SECRET:-csrf-secret-production-key-at-least-32-chars}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET wajib diisi minimal 32 karakter}
+      CSRF_SECRET: ${CSRF_SECRET:?CSRF_SECRET wajib diisi minimal 32 karakter}
     ports:
       - "4000:4000"
     depends_on:
@@ -48,6 +48,8 @@ services:
     build:
       context: ./frontend
       target: runner
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
     container_name: stockflow_frontend_prod
     restart: always
     environment:

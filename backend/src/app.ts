@@ -2,8 +2,10 @@ import express, { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { prisma } from './database/client';
 import { AppError } from './utils/app-error';
 import { logger } from './utils/logger';
+import { requireAuth, enforcePasswordChange } from './middleware/auth';
 
 // Module routers
 import { authRouter } from './modules/auth/auth.router';
@@ -46,28 +48,58 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// 5. Healthcheck endpoint
-app.get('/api/v1/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    data: {
-      status: 'UP',
+// 5. Healthcheck endpoint with real database readiness check
+app.get('/api/v1/health', async (_req: Request, res: Response) => {
+  let isDbOk = true;
+  try {
+    const pingPromise = prisma.$queryRaw`SELECT 1`;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Database ping timeout')), 1500)
+    );
+    await Promise.race([pingPromise, timeoutPromise]);
+  } catch (err: any) {
+    isDbOk = false;
+    logger.warn('Healthcheck database ping tidak merespons:', { message: err.message });
+  }
+
+  if (isDbOk) {
+    return res.status(200).json({
+      data: {
+        status: 'UP',
+        database: 'CONNECTED',
+        timestamp: new Date().toISOString(),
+        service: 'StockFlow Backend API',
+      },
+    });
+  }
+
+  return res.status(503).json({
+    error: {
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'Koneksi database tidak tersedia.',
+      status: 'DOWN',
+      database: 'DISCONNECTED',
       timestamp: new Date().toISOString(),
-      service: 'StockFlow Backend API',
     },
   });
 });
 
 // 6. Mount domain route handlers
+// Auth router handles login, session me, change-password, and logout
 app.use('/api/v1/auth', authRouter);
-app.use('/api/v1/organization', organizationRouter);
-app.use('/api/v1/users', usersRouter);
-app.use('/api/v1/categories', categoriesRouter);
-app.use('/api/v1/warehouses', warehousesRouter);
-app.use('/api/v1/products', productsRouter);
-app.use('/api/v1/inventory', inventoryRouter);
-app.use('/api/v1/movements', movementsRouter);
-app.use('/api/v1/dashboard', dashboardRouter);
-app.use('/api/v1/preferences', preferencesRouter);
+
+// Operational routes require valid authentication AND completed password change
+const operationalMiddlewares = [requireAuth, enforcePasswordChange];
+
+app.use('/api/v1/organization', operationalMiddlewares, organizationRouter);
+app.use('/api/v1/users', operationalMiddlewares, usersRouter);
+app.use('/api/v1/categories', operationalMiddlewares, categoriesRouter);
+app.use('/api/v1/warehouses', operationalMiddlewares, warehousesRouter);
+app.use('/api/v1/products', operationalMiddlewares, productsRouter);
+app.use('/api/v1/inventory', operationalMiddlewares, inventoryRouter);
+app.use('/api/v1/movements', operationalMiddlewares, movementsRouter);
+app.use('/api/v1/dashboard', operationalMiddlewares, dashboardRouter);
+app.use('/api/v1/preferences', operationalMiddlewares, preferencesRouter);
 
 // 7. 404 handler for unknown routes
 app.use('/api/v1', (_req: Request, _res: Response, next: NextFunction) => {

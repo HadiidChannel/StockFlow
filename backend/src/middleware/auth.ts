@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../database/client';
-import { UnauthorizedError } from '../utils/app-error';
+import { UnauthorizedError, ForbiddenError } from '../utils/app-error';
 
 export interface AuthenticatedUser {
   id: string;
@@ -89,4 +89,24 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   } catch (err) {
     next(err);
   }
+}
+
+export function enforcePasswordChange(req: Request, _res: Response, next: NextFunction) {
+  if (req.user && req.user.mustChangePassword) {
+    const originalUrl = req.originalUrl || req.url || '';
+    const cleanPath = originalUrl.split('?')[0];
+
+    const isAllowedAuthPath =
+      cleanPath.endsWith('/auth/me') ||
+      cleanPath.endsWith('/auth/change-password') ||
+      cleanPath.endsWith('/auth/logout');
+
+    if (!isAllowedAuthPath) {
+      throw new ForbiddenError(
+        'Akses ditolak: Anda wajib mengganti password awal sebelum dapat mengakses sistem operasional.',
+        'FORCED_PASSWORD_CHANGE_REQUIRED'
+      );
+    }
+  }
+  next();
 }

@@ -1,14 +1,17 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Fail-fast environment validation
+import { env } from './config/env';
+
 import { app } from './app';
 import { prisma } from './database/client';
 import { logger } from './utils/logger';
 
-const PORT = Number(process.env.PORT) || 4000;
+const PORT = env.PORT;
 
 const server = app.listen(PORT, () => {
-  logger.info(`StockFlow Backend REST API berjalan pada port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  logger.info(`StockFlow Backend REST API berjalan pada port ${PORT} [${env.NODE_ENV}]`);
 });
 
 async function gracefulShutdown(signal: string) {
