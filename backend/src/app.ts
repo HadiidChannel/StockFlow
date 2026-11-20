@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { globalApiLimiter } from './middleware/rate-limiter';
 import { prisma } from './database/client';
 import { AppError } from './utils/app-error';
 import { logger } from './utils/logger';
@@ -47,6 +48,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Request-Id', reqId);
   next();
 });
+
+// P1-07: Global rate limiter for API endpoints
+app.use('/api', globalApiLimiter);
 
 // 5. Healthcheck endpoint with real database readiness check
 app.get('/api/v1/health', async (_req: Request, res: Response) => {

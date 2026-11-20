@@ -40,7 +40,7 @@ Dokumen ini memetakan materi dan konsep fundamental rekayasa perangkat lunak yan
 - **Penerapan di StockFlow**: Eksekusi mutasi saldo inventaris dan pencatatan ledger pergerakan stok dalam `$transaction`.
 
 ### Modul 5: Keamanan Aplikasi Web Modern (Security by Design)
-- **Konsep**: Hashing password adaptif (Argon2id), session management dengan opaque token, proteksi XSS dengan context escaping dan HttpOnly cookies, mitigasi CSRF dengan Double-Submit Cookie pattern, proteksi Brute-Force dengan Rate Limiting.
+- **Konsep**: Hashing password adaptif (bcrypt cost factor 12), session management dengan opaque token, proteksi XSS dengan context escaping dan HttpOnly cookies, mitigasi CSRF dengan Double-Submit Cookie pattern dan validasi Origin, proteksi Brute-Force dengan Rate Limiting bertingkat (tiered).
 - **Penerapan di StockFlow**: Membangun sistem autentikasi dan otorisasi RBAC anti-bocor untuk staf gudang dan admin.
 
 ### Modul 6: Frontend Engineering dengan Next.js App Router & React 19

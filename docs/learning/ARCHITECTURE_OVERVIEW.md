@@ -26,7 +26,7 @@ StockFlow dibangun dengan pola 3-Tier Web Architecture yang memisahkan Presentat
                                    v
 +----------------------------------+--------------------------------+
 |                    BACKEND TIER (Express.js)                      |
-|  - Authentication & Session Verification (Argon2id, SHA-256)      |
+|  - Authentication & Session Verification (bcrypt cost 12, SHA-256) |
 |  - Role-Based Access Control (Admin vs Warehouse Staff)           |
 |  - Warehouse Scoping & Multi-Warehouse Access Control             |
 |  - Zod Request Input Sanitization & Validation                    |

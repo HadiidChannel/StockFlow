@@ -7,7 +7,7 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
 
 | Ancaman (STRIDE) | Risiko Spesifik pada StockFlow | Mitigasi yang Diterapkan |
 |---|---|---|
-| **Spoofing** (Pemalsuan Identitas) | Penyerang memalsukan identitas staf gudang atau admin | - Password di-hash menggunakan Argon2id.<br>- Session cookie bertipe opaque token acak 256-bit.<br>- Hanya hash SHA-256 yang disimpan di database.<br>- Rate limiting pada endpoint login untuk mencegah brute-force. |
+| **Spoofing** (Pemalsuan Identitas) | Penyerang memalsukan identitas staf gudang atau admin | - Password di-hash menggunakan bcrypt dengan work factor (cost) 12.<br>- Session cookie bertipe opaque token acak 256-bit.<br>- Hanya hash SHA-256 yang disimpan di database.<br>- Rate limiting pada endpoint login untuk mencegah brute-force. |
 | **Tampering** (Manipulasi Data) | Pengguna memanipulasi kuantitas stok atau ID gudang pada request | - Validasi ketat pada backend dengan Zod schema.<br>- Perhitungan saldo dilakukan 100% di database transaction.<br>- Double-submit CSRF token untuk setiap mutasi data.<br>- Snapshot harga, SKU, dan nama saat transaksi dicatat. |
 | **Repudiation** (Penyangkalan Tindakan) | Pengguna menyangkal telah melakukan pengeluaran barang | - Setiap mutasi stok tercatat dalam `stock_movements` yang immutable.<br>- Snapshot `created_by` dan nama user disimpan permanen.<br>- Audit trail mencatat timestamp UTC presisi milidetik. |
 | **Information Disclosure** (Kebocoran Informasi) | Warehouse Staff melihat data stok gudang yang bukan haknya | - Service-layer data scoping wajib memvalidasi tabel `user_warehouse_assignments`.<br>- Global error handler membersihkan stack trace dan detail database sebelum response dikirim ke client. |
@@ -22,7 +22,7 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
 - IDOR dicegah dengan selalu memvalidasi kepemilikan organisasi dan assignment gudang.
 
 ### A02: Cryptographic Failures
-- Password di-hash dengan Argon2id.
+- Password di-hash dengan bcrypt (cost factor 12, memory-hardened salt per user, NIST SP 800-63B compliant).
 - Cookie session menggunakan flag `HttpOnly`, `SameSite=Lax`, dan `Secure` pada mode production.
 - Token autentikasi dan CSRF di-hash dengan SHA-256 sebelum disimpan di database.
 

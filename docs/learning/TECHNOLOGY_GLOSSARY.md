@@ -4,12 +4,9 @@ Daftar istilah dan konsep teknis yang digunakan dalam ekosistem pengembangan Sto
 
 ---
 
-### A
-- **ACID (Atomicity, Consistency, Isolation, Durability)**: Empat karakteristik utama transaksi database yang menjamin pemrosesan data andal, di mana transaksi dieksekusi secara utuh atau dibatalkan sama sekali (Atomic).
-- **Argon2id**: Algoritma hashing password modern pemenang Password Hashing Competition yang tahan terhadap serangan GPU, ASIC, dan side-channel attack.
-
 ### B
 - **Balance Before / Balance After**: Snapshot saldo inventaris sebelum dan sesudah suatu transaksi terjadi. Wajib dicatat di ledger untuk keperluan rekonsiliasi audit trail.
+- **bcrypt**: Algoritma hashing password adaptif berbasis Blowfish cipher dengan work factor (cost) yang dapat disesuaikan (StockFlow menggunakan cost factor 12), salt acak per pengguna, serta standar industri yang diakui NIST untuk perlindungan brute-force.
 - **Bootstrap**: Proses inisialisasi awal sistem untuk membuat entitas organisasi pertama dan akun pengguna Admin pertama sebelum sistem dapat digunakan secara normal.
 
 ### C

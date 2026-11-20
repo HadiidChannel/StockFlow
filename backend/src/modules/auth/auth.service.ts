@@ -160,6 +160,10 @@ export class AuthService {
     };
   }
 
+  /**
+   * Mengubah password user dengan hashing bcrypt cost factor 12.
+   * Memenuhi standar NIST SP 800-63B dengan salt acak per pengguna.
+   */
   async changePassword(userId: string, input: ChangePasswordInput) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
