@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../database/client';
+import { ForbiddenError } from '../../utils/app-error';
 
 export class DashboardService {
   async getSummary(organizationId: string, allowedWarehouseIds?: string[]) {
