@@ -288,6 +288,19 @@ export class ProductsService {
       if (!category) throw new NotFoundError('Kategori tidak ditemukan.');
     }
 
+    // P1-04: Produk yang masih memiliki saldo stok tidak boleh dinonaktifkan
+    if (input.isActive === false && product.isActive === true) {
+      const balances = await prisma.inventoryBalance.findMany({
+        where: { productId: id },
+      });
+      const hasStock = balances.some((b) => b.quantity.greaterThan(0));
+      if (hasStock) {
+        throw new ValidationError(
+          'Produk tidak dapat dinonaktifkan karena masih memiliki sisa saldo stok di gudang. Habiskan stok terlebih dahulu melalui transaksi barang keluar.'
+        );
+      }
+    }
+
     const updated = await prisma.product.update({
       where: { id },
       data: {

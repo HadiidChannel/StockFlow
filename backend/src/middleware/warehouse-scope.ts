@@ -14,13 +14,15 @@ export async function warehouseScope(req: Request, _res: Response, next: NextFun
       return next();
     }
 
-    // Warehouse Staff: Query active assignments
+    const isReadOperation = req.method === 'GET' || req.method === 'HEAD';
+
+    // Warehouse Staff: Query assignments
+    // P1-08: Untuk operasi pembacaan (GET), staf tetap dapat mengakses histori gudang yang pernah ditugaskan meskipun gudang nonaktif.
+    // Untuk mutasi transaksi (POST/PUT/DELETE), gudang wajib berstatus aktif.
     const assignments = await prisma.userWarehouseAssignment.findMany({
       where: {
         userId: req.user.id,
-        warehouse: {
-          isActive: true,
-        },
+        ...(isReadOperation ? {} : { warehouse: { isActive: true } }),
       },
       select: {
         warehouseId: true,
@@ -38,7 +40,9 @@ export async function warehouseScope(req: Request, _res: Response, next: NextFun
 
     if (targetWarehouseId && !allowedIds.includes(targetWarehouseId)) {
       throw new ForbiddenError(
-        'Akses ditolak: Anda tidak memiliki penugasan aktif pada gudang ini.'
+        isReadOperation
+          ? 'Akses ditolak: Anda tidak memiliki akses ke histori gudang ini.'
+          : 'Akses ditolak: Anda tidak memiliki penugasan aktif pada gudang ini atau gudang berstatus tidak aktif.'
       );
     }
 

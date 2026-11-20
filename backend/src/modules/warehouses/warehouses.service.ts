@@ -215,6 +215,17 @@ export class WarehousesService {
           }
         }
       }
+
+      // P1-04: Gudang yang masih memiliki saldo stok tidak boleh dinonaktifkan
+      const balances = await prisma.inventoryBalance.findMany({
+        where: { warehouseId: id },
+      });
+      const hasStock = balances.some((b) => b.quantity.greaterThan(0));
+      if (hasStock) {
+        throw new ValidationError(
+          'Gudang tidak dapat dinonaktifkan karena masih memiliki saldo stok barang. Kosongkan saldo stok terlebih dahulu melalui transaksi barang keluar.'
+        );
+      }
     }
 
     const updated = await prisma.warehouse.update({

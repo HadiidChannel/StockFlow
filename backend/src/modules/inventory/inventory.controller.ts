@@ -74,13 +74,16 @@ export class InventoryController {
         })));
       }
 
+      const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+
       const result = await inventoryService.processReversal(
         req.params.id,
         parsed.data,
         req.user.id,
         req.user.name,
         req.user.organizationId,
-        req.allowedWarehouseIds
+        req.allowedWarehouseIds,
+        idempotencyKey
       );
 
       return res.status(201).json({ data: result });
