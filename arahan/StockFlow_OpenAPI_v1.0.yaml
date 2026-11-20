@@ -1,0 +1,3153 @@
+openapi: 3.1.0
+info:
+  title: StockFlow API
+  version: 1.0.0
+  description: 'Kontrak REST API StockFlow MVP. Sumber normatif: PRD StockFlow v1.0.1, FSD StockFlow v1.0.1, ERD
+    & Database Specification StockFlow v1.0, dan MySQL Schema v1.0. Base path server sudah /api/v1. Semua field
+    quantity dan monetary dikirim sebagai string decimal untuk menjaga presisi.'
+servers:
+- url: /api/v1
+  description: API version 1
+tags:
+- name: Authentication
+  description: Session authentication, user context, dan perubahan password.
+- name: Users
+  description: User management dan warehouse assignment.
+- name: Organization
+  description: Profil organisasi instalasi.
+- name: Categories
+  description: Master kategori.
+- name: Products
+  description: Master produk dan histori movement produk.
+- name: Warehouses
+  description: Master gudang.
+- name: Inventory
+  description: Saldo per produk dan gudang.
+- name: Stock Transactions
+  description: Stock In, Stock Out, dan full reversal.
+- name: Movements
+  description: Riwayat pergerakan stok.
+- name: Dashboard
+  description: KPI dan aktivitas dashboard.
+- name: Preferences
+  description: Preferensi pribadi user.
+security:
+- sessionCookie: []
+paths:
+  /auth/login:
+    post:
+      summary: Login dan membuat session
+      operationId: login
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: Login berhasil. Server mengatur cookie sf_session (HttpOnly) dan sf_csrf (readable oleh frontend).
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Minimal menetapkan cookie sf_session dan sf_csrf.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LoginResponseData'
+                additionalProperties: false
+                required:
+                - data
+        '400':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Kredensial tidak valid; pesan harus umum.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      security: []
+      description: Memvalidasi Origin, Content-Type, dan rate limit. CSRF header dikecualikan untuk login. Password
+        tidak pernah dikembalikan.
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+  /auth/logout:
+    post:
+      summary: Logout dan mencabut session
+      operationId: logout
+      tags:
+      - Authentication
+      responses:
+        '204':
+          description: Session dicabut; cookie session dan CSRF dihapus.
+        '401':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security: &id010
+      - sessionCookie: []
+        csrfHeader: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: authenticated
+      x-allowed-roles: ALL_AUTHENTICATED
+      x-data-scope: N/A
+  /auth/me:
+    get:
+      summary: Mendapatkan user aktif, role, dan permission
+      operationId: getCurrentUser
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthUser'
+                additionalProperties: false
+                required:
+                - data
+        '400': &id001
+          description: Input atau query tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401': &id002
+          description: Session tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403': &id003
+          description: Permission atau CSRF ditolak.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404': &id004
+          description: Resource tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409': &id005
+          description: Konflik data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422': &id006
+          description: Business rule tidak terpenuhi.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429': &id007
+          description: Rate limit terlampaui.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500': &id008
+          description: Kesalahan internal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503': &id009
+          description: Service tidak tersedia sementara.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security: &id011
+      - sessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: authenticated
+      x-allowed-roles: ALL_AUTHENTICATED
+      x-data-scope: N/A
+  /auth/change-password:
+    post:
+      summary: Mengubah password sendiri
+      operationId: changePassword
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthUser'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      security: *id010
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: authenticated
+      x-allowed-roles: ALL_AUTHENTICATED
+      x-data-scope: N/A
+  /users:
+    get:
+      summary: Daftar pengguna
+      operationId: listUsers
+      tags:
+      - Users
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters:
+      - &id013
+        $ref: '#/components/parameters/Page'
+      - &id014
+        $ref: '#/components/parameters/PageSize'
+      - &id015
+        $ref: '#/components/parameters/Search'
+      - $ref: '#/components/parameters/Status'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: user.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+    post:
+      summary: Membuat pengguna
+      operationId: createUser
+      tags:
+      - Users
+      responses:
+        '201':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      security: *id010
+      description: Pembuatan user dan assignment awal untuk WAREHOUSE_STAFF harus atomik.
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: user.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /users/{id}:
+    get:
+      summary: Detail pengguna
+      operationId: getUser
+      tags:
+      - Users
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: user.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+    patch:
+      summary: Mengubah data atau role pengguna
+      operationId: updateUser
+      tags:
+      - Users
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPatch'
+      security: *id010
+      description: Perubahan role menjadi WAREHOUSE_STAFF dan assignment minimal satu gudang aktif harus atomik.
+      x-required-permission: user.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /users/{id}/deactivate:
+    post:
+      summary: Menonaktifkan pengguna
+      operationId: deactivateUser
+      tags:
+      - Users
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: &id012
+                        type: string
+                        format: uuid
+                        example: 3f0b8e20-05aa-4c3c-a3a0-6bf2b7d4c1aa
+                      status:
+                        type: string
+                        enum:
+                        - INACTIVE
+                    additionalProperties: false
+                    required:
+                    - id
+                    - status
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      security: *id010
+      description: Mencabut semua session target. Assignment historis dipertahankan.
+      x-required-permission: user.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /users/{id}/reset-password:
+    post:
+      summary: Reset password oleh Admin
+      operationId: resetUserPassword
+      tags:
+      - Users
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      userId: *id012
+                      mustChangePassword:
+                        type: boolean
+                      temporaryPassword:
+                        type: string
+                        format: password
+                        description: Ditampilkan satu kali setelah reset; jangan dicatat ke log atau disimpan di
+                          UI.
+                    additionalProperties: false
+                    required:
+                    - userId
+                    - mustChangePassword
+                    - temporaryPassword
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      security: *id010
+      description: Endpoint Should Have pada FSD. Rincian mekanisme password sementara perlu dikunci sebelum implementasi.
+      x-required-permission: user.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /users/{id}/warehouses:
+    get:
+      summary: Melihat assignment gudang user
+      operationId: getUserWarehouses
+      tags:
+      - Users
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/WarehouseAssignment'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: user.warehouse_assignment.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+    put:
+      summary: Mengganti assignment gudang user secara atomik
+      operationId: replaceUserWarehouses
+      tags:
+      - Users
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/WarehouseAssignment'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WarehouseAssignmentPut'
+      security: *id010
+      x-required-permission: user.warehouse_assignment.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /organization:
+    get:
+      summary: Melihat profil organisasi
+      operationId: getOrganization
+      tags:
+      - Organization
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Organization'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      security: *id011
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: authenticated
+      x-allowed-roles: ALL_AUTHENTICATED
+      x-data-scope: ORGANIZATION
+    patch:
+      summary: Memperbarui profil organisasi
+      operationId: updateOrganization
+      tags:
+      - Organization
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Organization'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationPatch'
+      security: *id010
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: organization.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /categories:
+    get:
+      summary: Daftar categories
+      operationId: listCategories
+      tags:
+      - Categories
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters: &id018
+      - *id013
+      - *id014
+      - *id015
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: category.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ORGANIZATION
+    post:
+      summary: Membuat categories
+      operationId: createCategories
+      tags:
+      - Categories
+      responses:
+        '201':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Category'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      security: *id010
+      description: Hanya Admin dapat membuat atau mengubah kategori.
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: category.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /categories/{id}:
+    get:
+      summary: Detail categories
+      operationId: getCategories
+      tags:
+      - Categories
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Category'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters: &id016
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: category.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ORGANIZATION
+    patch:
+      summary: Mengubah categories
+      operationId: updateCategories
+      tags:
+      - Categories
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Category'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters: *id016
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryPatch'
+      security: *id010
+      x-required-permission: category.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /categories/{id}/deactivate:
+    post:
+      summary: Menonaktifkan categories
+      operationId: deactivateCategories
+      tags:
+      - Categories
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: *id012
+                      isActive:
+                        type: boolean
+                        const: false
+                    additionalProperties: false
+                    required:
+                    - id
+                    - isActive
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters: *id016
+      security: *id010
+      x-required-permission: category.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /products:
+    get:
+      summary: Daftar products
+      operationId: listProducts
+      tags:
+      - Products
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id013
+      - *id014
+      - *id015
+      - $ref: '#/components/parameters/Status'
+      - name: categoryId
+        in: query
+        schema: *id012
+      - $ref: '#/components/parameters/SortBy'
+      - $ref: '#/components/parameters/SortOrder'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: product.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ORGANIZATION
+    post:
+      summary: Membuat products
+      operationId: createProducts
+      tags:
+      - Products
+      responses:
+        '201':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      security: *id010
+      description: Hanya Admin dapat mengelola produk.
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: product.create
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /products/{id}:
+    get:
+      summary: Detail products
+      operationId: getProducts
+      tags:
+      - Products
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters: &id017
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: product.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ORGANIZATION
+    patch:
+      summary: Mengubah products
+      operationId: updateProducts
+      tags:
+      - Products
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters: *id017
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductPatch'
+      security: *id010
+      x-required-permission: product.update
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /products/{id}/deactivate:
+    post:
+      summary: Menonaktifkan products
+      operationId: deactivateProducts
+      tags:
+      - Products
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: *id012
+                      isActive:
+                        type: boolean
+                        const: false
+                    additionalProperties: false
+                    required:
+                    - id
+                    - isActive
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters: *id017
+      security: *id010
+      x-required-permission: product.deactivate
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /warehouses:
+    get:
+      summary: Daftar warehouses
+      operationId: listWarehouses
+      tags:
+      - Warehouses
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Warehouse'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters: *id018
+      security: *id011
+      x-required-permission: warehouse.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+    post:
+      summary: Membuat warehouses
+      operationId: createWarehouses
+      tags:
+      - Warehouses
+      responses:
+        '201':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Warehouse'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WarehouseCreate'
+      security: *id010
+      description: Hanya Admin dapat mengelola gudang.
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: warehouse.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /warehouses/{id}:
+    get:
+      summary: Detail warehouses
+      operationId: getWarehouses
+      tags:
+      - Warehouses
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Warehouse'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters: &id019
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: warehouse.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+    patch:
+      summary: Mengubah warehouses
+      operationId: updateWarehouses
+      tags:
+      - Warehouses
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Warehouse'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters: *id019
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WarehousePatch'
+      security: *id010
+      x-required-permission: warehouse.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /warehouses/{id}/deactivate:
+    post:
+      summary: Menonaktifkan warehouses
+      operationId: deactivateWarehouses
+      tags:
+      - Warehouses
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: *id012
+                      isActive:
+                        type: boolean
+                        const: false
+                    additionalProperties: false
+                    required:
+                    - id
+                    - isActive
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters: *id019
+      security: *id010
+      x-required-permission: warehouse.manage
+      x-allowed-roles: ADMIN
+      x-data-scope: ORGANIZATION
+  /products/{productId}/movements:
+    get:
+      summary: Riwayat movement produk
+      operationId: listProductMovements
+      tags:
+      - Movements
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MovementRow'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: productId
+        in: path
+        required: true
+        description: UUID produk.
+        schema:
+          type: string
+          format: uuid
+      - *id013
+      - *id014
+      - *id015
+      - $ref: '#/components/parameters/FromDate'
+      - $ref: '#/components/parameters/ToDate'
+      - $ref: '#/components/parameters/Type'
+      - $ref: '#/components/parameters/WarehouseId'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: movement.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /inventory/balances:
+    get:
+      summary: Daftar saldo dalam lingkup akses pengguna
+      operationId: listInventoryBalances
+      tags:
+      - Inventory
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BalanceRow'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id013
+      - *id014
+      - *id015
+      - $ref: '#/components/parameters/WarehouseId'
+      - $ref: '#/components/parameters/ProductId'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: inventory.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /inventory/products/{productId}/balances:
+    get:
+      summary: Saldo produk pada seluruh gudang yang dapat diakses
+      operationId: getProductBalances
+      tags:
+      - Inventory
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BalanceRow'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: productId
+        in: path
+        required: true
+        description: UUID produk.
+        schema:
+          type: string
+          format: uuid
+      - *id013
+      - *id014
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: inventory.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /inventory/warehouses/{warehouseId}/balances:
+    get:
+      summary: Saldo produk dalam satu gudang
+      operationId: getWarehouseBalances
+      tags:
+      - Inventory
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BalanceRow'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: warehouseId
+        in: path
+        required: true
+        description: UUID gudang.
+        schema:
+          type: string
+          format: uuid
+      - *id013
+      - *id014
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: inventory.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /stock-transactions:
+    post:
+      summary: Membuat Stock In atau Stock Out
+      operationId: createStockTransaction
+      tags:
+      - Stock Transactions
+      responses:
+        '201':
+          description: Transaksi berhasil diposting; saldo, item, movement, sequence, dan idempotency record sudah
+            commit secara atomik.
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StockTransaction'
+                additionalProperties: false
+                required:
+                - data
+        '400':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Conflict atau idempotency key digunakan ulang.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Business rule transaksi tidak terpenuhi.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockTransactionCreate'
+      security: *id010
+      description: Server memvalidasi permission sesuai type, assignment gudang, produk aktif, quantity, saldo,
+        serta duplicate productId.
+      x-required-permission: stock_in.create OR stock_out.create (sesuai body.type)
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+    get:
+      summary: Daftar transaksi stok
+      operationId: listStockTransactions
+      tags:
+      - Stock Transactions
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MovementRow'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id013
+      - *id014
+      - *id015
+      - $ref: '#/components/parameters/Type'
+      - $ref: '#/components/parameters/WarehouseId'
+      - $ref: '#/components/parameters/ProductId'
+      - $ref: '#/components/parameters/FromDate'
+      - $ref: '#/components/parameters/ToDate'
+      - $ref: '#/components/parameters/SortBy'
+      - $ref: '#/components/parameters/SortOrder'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: movement.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /stock-transactions/{id}:
+    get:
+      summary: Detail transaksi stok
+      operationId: getStockTransaction
+      tags:
+      - Stock Transactions
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StockTransaction'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      x-required-permission: movement.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /stock-transactions/{id}/correction:
+    post:
+      summary: Membuat full reversal atas transaksi asal
+      operationId: correctStockTransaction
+      tags:
+      - Stock Transactions
+      responses:
+        '201':
+          description: Transaksi koreksi berhasil diposting. Response memuat correctionOfReferenceNumber.
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StockTransaction'
+                additionalProperties: false
+                required:
+                - data
+        '400':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Koreksi sudah ada atau idempotency conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Sumber koreksi tidak valid atau saldo untuk reversal tidak tersedia.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID resource.
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectionRequest'
+      security: *id010
+      description: Client hanya mengirim alasan koreksi. Backend menentukan tipe, gudang, produk, dan kuantitas
+        berdasarkan transaksi asal. Satu transaksi asal hanya dapat dikoreksi satu kali secara penuh.
+      x-required-permission: permission sesuai tipe reversal
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /dashboard/summary:
+    get:
+      summary: KPI dashboard dalam lingkup pengguna
+      operationId: getDashboardSummary
+      tags:
+      - Dashboard
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DashboardSummary'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      security: *id011
+      description: totalSku bersifat organisasi-wide; KPI stok dan valuasi mengikuti lingkup gudang pengguna.
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: dashboard.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: MIXED_CATALOG_GLOBAL_STOCK_SCOPED
+  /dashboard/movements:
+    get:
+      summary: Jumlah transaksi Stock In dan Stock Out per hari
+      operationId: getDashboardMovements
+      tags:
+      - Dashboard
+      responses:
+        '200':
+          description: Data harian dalam rentang tanggal; bukan agregat kuantitas lintas satuan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DashboardMovementDay'
+                additionalProperties: false
+                required:
+                - data
+        '400':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Terjadi kesalahan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - $ref: '#/components/parameters/FromDate'
+      - $ref: '#/components/parameters/ToDate'
+      - $ref: '#/components/parameters/WarehouseId'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      description: from dan to harus dikirim berpasangan. Default periode 30 hari terakhir. Tanggal mengikuti timezone
+        organisasi. Filter tidak mengubah KPI summary dan stock alerts.
+      x-required-permission: dashboard.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /dashboard/recent-movements:
+    get:
+      summary: Transaksi terbaru untuk dashboard
+      operationId: getDashboardRecentMovements
+      tags:
+      - Dashboard
+      responses:
+        '200':
+          description: Daftar berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MovementRow'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+                additionalProperties: false
+                required:
+                - data
+                - meta
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '500': *id008
+        '503': *id009
+      parameters:
+      - *id013
+      - *id014
+      - $ref: '#/components/parameters/FromDate'
+      - $ref: '#/components/parameters/ToDate'
+      - $ref: '#/components/parameters/WarehouseId'
+      - $ref: '#/components/parameters/RequestId'
+      security: *id011
+      description: from dan to harus dikirim berpasangan. Tanpa keduanya, default 30 hari terakhir.
+      x-required-permission: dashboard.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /dashboard/stock-alerts:
+    get:
+      summary: Low Stock dan Out of Stock dalam lingkup pengguna
+      operationId: getDashboardStockAlerts
+      tags:
+      - Dashboard
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StockAlerts'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      security: *id011
+      description: Hanya produk aktif; filter grafik tidak mengubah hasil stock alerts.
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: dashboard.read
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: ASSIGNED_WAREHOUSES
+  /preferences:
+    get:
+      summary: Membaca preferensi user sendiri
+      operationId: getPreferences
+      tags:
+      - Preferences
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Preferences'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      security: *id011
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: preference.manage_self
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: SELF
+    patch:
+      summary: Mengubah preferensi user sendiri
+      operationId: updatePreferences
+      tags:
+      - Preferences
+      responses:
+        '200':
+          description: Berhasil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Preferences'
+                additionalProperties: false
+                required:
+                - data
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '409': *id005
+        '422': *id006
+        '429': *id007
+        '500': *id008
+        '503': *id009
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferencesPatch'
+      security: *id010
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      x-required-permission: preference.manage_self
+      x-allowed-roles: ADMIN,WAREHOUSE_STAFF
+      x-data-scope: SELF
+components:
+  schemas:
+    UUID: *id012
+    DateTime: &id020
+      type: string
+      format: date-time
+      example: '2026-11-12T02:00:00.000Z'
+    PageMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+        totalItems:
+          type: integer
+          minimum: 0
+          example: 42
+        totalPages:
+          type: integer
+          minimum: 0
+          example: 3
+      additionalProperties: false
+      required:
+      - page
+      - pageSize
+      - totalItems
+      - totalPages
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+          example: items[0].quantity
+        message:
+          type: string
+          example: Jumlah yang diminta melebihi stok tersedia.
+      additionalProperties: false
+      required:
+      - message
+    ErrorObject:
+      type: object
+      properties:
+        code:
+          type: string
+          example: INSUFFICIENT_STOCK
+        message:
+          type: string
+          example: Stok tersedia tidak mencukupi.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+        requestId:
+          type: string
+          example: req_01J...
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - requestId
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorObject'
+      additionalProperties: false
+      required:
+      - error
+    Role:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+          - ADMIN
+          - WAREHOUSE_STAFF
+        name:
+          type: string
+          example: Administrator
+      additionalProperties: false
+      required:
+      - code
+      - name
+    AuthUser:
+      type: object
+      properties:
+        id: *id012
+        name:
+          type: string
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 160
+        role:
+          $ref: '#/components/schemas/Role'
+        mustChangePassword:
+          type: boolean
+        permissions:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - email
+      - role
+      - mustChangePassword
+      - permissions
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 160
+          example: admin@example.com
+        password:
+          type: string
+          format: password
+          writeOnly: true
+      additionalProperties: false
+      required:
+      - email
+      - password
+    LoginResponseData:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/AuthUser'
+      additionalProperties: false
+      required:
+      - user
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          format: password
+          writeOnly: true
+        newPassword:
+          type: string
+          format: password
+          writeOnly: true
+          description: Harus memenuhi kebijakan password backend.
+      additionalProperties: false
+      required:
+      - currentPassword
+      - newPassword
+    User:
+      type: object
+      properties:
+        id: *id012
+        name:
+          type: string
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 160
+        roleCode:
+          type: string
+          enum:
+          - ADMIN
+          - WAREHOUSE_STAFF
+        roleName:
+          type: string
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+        mustChangePassword:
+          type: boolean
+        warehouseIds:
+          type: array
+          items: *id012
+        lastLoginAt:
+          anyOf:
+          - *id020
+          - type: 'null'
+        createdAt: *id020
+        updatedAt: *id020
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - email
+      - roleCode
+      - roleName
+      - status
+      - mustChangePassword
+      - createdAt
+      - updatedAt
+    UserCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 160
+        roleCode:
+          type: string
+          enum:
+          - ADMIN
+          - WAREHOUSE_STAFF
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          description: Password awal atau password sementara yang dimasukkan Admin. Password tidak pernah disimpan
+            plaintext.
+        warehouseIds:
+          type: array
+          items: *id012
+          uniqueItems: true
+          description: Wajib minimal satu gudang aktif jika roleCode=WAREHOUSE_STAFF; tidak digunakan untuk ADMIN.
+      additionalProperties: false
+      required:
+      - name
+      - email
+      - roleCode
+      - password
+    UserPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 160
+        roleCode:
+          type: string
+          enum:
+          - ADMIN
+          - WAREHOUSE_STAFF
+        warehouseIds:
+          type: array
+          items: *id012
+          uniqueItems: true
+          description: Wajib jika role diubah menjadi WAREHOUSE_STAFF. Perubahan role dan assignment harus atomik.
+      additionalProperties: false
+    WarehouseAssignment:
+      type: object
+      properties:
+        userId: *id012
+        roleCode:
+          type: string
+          enum:
+          - WAREHOUSE_STAFF
+        warehouses:
+          type: array
+          items:
+            type: object
+            properties:
+              id: *id012
+              name:
+                type: string
+              code:
+                type: string
+              isActive:
+                type: boolean
+            additionalProperties: false
+            required:
+            - id
+            - name
+            - code
+            - isActive
+      additionalProperties: false
+      required:
+      - userId
+      - roleCode
+      - warehouses
+    WarehouseAssignmentPut:
+      type: object
+      properties:
+        warehouseIds:
+          type: array
+          items: *id012
+          uniqueItems: true
+          minItems: 1
+      additionalProperties: false
+      required:
+      - warehouseIds
+    Organization:
+      type: object
+      properties:
+        id: *id012
+        name:
+          type: string
+          minLength: 2
+          maxLength: 160
+        code:
+          anyOf:
+          - type: string
+            maxLength: 40
+          - type: 'null'
+        address:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+        phone:
+          anyOf:
+          - type: string
+            maxLength: 40
+          - type: 'null'
+        email:
+          anyOf:
+          - type: string
+            format: email
+            maxLength: 160
+          - type: 'null'
+        timezone:
+          type: string
+          example: Asia/Makassar
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: IDR
+        createdAt: *id020
+        updatedAt: *id020
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - timezone
+      - currency
+      - createdAt
+      - updatedAt
+    OrganizationPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 160
+        code:
+          type: string
+          maxLength: 40
+        address:
+          type: string
+          maxLength: 500
+        phone:
+          type: string
+          maxLength: 40
+        email:
+          type: string
+          format: email
+          maxLength: 160
+        timezone:
+          type: string
+          maxLength: 64
+          example: Asia/Makassar
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: IDR
+      additionalProperties: false
+    Category:
+      type: object
+      properties:
+        id: *id012
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+        isActive:
+          type: boolean
+        createdAt: *id020
+        updatedAt: *id020
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - isActive
+      - createdAt
+      - updatedAt
+    CategoryCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        isActive:
+          type: boolean
+          default: true
+      additionalProperties: false
+      required:
+      - name
+    CategoryPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        isActive:
+          type: boolean
+      additionalProperties: false
+    CategorySummary:
+      type: object
+      properties:
+        id: *id012
+        name:
+          type: string
+        isActive:
+          type: boolean
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - isActive
+    Product:
+      type: object
+      properties:
+        id: *id012
+        name:
+          type: string
+          maxLength: 160
+        sku:
+          type: string
+          maxLength: 64
+        category:
+          $ref: '#/components/schemas/CategorySummary'
+        unit:
+          type: string
+          maxLength: 24
+        minimumStock: &id021
+          type: string
+          pattern: ^\d{1,15}(\.\d{1,3})?$
+          maxLength: 19
+          example: '10.000'
+          description: Decimal sebagai string. Maksimum 3 angka desimal; tidak boleh memakai floating point JSON.
+        costPrice:
+          anyOf:
+          - &id022
+            type: string
+            pattern: ^\d{1,16}(\.\d{1,2})?$
+            maxLength: 19
+            example: '12500.00'
+            description: Decimal sebagai string dengan maksimum 2 angka desimal.
+          - type: 'null'
+        description:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+        isActive:
+          type: boolean
+        createdAt: *id020
+        updatedAt: *id020
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - sku
+      - category
+      - unit
+      - minimumStock
+      - isActive
+      - createdAt
+      - updatedAt
+    ProductCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 160
+        sku:
+          type: string
+          minLength: 1
+          maxLength: 64
+        categoryId: *id012
+        unit:
+          type: string
+          minLength: 1
+          maxLength: 24
+        minimumStock: *id021
+        costPrice: *id022
+        description:
+          type: string
+          maxLength: 1000
+        isActive:
+          type: boolean
+          default: true
+      additionalProperties: false
+      required:
+      - name
+      - sku
+      - categoryId
+      - unit
+    ProductPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 160
+        sku:
+          type: string
+          minLength: 1
+          maxLength: 64
+        categoryId: *id012
+        unit:
+          type: string
+          minLength: 1
+          maxLength: 24
+        minimumStock: *id021
+        costPrice:
+          anyOf:
+          - *id022
+          - type: 'null'
+        description:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+        isActive:
+          type: boolean
+      additionalProperties: false
+    Warehouse:
+      type: object
+      properties:
+        id: *id012
+        name:
+          type: string
+          maxLength: 160
+        code:
+          type: string
+          maxLength: 32
+        location:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+        description:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+        isActive:
+          type: boolean
+        createdAt: *id020
+        updatedAt: *id020
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - code
+      - isActive
+      - createdAt
+      - updatedAt
+    WarehouseCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 160
+        code:
+          type: string
+          minLength: 1
+          maxLength: 32
+        location:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 500
+        isActive:
+          type: boolean
+          default: true
+      additionalProperties: false
+      required:
+      - name
+      - code
+    WarehousePatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 160
+        code:
+          type: string
+          minLength: 1
+          maxLength: 32
+        location:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+        description:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+        isActive:
+          type: boolean
+      additionalProperties: false
+    BalanceRow:
+      type: object
+      properties:
+        productId: *id012
+        productName:
+          type: string
+        sku:
+          type: string
+        unit:
+          type: string
+        warehouseId: *id012
+        warehouseName:
+          type: string
+        warehouseCode:
+          type: string
+        warehouseIsActive:
+          type: boolean
+        quantity: *id021
+      additionalProperties: false
+      required:
+      - productId
+      - productName
+      - sku
+      - unit
+      - warehouseId
+      - warehouseName
+      - warehouseCode
+      - warehouseIsActive
+      - quantity
+    TransactionItemInput:
+      type: object
+      properties:
+        productId: *id012
+        quantity: *id021
+      additionalProperties: false
+      required:
+      - productId
+      - quantity
+    StockTransactionCreate:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - IN
+          - OUT
+        warehouseId: *id012
+        note:
+          type: string
+          maxLength: 1000
+        externalReference:
+          type: string
+          maxLength: 120
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionItemInput'
+          minItems: 1
+      additionalProperties: false
+      required:
+      - type
+      - warehouseId
+      - items
+    StockTransactionItem:
+      type: object
+      properties:
+        id: *id012
+        productId: *id012
+        productName:
+          type: string
+        sku:
+          type: string
+        unit:
+          type: string
+        quantity: *id021
+        balanceBefore: *id021
+        balanceAfter: *id021
+      additionalProperties: false
+      required:
+      - id
+      - productId
+      - productName
+      - sku
+      - unit
+      - quantity
+      - balanceBefore
+      - balanceAfter
+    StockTransaction:
+      type: object
+      properties:
+        id: *id012
+        referenceNumber:
+          type: string
+          maxLength: 40
+        type:
+          type: string
+          enum:
+          - IN
+          - OUT
+        status:
+          type: string
+          enum:
+          - POSTED
+        warehouse:
+          type: object
+          properties:
+            id: *id012
+            name:
+              type: string
+            code:
+              type: string
+          additionalProperties: false
+          required:
+          - id
+          - name
+          - code
+        createdBy:
+          type: object
+          properties:
+            id: *id012
+            name:
+              type: string
+          additionalProperties: false
+          required:
+          - id
+          - name
+        note:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+        externalReference:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+        correctionOfTransactionId:
+          anyOf:
+          - *id012
+          - type: 'null'
+        correctionOfReferenceNumber:
+          anyOf:
+          - type: string
+          - type: 'null'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StockTransactionItem'
+        postedAt: *id020
+      additionalProperties: false
+      required:
+      - id
+      - referenceNumber
+      - type
+      - status
+      - warehouse
+      - createdBy
+      - items
+      - postedAt
+    CorrectionRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Alasan koreksi wajib setelah trim.
+      additionalProperties: false
+      required:
+      - note
+    MovementRow:
+      type: object
+      properties:
+        id: *id012
+        transactionId: *id012
+        referenceNumber:
+          type: string
+        transactionType:
+          type: string
+          enum:
+          - IN
+          - OUT
+        productId: *id012
+        productName:
+          type: string
+        sku:
+          type: string
+        unit:
+          type: string
+        warehouseId: *id012
+        warehouseName:
+          type: string
+        warehouseCode:
+          type: string
+        quantity: *id021
+        balanceBefore: *id021
+        balanceAfter: *id021
+        createdByName:
+          type: string
+        postedAt: *id020
+      additionalProperties: false
+      required:
+      - id
+      - transactionId
+      - referenceNumber
+      - transactionType
+      - productId
+      - productName
+      - sku
+      - unit
+      - warehouseId
+      - warehouseName
+      - warehouseCode
+      - quantity
+      - balanceBefore
+      - balanceAfter
+      - createdByName
+      - postedAt
+    DashboardSummary:
+      type: object
+      properties:
+        warehouseAccess:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum:
+              - ALL
+              - ASSIGNED
+            activeWarehouseCount:
+              type: integer
+              minimum: 0
+          additionalProperties: false
+          required:
+          - mode
+          - activeWarehouseCount
+        totalSku:
+          type: integer
+          minimum: 0
+        productsWithStock:
+          type: integer
+          minimum: 0
+        lowStock:
+          type: integer
+          minimum: 0
+        outOfStock:
+          type: integer
+          minimum: 0
+        valuation:
+          type: object
+          properties:
+            amount: *id022
+            pricedStockProductCount:
+              type: integer
+              minimum: 0
+            stockedProductCount:
+              type: integer
+              minimum: 0
+            coveragePercent:
+              type: number
+              minimum: 0
+              maximum: 100
+            isComplete:
+              type: boolean
+          additionalProperties: false
+          required:
+          - amount
+          - pricedStockProductCount
+          - stockedProductCount
+          - coveragePercent
+          - isComplete
+      additionalProperties: false
+      required:
+      - warehouseAccess
+      - totalSku
+      - productsWithStock
+      - lowStock
+      - outOfStock
+      - valuation
+    DashboardMovementDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: '2026-11-12'
+        stockInTransactionCount:
+          type: integer
+          minimum: 0
+        stockOutTransactionCount:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - date
+      - stockInTransactionCount
+      - stockOutTransactionCount
+    StockAlerts:
+      type: object
+      properties:
+        lowStock:
+          type: array
+          items:
+            type: object
+            properties:
+              productId: *id012
+              name:
+                type: string
+              sku:
+                type: string
+              unit:
+                type: string
+              balance: *id021
+              minimumStock: *id021
+            additionalProperties: false
+            required:
+            - productId
+            - name
+            - sku
+            - unit
+            - balance
+            - minimumStock
+        outOfStock:
+          type: array
+          items:
+            type: object
+            properties:
+              productId: *id012
+              name:
+                type: string
+              sku:
+                type: string
+              unit:
+                type: string
+              balance: *id021
+              minimumStock: *id021
+            additionalProperties: false
+            required:
+            - productId
+            - name
+            - sku
+            - unit
+            - balance
+            - minimumStock
+      additionalProperties: false
+      required:
+      - lowStock
+      - outOfStock
+    Preferences:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum:
+          - LIGHT
+          - DARK
+          - SYSTEM
+      additionalProperties: false
+      required:
+      - theme
+    PreferencesPatch:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum:
+          - LIGHT
+          - DARK
+          - SYSTEM
+      additionalProperties: false
+      required:
+      - theme
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sf_session
+      description: Opaque session token. HttpOnly; Secure pada production; SameSite=Lax. Token tidak dikirim dalam
+        JSON.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Wajib pada request state-changing yang menggunakan session. Nilai harus cocok dengan CSRF cookie
+        dan session.
+  parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Nomor halaman, dimulai dari 1.
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Jumlah item per halaman, maksimum 100.
+    Search:
+      name: search
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 120
+      description: Pencarian backend; maksimum 120 karakter.
+    SortBy:
+      name: sortBy
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Kolom sort dari allowlist modul; lihat keputusan implementasi yang perlu dikunci.
+    SortOrder:
+      name: sortOrder
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - asc
+        - desc
+      description: Arah pengurutan.
+    FromDate:
+      name: from
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Tanggal awal dalam timezone organisasi. Harus dipasangkan dengan to.
+    ToDate:
+      name: to
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Tanggal akhir dalam timezone organisasi. Harus dipasangkan dengan from.
+    WarehouseId:
+      name: warehouseId
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Filter gudang; Warehouse Staff hanya dapat memilih gudang assignment.
+    Type:
+      name: type
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - IN
+        - OUT
+      description: Tipe transaksi.
+    ProductId:
+      name: productId
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Filter produk.
+    Status:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - ACTIVE
+        - INACTIVE
+      description: Status record.
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Key unik untuk satu operasi transaksi stok; gunakan key sama saat retry payload yang sama. Panjang
+        maksimal 128 karakter.
+      schema:
+        type: string
+        maxLength: 128
+        minLength: 1
+    CsrfHeader:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      description: CSRF token dari cookie sf_csrf.
+      schema:
+        type: string
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: ID korelasi opsional dari client. Server harus membuat request ID jika tidak diberikan.
+      schema:
+        type: string
+        maxLength: 128
+  responses:
+    BadRequest:
+      description: Input tidak valid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Unauthorized:
+      description: Session tidak valid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Forbidden:
+      description: Permission, warehouse scope, atau CSRF ditolak.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: Resource tidak ditemukan.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Conflict:
+      description: Konflik data.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    BusinessRuleViolation:
+      description: Business rule tidak terpenuhi.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    InternalError:
+      description: Kesalahan internal.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'

@@ -1,0 +1,76 @@
+name: stockflow-dev
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: stockflow_db_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_dev_password_2026
+      MYSQL_DATABASE: stockflow_db
+      MYSQL_USER: stockflow_user
+      MYSQL_PASSWORD: stockflow_pass123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    networks:
+      - stockflow_dev_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_dev_password_2026"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    image: node:24-alpine
+    container_name: stockflow_backend_dev
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: mysql://stockflow_user:stockflow_pass123@db:3306/stockflow_db
+      FRONTEND_URL: http://localhost:3000
+      COOKIE_DOMAIN: localhost
+      COOKIE_SECURE: "false"
+      COOKIE_SAME_SITE: "lax"
+      SESSION_SECRET: dev_session_secret_key_32_characters_minimum
+      CSRF_SECRET: dev_csrf_secret_key_32_characters_minimum
+    command: sh -c "npm install && npx prisma generate && npm run dev"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - stockflow_dev_net
+
+  frontend:
+    image: node:24-alpine
+    container_name: stockflow_frontend_dev
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - backend
+    networks:
+      - stockflow_dev_net
+
+volumes:
+  mysql_dev_data:
+  backend_node_modules:
+  frontend_node_modules:
+
+networks:
+  stockflow_dev_net:

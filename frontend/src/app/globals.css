@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* StockFlow Design System - Light Mode */
+  --sf-bg: #F6F7F9;
+  --sf-surface: #FFFFFF;
+  --sf-surface-subtle: #F0F2F6;
+  --sf-surface-hover: #F7F8FC;
+  --sf-text-primary: #171B25;
+  --sf-text-secondary: #687181;
+  --sf-text-muted: #8A93A2;
+  --sf-border: #E5E8EF;
+  --sf-border-strong: #D4D9E3;
+  --sf-primary: #5962D8;
+  --sf-primary-hover: #4C55C5;
+  --sf-primary-soft: #ECEEFF;
+  --sf-accent: #A9DCC4;
+  --sf-accent-strong: #36775D;
+  --sf-success: #2F8966;
+  --sf-warning: #B87925;
+  --sf-danger: #C65360;
+  --sf-info: #477FB7;
+}
+
+.dark {
+  /* StockFlow Design System - Dark Mode */
+  --sf-bg: #10131A;
+  --sf-surface: #171C25;
+  --sf-surface-subtle: #202735;
+  --sf-surface-hover: #242D3C;
+  --sf-text-primary: #EEF1F6;
+  --sf-text-secondary: #A8B0BE;
+  --sf-text-muted: #7E899A;
+  --sf-border: #2B3442;
+  --sf-border-strong: #3A4556;
+  --sf-primary: #969CFF;
+  --sf-primary-hover: #A9AEFF;
+  --sf-primary-soft: #2C3154;
+  --sf-accent: #9DDBBD;
+  --sf-accent-strong: #9DDBBD;
+  --sf-success: #69C69B;
+  --sf-warning: #E5B566;
+  --sf-danger: #E27B85;
+  --sf-info: #82B5E5;
+}
+
+body {
+  background-color: var(--sf-bg);
+  color: var(--sf-text-primary);
+  font-family: var(--font-geist-sans), Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sf-border-strong);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sf-text-muted);
+}

@@ -1,0 +1,70 @@
+name: stockflow-prod
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: stockflow_db_prod
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secure_password_2026}
+      MYSQL_DATABASE: stockflow_db
+      MYSQL_USER: ${DB_USER:-stockflow_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-stockflow_pass123}
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+    networks:
+      - stockflow_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_secure_password_2026}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      target: runner
+    container_name: stockflow_backend_prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:-stockflow_pass123}@db:3306/stockflow_db
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      COOKIE_SECURE: "true"
+      COOKIE_SAME_SITE: "lax"
+      SESSION_SECRET: ${SESSION_SECRET:-super-secret-production-key-at-least-32-chars}
+      CSRF_SECRET: ${CSRF_SECRET:-csrf-secret-production-key-at-least-32-chars}
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - stockflow_net
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runner
+    container_name: stockflow_frontend_prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - stockflow_net
+
+volumes:
+  mysql_prod_data:
+    driver: local
+
+networks:
+  stockflow_net:
+    driver: bridge
