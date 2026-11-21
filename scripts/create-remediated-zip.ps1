@@ -31,7 +31,7 @@ Get-ChildItem -Path "backend" -Exclude "node_modules", "dist", ".env", ".env.*" 
 }
 
 Write-Host "Copying frontend files..."
-Get-ChildItem -Path "frontend" -Exclude "node_modules", ".next", ".env", ".env.*", "tsconfig.tsbuildinfo" | ForEach-Object {
+Get-ChildItem -Path "frontend" -Exclude "node_modules", ".next", ".env", ".env.*", "tsconfig.tsbuildinfo", "test-results" | ForEach-Object {
     Copy-Item -Recurse $_.FullName "$staging\frontend\"
 }
 
