@@ -35,7 +35,7 @@ async function setup() {
 
   // 3. Ensure Admin User exists with known test credentials
   const adminEmail = 'admin@stockflow.com';
-  const adminPassword = 'AdminPassword2026!';
+  const adminPassword = 'AdminStockFlow2026!';
   const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
   const adminRole = await prisma.role.findUnique({ where: { code: 'ADMIN' } });

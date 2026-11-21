@@ -24,7 +24,7 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
     await page.goto('/login');
     await expect(page).toHaveTitle(/StockFlow/i);
     await page.fill('input[type="email"]', 'admin@stockflow.com');
-    await page.fill('input[type="password"]', 'AdminPassword2026!');
+    await page.fill('input[type="password"]', 'AdminStockFlow2026!');
     await page.click('button[type="submit"]');
 
     // Verify redirect to dashboard and admin role

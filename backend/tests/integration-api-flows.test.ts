@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
+import bcrypt from 'bcryptjs';
 import { app } from '../src/app';
 import { PrismaClient } from '@prisma/client';
 
@@ -19,7 +20,13 @@ describe('Milestone 6: Real Backend API Integration Flows (Supertest + MySQL)', 
   const testSuffix = Date.now().toString().slice(-4);
 
   beforeAll(async () => {
-    // Ensure clean test environment
+    // Ensure clean test environment and known admin credential
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash('AdminStockFlow2026!', salt);
+    await prisma.user.updateMany({
+      where: { email: 'admin@stockflow.com' },
+      data: { passwordHash: hash, status: 'ACTIVE' },
+    });
   });
 
   afterAll(async () => {
