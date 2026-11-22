@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   async rewrites() {
     const backendUrl = process.env.INTERNAL_BACKEND_URL || 'http://localhost:4000';

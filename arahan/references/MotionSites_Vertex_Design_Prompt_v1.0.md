@@ -12,7 +12,7 @@
 
 ## Prompt sumber (verbatim)
 
-Build a single, self-contained, production-ready `index.html` — one file, no build
+Build a single, self-contained, production-ready `index.html` - one file, no build
 step, no frameworks, no local assets. It renders a full-viewport dark hero section
 for a fictional e-commerce SaaS called "Vertex Shops". Every image loads from the
 absolute CloudFront URLs in §8. There is NO video anywhere in this page.
@@ -26,10 +26,10 @@ button/pill pattern, do not add glows or centring that is not specified.
 0. GLOBAL SHELL
 =====================================================================
 <!doctype html>, <html lang="en-US">.
-<title>Vision — Streamline the shop virtual</title>
+<title>Vision - Streamline the shop virtual</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-FONTS — exactly these three tags in <head>, in this order:
+FONTS - exactly these three tags in <head>, in this order:
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
@@ -40,11 +40,11 @@ body{font-family:Poppins,Inter,system-ui,sans-serif;color:#fff;-webkit-font-smoo
 a{text-decoration:none;color:inherit}     /* REQUIRED - button labels must never underline */
 
 =====================================================================
-1. CORE ARCHITECTURE — A FIXED DESIGN CANVAS THAT IS SCALED
+1. CORE ARCHITECTURE - A FIXED DESIGN CANVAS THAT IS SCALED
 =====================================================================
 The single most important idea: the desktop composition is authored at a fixed
 1172 x 657 px design canvas. EVERY element is absolutely positioned in raw design
-pixels — there is no flow layout, no flexbox column, no auto-centring on desktop.
+pixels - there is no flow layout, no flexbox column, no auto-centring on desktop.
 The whole canvas is then scaled by ONE transform to fit the viewport. The optical
 centre of every centred element is x=586.
 
@@ -63,47 +63,47 @@ Using 560 (not 657) as the height divisor is deliberate: it fills the width and
 lets the browser mock bleed off the bottom edge rather than letterboxing.
 W = 1172 on desktop; see §10 for the tablet ramp.
 
-Background (never animates — it is the stage):
+Background (never animates - it is the stage):
 .bg{position:absolute;inset:0;
   background:
    linear-gradient(180deg, rgba(25,127,255,0) 38%, rgba(25,127,255,.042) 54%,
      rgba(25,127,255,.052) 68%, rgba(25,127,255,.030) 100%),
    #020204}
 
-STARFIELD — two 1x1px divs whose entire star field is one giant box-shadow list,
+STARFIELD - two 1x1px divs whose entire star field is one giant box-shadow list,
 generated in JS. .stars{position:absolute;left:0;top:0;width:1px;height:1px;
 border-radius:50%;background:#fff}
-  Layer A (#stA): 150 stars, blur 0px,   alpha random .05–.30
-  Layer B (#stB):  18 stars, blur 1.2px, alpha random .35–.70
+  Layer A (#stA): 150 stars, blur 0px,   alpha random .05-.30
+  Layer B (#stB):  18 stars, blur 1.2px, alpha random .35-.70
 Each entry: "<rand 0-100>vw <rand 0-100>vh <blur>px 0 rgba(255,255,255,<alpha>)",
 joined with commas, assigned to el.style.boxShadow.
 
 =====================================================================
-1.5 EXACT COORDINATE TABLE — NON-NEGOTIABLE
+1.5 EXACT COORDINATE TABLE - NON-NEGOTIABLE
 =====================================================================
 All values are design pixels inside the 1172 x 657 canvas. Reproduce every one.
 If your layout does not match this table, the layout is wrong.
 
 ELEMENT           POSITION                          SIZE            RADIUS
 .nav              left 247,  top 3                  678 x 64        32
-  .mark           left 21,   top 19   (in nav)      24 x 24         —
-  .wm             left 50,   top 0    (in nav)      auto            —
-    .wm .kick     left 3,    top 20                 auto            —
-    .wm .name     left 0,    top 26                 auto            —
-  .links          left 156,  top 0    (in nav)      auto x 62       —
+  .mark           left 21,   top 19   (in nav)      24 x 24         -
+  .wm             left 50,   top 0    (in nav)      auto            -
+    .wm .kick     left 3,    top 20                 auto            -
+    .wm .name     left 0,    top 26                 auto            -
+  .links          left 156,  top 0    (in nav)      auto x 62       -
   .nav .btn       left 530.7,top 10.5                125.5 x 39.5   14
 .badge            left 462,  top 95                 250 x 39        12
   .badge i        left 4,    top 4    (in badge)    29 x 29         8
-  .badge b        left 45,   top 0    (in badge)    auto x 39       —
-.h1 (both lines)  left 586, translateX(-50%)         nowrap         —
+  .badge b        left 45,   top 0    (in badge)    auto x 39       -
+.h1 (both lines)  left 586, translateX(-50%)         nowrap         -
   #h1a  first baseline y 204.5   ink width 563.5   cap height 37.2
   #h1b  first baseline y 258.5   ink width 197.5   cap height 37.2
-.sub (both lines) left 586, translateX(-50%)         nowrap         —
+.sub (both lines) left 586, translateX(-50%)         nowrap         -
   #sub1 first baseline y 300.5   ink width 389     cap height 8.4
   #sub2 first baseline y 316.5   ink width 311     cap height 8.4
 .cta2             left 526,  top 349                121 x 54.5      13
-.showcase         left 0,    top 0                  1172 x 0        —
-.ring             left 0,    top 0                  1172 x 657      —
+.showcase         left 0,    top 0                  1172 x 0        -
+.ring             left 0,    top 0                  1172 x 657      -
   .card           left 586,  top 616                130 x 300       12
                   margin:-150px 0 0 -65px  (so the card centres on that point)
 .browser          left 165,  top 558                842 x calc(99px + var(--fill,0px))
@@ -124,7 +124,7 @@ Remaining ink targets for the type fitter (§11):
   .links a   cap 7.9 (one shared size), then the whole row squeezed to width 317
 
 =====================================================================
-2. PIXEL CONTRACT A — THE BADGE
+2. PIXEL CONTRACT A - THE BADGE
 =====================================================================
 The badge is a FIXED-SIZE absolutely-positioned box with an icon tile pinned to
 its left edge and a left-aligned label beside it. It is NOT a centred pill and
@@ -164,7 +164,7 @@ Bolt SVG: viewBox "5 1 14 22", preserveAspectRatio="none",
 How it must LOOK: a dark, almost transparent 250x39 rounded rectangle with a 1px
 hairline border. At its far left, inset 4px, a small bright cyan-to-navy rounded
 square holding a white-stroked lightning bolt. The label begins 45px from the
-badge's left edge — a clear 12px gap after the tile — reads left-to-right, and is
+badge's left edge - a clear 12px gap after the tile - reads left-to-right, and is
 vertically centred in the 39px height. Tile and text NEVER overlap.
 
 DO NOT:
@@ -178,7 +178,7 @@ DO NOT:
 - do not increase the border-radius into a full pill (it is 12px, not 20px)
 
 =====================================================================
-3. PIXEL CONTRACT B — THE GLOW BUTTON (.btn), USED TWICE
+3. PIXEL CONTRACT B - THE GLOW BUTTON (.btn), USED TWICE
 =====================================================================
 The signature element: a near-black button with a bank of cyan light pooled at
 its FOOT. That light is a BACKGROUND GRADIENT CLIPPED BY THE BUTTON'S OWN ROUNDED
@@ -203,13 +203,13 @@ RECT. It is not a glow, not a shadow, not a separate bar, not a neon underline.
     0 2px 5px -3px rgba(90,220,255,.45);
   transition:transform .25s,box-shadow .25s,filter .25s}
 
-.btn::before — a thin bright streak across the TOP edge only:
+.btn::before - a thin bright streak across the TOP edge only:
   content:"";position:absolute;left:22%;right:38%;top:0.8px;height:1.9px;z-index:1;
   filter:blur(.55px);
   background:linear-gradient(90deg,rgba(120,225,255,0) 0%,rgba(120,225,255,.58) 34%,
     rgba(160,240,255,.74) 50%,rgba(120,225,255,.58) 66%,rgba(120,225,255,0) 100%)
 
-.btn::after — side edge-light, 13px inward falloff, MASKED so it attenuates up the
+.btn::after - side edge-light, 13px inward falloff, MASKED so it attenuates up the
 button (boost over the fill: +50 @12px from the foot, +35 @18, +25 @24, +17 @30).
 The mask is mandatory; without it the edge light floods the entire button.
   content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
@@ -226,12 +226,12 @@ The mask is mandatory; without it the edge light floods the entire button.
   box-shadow:inset 0 1px 0 rgba(200,245,255,.6),inset 1px 0 0 rgba(170,225,255,.35),
              inset -1px 0 0 rgba(170,225,255,.35),0 6px 22px rgba(20,180,225,.55)}
 
-Instance A — nav CTA, <a class="btn"><span id="ctaLabel">Build new shop</span></a>:
+Instance A - nav CTA, <a class="btn"><span id="ctaLabel">Build new shop</span></a>:
 .nav .btn{position:absolute;left:530.7px;top:10.5px;width:125.5px;height:39.5px;
   border-radius:14px;font-size:14px;font-weight:500;letter-spacing:-.005em}
 .nav .btn span{margin-top:0}
 
-Instance B — hero CTA, <a class="btn cta2"><span id="vpLabel">See prices</span></a>:
+Instance B - hero CTA, <a class="btn cta2"><span id="vpLabel">See prices</span></a>:
 .cta2{position:absolute;left:526px;top:349px;width:121px;height:54.5px;
   --hair:0 0 0 transparent;border-radius:13px;font-size:17px;font-weight:500;
   letter-spacing:-.01em;z-index:300}
@@ -241,7 +241,7 @@ Instance B — hero CTA, <a class="btn cta2"><span id="vpLabel">See prices</span
 How it must LOOK: the top ~60% of the button is near-black (#0a111d). The bottom
 ~18px is a saturated teal-to-pale-cyan band, brightest in its last 1-5px, fading
 upward and dying out completely by 34px. The band spans the full inner width and
-its bottom corners follow the button's border-radius exactly — it is visibly cut
+its bottom corners follow the button's border-radius exactly - it is visibly cut
 off by the button's own edge, with nothing bleeding past it. The nav button also
 carries a faint 2px light streak across its top edge. The label is centred,
 white, Poppins 500, never underlined.
@@ -250,7 +250,7 @@ DO NOT:
 - do not add ANY outer glow or halo: no extra box-shadow with a blur above 8px,
   no filter:drop-shadow, no blurred pseudo-element sitting outside the button,
   no ::before/::after positioned beyond inset:0. The box-shadow list above is
-  complete and final — its largest outer blur is 8px at 10% alpha.
+  complete and final - its largest outer blur is 8px at 10% alpha.
 - do not omit overflow:hidden; without it the light bank escapes the rounded rect
 - do not omit the ::after mask
 - do not replace the multi-stop foot gradient with a simple two-colour gradient,
@@ -269,7 +269,7 @@ DO NOT:
   backdrop-filter:blur(16px) saturate(140%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
 
-LOGO MARK — inline SVG, 24x24 at left:21px top:19px, viewBox "0 0 48 48",
+LOGO MARK - inline SVG, 24x24 at left:21px top:19px, viewBox "0 0 48 48",
 filter:drop-shadow(0 0 6px rgba(60,224,255,.75)). Two linearGradients in <defs>:
   #sw  x1=8 y1=8 x2=40 y2=40 userSpaceOnUse: #8ef4ff -> #35d8ff @.5 -> #0a86d8
   #sw2 x1=40 y1=10 x2=10 y2=40: #a6f7ff -> #0f9ae0 @opacity .25
@@ -309,7 +309,7 @@ LINKS .links{position:absolute;left:156px;top:0;height:62px;transform-origin:0 5
   id="sub2": checkouts, performance, a sustainable expansion.
 
 =====================================================================
-6. THE CAROUSEL — A TRUE 3D PERSPECTIVE RING (the centrepiece)
+6. THE CAROUSEL - A TRUE 3D PERSPECTIVE RING (the centrepiece)
 =====================================================================
 Not a flat slider. 37 cards are placed on a cylinder whose camera sits AT the ring
 centre, so the cards are tangent to the cylinder and each faces the camera exactly.
@@ -342,7 +342,7 @@ Placement, per card index i, with a running `phase` (starts at -2):
   filter    = brightness(0.84 + 0.5*(1/c - 1))        // edges dim, front bright
 Animation loop via requestAnimationFrame: dt = min((t-last)/1000, .1);
 phase -= 1.9 * dt (continuous, never resets). Freeze phase when
-matchMedia('(prefers-reduced-motion: reduce)') matches — still render, just no spin.
+matchMedia('(prefers-reduced-motion: reduce)') matches - still render, just no spin.
 On 'visibilitychange' reset the `last` timestamp so a backgrounded tab does not jump.
 
 Shared creative sub-classes:
@@ -368,7 +368,7 @@ Build a SHOTS array of 10 objects {url, v, t?} and a creative(d) function that
 switches on d.v and returns an HTML string. Each card = creative(d) + '<div class="edge"></div>'.
 Let im = '<img alt="" src="' + d.url + '">'. Cards cycle: SHOTS[i % 10].
 Attach an 'error' listener to each img that adds .broken to the card.
-All card typography is HTML/CSS overlay — the photographs themselves carry no text.
+All card typography is HTML/CSS overlay - the photographs themselves carry no text.
 
 v='pay' (checkout):
   fill background:#efedea
@@ -408,7 +408,7 @@ v='brand' (formula):
   .ph top:92px;bottom:0 -> im + inner fill
       linear-gradient(180deg,rgba(10,42,74,.98),rgba(10,42,74,0) 36%)
   .cv top:16px;font-size:4.2px;line-height:1.7;color:rgba(255,255,255,.82);width:74px
-      -> Formulas light, assessed hypoallergenically n designed with a new ritual — revealing since a starting moment.
+      -> Formulas light, assessed hypoallergenically n designed with a new ritual - revealing since a starting moment.
   div right:10px;top:16px;font-size:5.4px;font-weight:600;color:#fff;opacity:.92 -> ✳ Vertex
 
 v='frete' (shipping):
@@ -444,7 +444,7 @@ v='plain' (default, used 3x with a `t` caption):
   .cv top:150px;font-size:5.4px;font-weight:600;letter-spacing:.2em;color:#fff -> d.t
 
 =====================================================================
-8. IMAGE URLS — USE THESE EXACT ABSOLUTE URLS, VERBATIM
+8. IMAGE URLS - USE THESE EXACT ABSOLUTE URLS, VERBATIM
 =====================================================================
 All 15 are PNGs on CloudFront. No local files, no relative paths, no <video>.
 Base (expand it in full at every use site; do not abbreviate):
@@ -511,9 +511,9 @@ CHROME BAR
     -> "Shop Focused - Skin Care"
 .tools{position:absolute;right:27px;top:14px;display:flex;align-items:center;gap:4px;
   opacity:.9}  .tools svg{width:11px;height:12px}
-  Three 24x24 icons, stroke #fff: (a) upload/share — "M12 16V4m0 0L8 8m4-4 4 4" +
-  "M4 15v5h16v-5"; (b) plus — "M12 5v14M5 12h14" stroke-width 2.2; (c) stacked
-  layers — filled "M12 3 3 8l9 5 9-5-9-5Z" opacity .95 + stroked "M3 13l9 5 9-5" opacity .55
+  Three 24x24 icons, stroke #fff: (a) upload/share - "M12 16V4m0 0L8 8m4-4 4 4" +
+  "M4 15v5h16v-5"; (b) plus - "M12 5v14M5 12h14" stroke-width 2.2; (c) stacked
+  layers - filled "M12 3 3 8l9 5 9-5-9-5Z" opacity .95 + stroked "M3 13l9 5 9-5" opacity .55
 
 PAGE SURFACE
 .page{position:absolute;left:7px;right:6px;top:42px;bottom:0;background:#fff;
@@ -532,7 +532,7 @@ PAGE SURFACE
   "M4.5 21c0-4.2 3.4-6.6 7.5-6.6s7.5 2.4 7.5 6.6"), bag ("M5.5 8h13l-1.2 12H6.7L5.5 8Z"
   + "M9 8V6.2A3 3 0 0 1 15 6.2V8")
 
-STORE FRONT — only design px 57–344 are ever on screen, so order matters:
+STORE FRONT - only design px 57-344 are ever on screen, so order matters:
 hero banner first, best-sellers below.
 .pagebody{position:absolute;left:0;right:0;top:62px;bottom:0;background:#fff;overflow:hidden}
 .pghero{position:relative;margin:0 26px;height:158px;border-radius:7px;overflow:hidden;
@@ -587,9 +587,9 @@ FLOATING WHATSAPP BUTTON (outside .canvas, inside .stage)
 aria-label="WhatsApp". Kill the animation under prefers-reduced-motion.
 
 =====================================================================
-10. RESPONSIVE — THREE DISTINCT ARCHITECTURES
+10. RESPONSIVE - THREE DISTINCT ARCHITECTURES
 =====================================================================
-Breakpoints: DESKTOP >1080px · TABLET 701–1080px · PHONE <=700px
+Breakpoints: DESKTOP >1080px · TABLET 701-1080px · PHONE <=700px
 JS constants: TAB_MAX=1080, TAB_MIN=701, DW_MIN=920.
 
 --- SHARED NARROW-VIEWPORT NAV, @media (max-width:1080px) ---
@@ -628,9 +628,9 @@ Menu JS: toggle .open on .nav, keep aria-expanded in sync, aria-controls="navmen
 close on outside click, on Escape (then return focus to the burger), and on any
 link click inside the panel; also force-close whenever the viewport leaves the band.
 
---- TABLET 701–1080px ---
+--- TABLET 701-1080px ---
 1080 is where the desktop composition measurably stops holding: nav links fall
-below 10.3px and on portrait tablets the mock swells to 64–69% of the viewport.
+below 10.3px and on portrait tablets the mock swells to 64-69% of the viewport.
 CSS:
   .nav{left:286px;width:620px}          /* narrows to logo + burger */
   .badge{left:448px;width:277px}        /* note: width grows, .badge b stays left:45px */
@@ -638,7 +638,7 @@ CSS:
   .showcase{transform:translateY(var(--sshift,0px))}
   .ring{transform:scale(var(--rs,1));transform-origin:586px 595px}
   .wa{width:58px;height:58px;right:22px;bottom:26px}  .wa svg{width:32px;height:32px}
-JS — the design WINDOW narrows so type stops shrinking with the viewport, and k
+JS - the design WINDOW narrows so type stops shrinking with the viewport, and k
 stays CONTINUOUS at 1080 (no jump):
   W = DW_MIN + (vw - TAB_MIN) * (CW - DW_MIN) / (TAB_MAX - TAB_MIN)
   if (vh > vw*1.15) W = min(W, 900)      // portrait tablet: tighten, read larger
@@ -657,7 +657,7 @@ stays CONTINUOUS at 1080 (no jump):
 
 --- PHONE <=700px : A GENUINE FLOW COLUMN ---
 Below 700 the scaled canvas puts body copy under 10px and the mock's side margins
-under 20px, so the phone gets real flow layout — same elements, same order,
+under 20px, so the phone gets real flow layout - same elements, same order,
 rebuilt as a column that owns the viewport. Set k=1 and remove --k/--fill.
   .canvas{position:relative;left:auto;top:auto;width:100%;height:100%;transform:none;
     display:flex;flex-direction:column;align-items:center;padding:0 20px}
@@ -760,8 +760,8 @@ layout() on desktop/tablet, with T = tablet ? tboost : 1:
     all five, then squeeze the row: .links transform = scaleX(317 / rowWidth)
   finally placeCards()
 
-layout() on phone: hand EVERY inline style the fitter wrote back — fontSize, top
-AND transform — for h1a, h1b, sub1, sub2, badgeTxt, wmName, ctaLabel, vpLabel,
+layout() on phone: hand EVERY inline style the fitter wrote back - fontSize, top
+AND transform - for h1a, h1b, sub1, sub2, badgeTxt, wmName, ctaLabel, vpLabel,
 plus #links (fontSize + transform) and each of its children (fontSize). Leaving
 the transform behind shifts the headline off-screen after a resize down from a
 desktop width. Then placeCards() and return.
@@ -771,14 +771,14 @@ call resize() once; document.fonts.ready.then(layout); setTimeout(layout,400);
 setTimeout(layout,1400); requestAnimationFrame(tick).
 
 =====================================================================
-12. MASTER ENTRANCE TIMELINE — runs exactly once, then the page is still
+12. MASTER ENTRANCE TIMELINE - runs exactly once, then the page is still
 =====================================================================
 Armed BEFORE first paint by an inline <script> at the end of <head>:
   document.documentElement.classList.add('intro');
   setTimeout(function(){document.documentElement.classList.remove('intro');},4000);
 (the failsafe timer guarantees content can never be stranded invisible)
 
-Resting states in CSS — uses the INDIVIDUAL translate/scale/clip-path properties,
+Resting states in CSS - uses the INDIVIDUAL translate/scale/clip-path properties,
 NOT `transform`, because transform is already owned by the pixel-fitter and the
 ring loop; these compose instead of colliding. The background never moves.
   html.intro .nav{opacity:0;translate:0 -9px}
@@ -806,7 +806,7 @@ if prefers-reduced-motion matches, or if Element.animate is unavailable.
     'intro:', then remove the .intro class. Called from last.finished.then/catch.
     Nothing survives completion: the final frame is the authored design, pixel for pixel.
 
-Choreography — the eye is led, not sprayed (element, from, duration, delay, ease):
+Choreography - the eye is led, not sprayed (element, from, duration, delay, ease):
   the frame settles
     .nav        {opacity:0, translate:Y(-9)}            620ms,   60ms, EXPO
     .mark       {opacity:0, translate:Y(6)}             520ms,  150ms, SOFT
@@ -821,7 +821,7 @@ Choreography — the eye is led, not sprayed (element, from, duration, delay, ea
     #sub1       {opacity:0, translate:Y(10)}            620ms,  690ms, EXPO
     #sub2       {opacity:0, translate:Y(10)}            620ms,  745ms, EXPO
     .cta2       {opacity:0, translate:Y(13), scale:.985} 620ms, 830ms, EXPO
-  the payoff — the wheel rises into depth, the mock lands in FRONT of it last,
+  the payoff - the wheel rises into depth, the mock lands in FRONT of it last,
   reinforcing the real z-order
     .ring       {opacity:0, translate:Y(18), scale:.99}  950ms,  700ms, EXPO
     .browser    {opacity:0, translate:Y(26)}             900ms,  900ms, EXPO
@@ -852,15 +852,15 @@ from 100% to -30%); they do not simply fade.
 Verify each of these; fix anything that fails:
  1. Badge: is the label's left edge at design x=507 (462+45), clear of the icon
     tile that ends at x=495? Does no glyph sit under the tile?
- 2. Badge: is the box exactly 250x39 with a 12px radius — not a full pill, not
+ 2. Badge: is the box exactly 250x39 with a 12px radius - not a full pill, not
     auto-width, not centre-aligned text?
  3. Buttons: is the cyan bank clipped flat by the button's bottom rounded corners,
     with zero light outside the button's box?
- 4. Buttons: is the only outer shadow the tight 0 0 8px / 0 2px 5px -3px pair —
+ 4. Buttons: is the only outer shadow the tight 0 0 8px / 0 2px 5px -3px pair -
     no halo, no drop-shadow, no blurred outer element?
  5. Nav button has the top streak; the hero CTA does not.
  6. Does the browser mock overlap and paint in FRONT of the carousel cards?
- 7. Do exactly 37 cards exist, with roughly 8–9 visible and the rest culled at 42°?
+ 7. Do exactly 37 cards exist, with roughly 8-9 visible and the rest culled at 42°?
  8. Does the ring rotate continuously and smoothly, with no jump on tab refocus?
  9. At 375px wide: single column, 2-up product grid, no horizontal scrollbar,
     headline breaking to three balanced lines.

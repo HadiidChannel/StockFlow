@@ -15,6 +15,7 @@ describe('Milestone 2 & 3: Inventory Integrity and Concurrency Hardening', () =>
   let testProductId2: string;
   let inactiveWarehouseId: string;
   let inactiveProductId: string;
+  const dynamicProductIds: string[] = [];
 
   beforeAll(async () => {
     // Retrieve existing organization and admin user
@@ -117,20 +118,42 @@ describe('Milestone 2 & 3: Inventory Integrity and Concurrency Hardening', () =>
   });
 
   afterAll(async () => {
-    // Cleanup created test records
+    // Cleanup created test records in strict child-to-parent foreign key order
     const whIds = [testWarehouseId, inactiveWarehouseId].filter(Boolean);
-    const prodIds = [testProductId1, testProductId2, inactiveProductId].filter(Boolean);
+    const prodIds = [testProductId1, testProductId2, inactiveProductId, ...dynamicProductIds].filter(Boolean);
 
+    // 1. Stock movements (child of warehouse and product)
+    await prisma.stockMovement.deleteMany({
+      where: {
+        OR: [
+          { warehouseId: { in: whIds } },
+          { productId: { in: prodIds } },
+        ],
+      },
+    });
+
+    // 2. Stock transaction items (child of transaction and product)
+    await prisma.stockTransactionItem.deleteMany({
+      where: {
+        OR: [
+          { transaction: { warehouseId: { in: whIds } } },
+          { productId: { in: prodIds } },
+        ],
+      },
+    });
+
+    // 3. Idempotency records (child of user and transaction)
+    await prisma.idempotencyRecord.deleteMany({
+      where: {
+        OR: [
+          { userId: adminUserId },
+          { transaction: { warehouseId: { in: whIds } } },
+        ],
+      },
+    });
+
+    // 4. Stock transactions (parent of items, break self-referencing FK first)
     if (whIds.length > 0) {
-      await prisma.stockMovement.deleteMany({
-        where: { warehouseId: { in: whIds } },
-      });
-      await prisma.stockTransactionItem.deleteMany({
-        where: { transaction: { warehouseId: { in: whIds } } },
-      });
-      await prisma.idempotencyRecord.deleteMany({
-        where: { userId: adminUserId },
-      });
       await prisma.stockTransaction.updateMany({
         where: { warehouseId: { in: whIds } },
         data: { correctionOfTransactionId: null },
@@ -138,14 +161,31 @@ describe('Milestone 2 & 3: Inventory Integrity and Concurrency Hardening', () =>
       await prisma.stockTransaction.deleteMany({
         where: { warehouseId: { in: whIds } },
       });
-      await prisma.inventoryBalance.deleteMany({
+    }
+
+    // 5. Inventory balances (child of warehouse and product)
+    await prisma.inventoryBalance.deleteMany({
+      where: {
+        OR: [
+          { warehouseId: { in: whIds } },
+          { productId: { in: prodIds } },
+        ],
+      },
+    });
+
+    // 6. User warehouse assignments (child of warehouse)
+    if (whIds.length > 0) {
+      await prisma.userWarehouseAssignment.deleteMany({
         where: { warehouseId: { in: whIds } },
       });
+
+      // 7. Warehouses (parent)
       await prisma.warehouse.deleteMany({
         where: { id: { in: whIds } },
       });
     }
 
+    // 8. Products (parent)
     if (prodIds.length > 0) {
       await prisma.product.deleteMany({
         where: { id: { in: prodIds } },
@@ -565,6 +605,7 @@ describe('Milestone 2 & 3: Inventory Integrity and Concurrency Hardening', () =>
         adminUserId,
         orgId
       );
+      dynamicProductIds.push(testProduct.id);
 
       const promises = Array.from({ length: 5 }, (_, i) =>
         inventoryService.processStockIn(
@@ -636,7 +677,8 @@ describe('Milestone 2 & 3: Inventory Integrity and Concurrency Hardening', () =>
     });
 
     it('harus rollback penuh secara atomik jika salah satu item dalam multi-item transaction gagal (database partial failure rollback)', async () => {
-      const balBefore = await prisma.inventoryBalance.findUnique({
+      // 1. Capture snapshot counts and balances across all 5 tables before transaction
+      const balBefore1 = await prisma.inventoryBalance.findUnique({
         where: {
           productId_warehouseId: {
             productId: testProductId1,
@@ -644,9 +686,16 @@ describe('Milestone 2 & 3: Inventory Integrity and Concurrency Hardening', () =>
           },
         },
       });
-      const initialQty = balBefore ? Number(balBefore.quantity) : 0;
-      const initialTxCount = await prisma.stockTransaction.count();
+      const initialQty1 = balBefore1 ? Number(balBefore1.quantity) : 0;
 
+      const initialTxCount = await prisma.stockTransaction.count();
+      const initialTxItemCount = await prisma.stockTransactionItem.count();
+      const initialMovementCount = await prisma.stockMovement.count();
+      const initialIdempotencyCount = await prisma.idempotencyRecord.count();
+
+      const failedKey = `failing-rollback-${Date.now()}`;
+
+      // 2. Execute multi-item transaction where item 2 is inactive (triggers ValidationError)
       await expect(
         inventoryService.processStockIn(
           {
@@ -661,11 +710,20 @@ describe('Milestone 2 & 3: Inventory Integrity and Concurrency Hardening', () =>
           'Admin',
           orgId,
           undefined,
-          `failing-rollback-${Date.now()}`
+          failedKey
         )
       ).rejects.toThrow(ValidationError);
 
-      const balAfter = await prisma.inventoryBalance.findUnique({
+      // 3. Table 1: stock_transactions count strictly unchanged
+      const finalTxCount = await prisma.stockTransaction.count();
+      expect(finalTxCount).toBe(initialTxCount);
+
+      // 4. Table 2: stock_transaction_items count strictly unchanged
+      const finalTxItemCount = await prisma.stockTransactionItem.count();
+      expect(finalTxItemCount).toBe(initialTxItemCount);
+
+      // 5. Table 3: inventory_balances quantities strictly unchanged for both products
+      const balAfter1 = await prisma.inventoryBalance.findUnique({
         where: {
           productId_warehouseId: {
             productId: testProductId1,
@@ -673,10 +731,35 @@ describe('Milestone 2 & 3: Inventory Integrity and Concurrency Hardening', () =>
           },
         },
       });
-      expect(Number(balAfter?.quantity)).toBe(initialQty);
+      expect(Number(balAfter1?.quantity)).toBe(initialQty1);
 
-      const finalTxCount = await prisma.stockTransaction.count();
-      expect(finalTxCount).toBe(initialTxCount);
+      const balAfter2 = await prisma.inventoryBalance.findUnique({
+        where: {
+          productId_warehouseId: {
+            productId: inactiveProductId,
+            warehouseId: testWarehouseId,
+          },
+        },
+      });
+      expect(balAfter2).toBeNull();
+
+      // 6. Table 4: stock_movements count strictly unchanged
+      const finalMovementCount = await prisma.stockMovement.count();
+      expect(finalMovementCount).toBe(initialMovementCount);
+
+      // 7. Table 5: idempotency_records count strictly unchanged and failed key was not saved
+      const finalIdempotencyCount = await prisma.idempotencyRecord.count();
+      expect(finalIdempotencyCount).toBe(initialIdempotencyCount);
+
+      const savedKeyRecord = await prisma.idempotencyRecord.findUnique({
+        where: {
+          userId_idempotencyKey: {
+            userId: adminUserId,
+            idempotencyKey: failedKey,
+          },
+        },
+      });
+      expect(savedKeyRecord).toBeNull();
     });
   });
 });

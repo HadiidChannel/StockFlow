@@ -5,7 +5,7 @@ import { ForbiddenError } from '../utils/app-error';
 
 function getAllowedOrigins(): string[] {
   const isProduction = process.env.NODE_ENV === 'production';
-  const envUrl = process.env.FRONTEND_URL;
+  const envUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/+$/, '') : undefined;
   if (isProduction) {
     return envUrl ? [envUrl] : [];
   }

@@ -56,7 +56,7 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
     await expect(page.locator('table')).toContainText(productName);
 
     // Capture created product ID via Admin session
-    const prodRes = await page.request.get(`http://localhost:4000/api/v1/products?search=${productSku}`);
+    const prodRes = await page.request.get(`/api/v1/products?search=${productSku}`);
     const prodData = await prodRes.json();
     createdProductId = prodData.data[0].id;
     console.log('Created Product UUID:', createdProductId);
@@ -84,7 +84,7 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
     await expect(page.locator(`text=${warehouseUnassignedName}`)).toBeVisible();
 
     // Capture unassigned warehouse ID via Admin session
-    const whRes = await page.request.get('http://localhost:4000/api/v1/warehouses');
+    const whRes = await page.request.get('/api/v1/warehouses');
     const whData = await whRes.json();
     const foundUnassigned = whData.data.find((w: any) => w.code === warehouseUnassignedCode);
     unassignedWarehouseId = foundUnassigned.id;
@@ -246,7 +246,7 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
     const csrfCookie = cookies.find((c) => c.name === 'sf_csrf');
     const csrfToken = csrfCookie ? csrfCookie.value : '';
 
-    const forbiddenRes = await page.request.post('http://localhost:4000/api/v1/inventory/stock-out', {
+    const forbiddenRes = await page.request.post('/api/v1/inventory/stock-out', {
       headers: {
         'x-csrf-token': csrfToken,
         'Idempotency-Key': `e2e-forbidden-${Date.now()}`,

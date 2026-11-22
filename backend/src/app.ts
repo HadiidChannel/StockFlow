@@ -4,7 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { globalApiLimiter } from './middleware/rate-limiter';
 import { prisma } from './database/client';
-import { AppError } from './utils/app-error';
+import { AppError, ForbiddenError } from './utils/app-error';
 import { logger } from './utils/logger';
 import { requireAuth, enforcePasswordChange } from './middleware/auth';
 
@@ -27,7 +27,8 @@ app.use(helmet());
 
 // 2. CORS allowlist
 const isProduction = process.env.NODE_ENV === 'production';
-const frontendUrl = process.env.FRONTEND_URL || (isProduction ? '' : 'http://localhost:3000');
+const rawFrontendUrl = process.env.FRONTEND_URL;
+const frontendUrl = rawFrontendUrl ? rawFrontendUrl.replace(/\/+$/, '') : (isProduction ? '' : 'http://localhost:3000');
 const allowedOrigins = isProduction
   ? (frontendUrl ? [frontendUrl] : [])
   : [frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'].filter(Boolean);
@@ -39,7 +40,7 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('CORS origin tidak diizinkan oleh kebijakan keamanan StockFlow.'));
+      return callback(new ForbiddenError('Origin request tidak diizinkan oleh kebijakan CORS StockFlow.'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

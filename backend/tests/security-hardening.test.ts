@@ -56,6 +56,32 @@ describe('Milestone 4: Security Hardening (P1-05, P1-06, P1-07)', () => {
 
       expect(() => validateOrigin(req)).not.toThrow();
     });
+
+    it('harus menolak request POST dari localhost pada mode production dan hanya menerima domain production', () => {
+      const originalEnv = process.env.NODE_ENV;
+      const originalFrontend = process.env.FRONTEND_URL;
+      try {
+        process.env.NODE_ENV = 'production';
+        process.env.FRONTEND_URL = 'https://app.stockflow.com';
+
+        const reqLocalhost = {
+          method: 'POST',
+          headers: { origin: 'http://localhost:3000' },
+        } as unknown as Request;
+
+        expect(() => validateOrigin(reqLocalhost)).toThrow(ForbiddenError);
+
+        const reqAllowed = {
+          method: 'POST',
+          headers: { origin: 'https://app.stockflow.com' },
+        } as unknown as Request;
+
+        expect(() => validateOrigin(reqAllowed)).not.toThrow();
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+        process.env.FRONTEND_URL = originalFrontend;
+      }
+    });
   });
 
   describe('P1-07: Tiered Rate Limiting Configuration', () => {

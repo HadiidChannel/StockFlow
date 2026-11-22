@@ -30,35 +30,74 @@ describe('Milestone 6: Real Backend API Integration Flows (Supertest + MySQL)', 
   });
 
   afterAll(async () => {
-    // Teardown test entities created via API
-    if (createdWarehouseId) {
+    // Teardown test entities created via API in strict child-to-parent order
+    const whFilter = createdWarehouseId ? [createdWarehouseId] : [];
+    const prodFilter = createdProductId ? [createdProductId] : [];
+
+    if (whFilter.length > 0 || prodFilter.length > 0) {
+      // 1. Stock movements
       await prisma.stockMovement.deleteMany({
-        where: { warehouseId: createdWarehouseId },
+        where: {
+          OR: [
+            ...(whFilter.length > 0 ? [{ warehouseId: { in: whFilter } }] : []),
+            ...(prodFilter.length > 0 ? [{ productId: { in: prodFilter } }] : []),
+          ],
+        },
       });
+
+      // 2. Stock transaction items
       await prisma.stockTransactionItem.deleteMany({
-        where: { productId: createdProductId },
+        where: {
+          OR: [
+            ...(whFilter.length > 0 ? [{ transaction: { warehouseId: { in: whFilter } } }] : []),
+            ...(prodFilter.length > 0 ? [{ productId: { in: prodFilter } }] : []),
+          ],
+        },
       });
-      await prisma.idempotencyRecord.deleteMany({
-        where: { transaction: { warehouseId: createdWarehouseId } },
-      });
-      await prisma.stockTransaction.updateMany({
-        where: { warehouseId: createdWarehouseId },
-        data: { correctionOfTransactionId: null },
-      });
-      await prisma.stockTransaction.deleteMany({
-        where: { warehouseId: createdWarehouseId },
-      });
+
+      // 3. Idempotency records
+      if (whFilter.length > 0) {
+        await prisma.idempotencyRecord.deleteMany({
+          where: {
+            transaction: { warehouseId: { in: whFilter } },
+          },
+        });
+
+        // 4. Stock transactions (break self-referencing FK first)
+        await prisma.stockTransaction.updateMany({
+          where: { warehouseId: { in: whFilter } },
+          data: { correctionOfTransactionId: null },
+        });
+        await prisma.stockTransaction.deleteMany({
+          where: { warehouseId: { in: whFilter } },
+        });
+      }
+
+      // 5. Inventory balances
       await prisma.inventoryBalance.deleteMany({
-        where: { warehouseId: createdWarehouseId },
+        where: {
+          OR: [
+            ...(whFilter.length > 0 ? [{ warehouseId: { in: whFilter } }] : []),
+            ...(prodFilter.length > 0 ? [{ productId: { in: prodFilter } }] : []),
+          ],
+        },
       });
     }
 
+    // 6. User warehouse assignments & Warehouses
+    if (createdWarehouseId) {
+      await prisma.userWarehouseAssignment.deleteMany({
+        where: { warehouseId: createdWarehouseId },
+      });
+      await prisma.warehouse.deleteMany({ where: { id: createdWarehouseId } });
+    }
+
+    // 7. Products
     if (createdProductId) {
       await prisma.product.deleteMany({ where: { id: createdProductId } });
     }
-    if (createdWarehouseId) {
-      await prisma.warehouse.deleteMany({ where: { id: createdWarehouseId } });
-    }
+
+    // 8. Categories
     if (createdCategoryId) {
       await prisma.category.deleteMany({ where: { id: createdCategoryId } });
     }

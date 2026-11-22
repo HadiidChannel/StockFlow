@@ -17,7 +17,7 @@ const INSECURE_DEFAULT_SECRETS = [
   'password',
 ];
 
-const envSchema = z.object({
+export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL wajib diisi'),
@@ -69,6 +69,21 @@ const envSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ['DATABASE_URL'],
         message: 'DATABASE_URL pada production tidak boleh menggunakan password default development.',
+      });
+    }
+
+    // 5. FRONTEND_URL wajib didefinisikan secara eksplisit dan tidak boleh localhost / 127.0.0.1 pada production
+    if (!data.FRONTEND_URL || data.FRONTEND_URL.includes('localhost') || data.FRONTEND_URL.includes('127.0.0.1')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['FRONTEND_URL'],
+        message: 'FRONTEND_URL pada production tidak boleh kosong, menggunakan localhost, atau 127.0.0.1.',
+      });
+    } else if (!data.FRONTEND_URL.startsWith('https://')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['FRONTEND_URL'],
+        message: 'FRONTEND_URL pada production wajib menggunakan protokol HTTPS.',
       });
     }
   }

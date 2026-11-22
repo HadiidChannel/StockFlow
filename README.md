@@ -248,19 +248,24 @@ Data demo siap pakai telah disediakan melalui seeder database (`backend/prisma/s
 Proyek ini dilengkapi dengan pengujian otomatis menyeluruh:
 
 ```bash
-# Menjalankan pengujian backend (Unit & Integration API)
+# Menjalankan pengujian backend (Unit & Integration API - 80 tests)
 cd backend
 npm test
 
-# Menjalankan pengujian frontend (Unit & E2E Workflow Logic)
+# Menjalankan pengujian frontend (Unit & Workflow Logic - 9 tests)
 cd frontend
 npm test
+
+# Menjalankan pengujian browser End-to-End (Playwright Chromium - 13 stages)
+cd frontend
+npx playwright test
 ```
 
 ### Ringkasan Hasil Pengujian:
-- **Backend Tests**: 17 tests passed (AppError, Zod Validation, RBAC Permissions, API Health & Security Headers).
+- **Backend Tests**: 80 tests passed across 10 test files (AppError, Zod Validation, RBAC Permissions, CSRF Token Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Concurrency Locking, Multi-Table Atomic Rollbacks, and API Health).
 - **Frontend Tests**: 9 tests passed (Utils formatters, Concurrency calculation, Audit ledger reconciliation, Reversal logic).
-- **Total**: 26 automated tests passing hijau 100%.
+- **Playwright Browser E2E**: 13-stage comprehensive inventory lifecycle workflow passed in 7.6s (real database & same-origin relative API path, zero mock).
+- **Total**: 89 automated tests passing hijau 100% dengan exit code 0.
 
 ---
 

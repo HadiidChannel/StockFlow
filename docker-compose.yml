@@ -20,6 +20,20 @@ services:
       timeout: 5s
       retries: 5
 
+  migrator:
+    build:
+      context: ./backend
+      target: migrator
+    container_name: stockflow_migrator_prod
+    restart: "no"
+    environment:
+      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - stockflow_net
+
   backend:
     build:
       context: ./backend
@@ -30,7 +44,7 @@ services:
       NODE_ENV: production
       PORT: 4000
       DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL wajib diisi URL domain HTTPS produksi}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       COOKIE_SECURE: "true"
       COOKIE_SAME_SITE: "lax"
@@ -41,6 +55,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     networks:
       - stockflow_net
 
@@ -48,15 +64,12 @@ services:
     build:
       context: ./frontend
       target: runner
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
     container_name: stockflow_frontend_prod
     restart: always
     environment:
       NODE_ENV: production
       PORT: 3000
       INTERNAL_BACKEND_URL: http://backend:4000
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
     ports:
       - "3000:3000"
     depends_on:

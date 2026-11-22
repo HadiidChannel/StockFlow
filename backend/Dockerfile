@@ -35,3 +35,12 @@ COPY --chown=node:node --from=builder /app/prisma ./prisma
 
 EXPOSE 4000
 CMD ["node", "dist/server.js"]
+
+# Stage 5: Production Migrator (dedicated migration container with prisma CLI)
+FROM node:24-alpine AS migrator
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build-deps /app/node_modules ./node_modules
+COPY prisma ./prisma
+COPY package*.json ./
+CMD ["npx", "prisma", "migrate", "deploy"]
