@@ -17,6 +17,11 @@ export class InventoryController {
       }
 
       const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+      if (!idempotencyKey || typeof idempotencyKey !== 'string' || idempotencyKey.trim().length === 0) {
+        throw new ValidationError('Header Idempotency-Key wajib disertakan untuk transaksi ini.', [
+          { field: 'Idempotency-Key', message: 'Header Idempotency-Key wajib disertakan untuk transaksi ini.' },
+        ]);
+      }
 
       const result = await inventoryService.processStockIn(
         parsed.data,
@@ -24,7 +29,7 @@ export class InventoryController {
         req.user.name,
         req.user.organizationId,
         req.allowedWarehouseIds,
-        idempotencyKey
+        idempotencyKey.trim()
       );
 
       return res.status(201).json({ data: result });
@@ -46,6 +51,11 @@ export class InventoryController {
       }
 
       const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+      if (!idempotencyKey || typeof idempotencyKey !== 'string' || idempotencyKey.trim().length === 0) {
+        throw new ValidationError('Header Idempotency-Key wajib disertakan untuk transaksi ini.', [
+          { field: 'Idempotency-Key', message: 'Header Idempotency-Key wajib disertakan untuk transaksi ini.' },
+        ]);
+      }
 
       const result = await inventoryService.processStockOut(
         parsed.data,
@@ -53,7 +63,7 @@ export class InventoryController {
         req.user.name,
         req.user.organizationId,
         req.allowedWarehouseIds,
-        idempotencyKey
+        idempotencyKey.trim()
       );
 
       return res.status(201).json({ data: result });
@@ -75,6 +85,11 @@ export class InventoryController {
       }
 
       const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+      if (!idempotencyKey || typeof idempotencyKey !== 'string' || idempotencyKey.trim().length === 0) {
+        throw new ValidationError('Header Idempotency-Key wajib disertakan untuk transaksi ini.', [
+          { field: 'Idempotency-Key', message: 'Header Idempotency-Key wajib disertakan untuk transaksi ini.' },
+        ]);
+      }
 
       const result = await inventoryService.processReversal(
         req.params.id,
@@ -83,7 +98,7 @@ export class InventoryController {
         req.user.name,
         req.user.organizationId,
         req.allowedWarehouseIds,
-        idempotencyKey
+        idempotencyKey.trim()
       );
 
       return res.status(201).json({ data: result });

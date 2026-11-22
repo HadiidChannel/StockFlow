@@ -4,7 +4,11 @@ import { prisma } from '../database/client';
 import { ForbiddenError } from '../utils/app-error';
 
 function getAllowedOrigins(): string[] {
+  const isProduction = process.env.NODE_ENV === 'production';
   const envUrl = process.env.FRONTEND_URL;
+  if (isProduction) {
+    return envUrl ? [envUrl] : [];
+  }
   const origins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
   if (envUrl && !origins.includes(envUrl)) {
     origins.push(envUrl);

@@ -26,10 +26,21 @@ export const app = express();
 app.use(helmet());
 
 // 2. CORS allowlist
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+const isProduction = process.env.NODE_ENV === 'production';
+const frontendUrl = process.env.FRONTEND_URL || (isProduction ? '' : 'http://localhost:3000');
+const allowedOrigins = isProduction
+  ? (frontendUrl ? [frontendUrl] : [])
+  : [frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'].filter(Boolean);
+
 app.use(
   cors({
-    origin: [frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('CORS origin tidak diizinkan oleh kebijakan keamanan StockFlow.'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Request-Id', 'Idempotency-Key'],

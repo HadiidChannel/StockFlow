@@ -243,12 +243,13 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
     
     // Extract CSRF token from page cookie
     const cookies = await context.cookies();
-    const csrfCookie = cookies.find((c) => c.name === 'csrf_token');
+    const csrfCookie = cookies.find((c) => c.name === 'sf_csrf');
     const csrfToken = csrfCookie ? csrfCookie.value : '';
 
     const forbiddenRes = await page.request.post('http://localhost:4000/api/v1/inventory/stock-out', {
       headers: {
         'x-csrf-token': csrfToken,
+        'Idempotency-Key': `e2e-forbidden-${Date.now()}`,
       },
       data: {
         warehouseId: unassignedWarehouseId,

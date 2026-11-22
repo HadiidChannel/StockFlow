@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -29,24 +29,13 @@ export function generateIdempotencyKey(): string {
   });
 }
 
-// Request interceptor: menyertakan CSRF token dan Idempotency-Key secara otomatis pada mutasi
+// Request interceptor: menyertakan CSRF token secara otomatis pada mutasi
 api.interceptors.request.use((config) => {
   const method = config.method?.toUpperCase();
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method || '')) {
     const csrfToken = getCsrfTokenFromCookie();
     if (csrfToken) {
       config.headers['X-CSRF-Token'] = csrfToken;
-    }
-
-    // Attach Idempotency-Key for mutative inventory endpoints if not already provided
-    const url = config.url || '';
-    if (
-      !config.headers['Idempotency-Key'] &&
-      (url.includes('/inventory/stock-in') ||
-        url.includes('/inventory/stock-out') ||
-        (url.includes('/inventory/transactions') && url.includes('/reversal')))
-    ) {
-      config.headers['Idempotency-Key'] = generateIdempotencyKey();
     }
   }
   return config;

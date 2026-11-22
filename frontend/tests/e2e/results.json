@@ -141,7 +141,7 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 5822,
+                      "duration": 6789,
                       "errors": [],
                       "stdout": [
                         {
@@ -151,22 +151,22 @@
                           "text": "[E2E Stage 2] Create Category and Product\n"
                         },
                         {
-                          "text": "Created Product UUID: 011b65fc-b73e-48e8-aa81-cb0cc8973ee9\n"
+                          "text": "Created Product UUID: db41d942-1852-4770-8a1a-00dfed58ec77\n"
                         },
                         {
                           "text": "[E2E Stage 3] Create Warehouses\n"
                         },
                         {
-                          "text": "Unassigned Warehouse UUID for RBAC Test: 4734bdcf-af35-41a7-b83f-fcfb2ac51fbd\n"
+                          "text": "Unassigned Warehouse UUID for RBAC Test: 421c7e17-fa2f-4fef-ab5e-850393743bab\n"
                         },
                         {
                           "text": "[E2E Stage 4] Stock In 50 Units\n"
                         },
                         {
-                          "text": "Stock In - Warehouse UUID: 33401762-e844-48ec-8f3c-21db4353e4c4\n"
+                          "text": "Stock In - Warehouse UUID: b6ab7d25-88c5-4577-8792-570ac26047c4\n"
                         },
                         {
-                          "text": "Stock In - Product UUID: 011b65fc-b73e-48e8-aa81-cb0cc8973ee9\n"
+                          "text": "Stock In - Product UUID: db41d942-1852-4770-8a1a-00dfed58ec77\n"
                         },
                         {
                           "text": "[E2E Stage 5] Verify Inventory Balance\n"
@@ -193,7 +193,7 @@
                           "text": "[E2E Stage 11 & 12] Access Unassigned Warehouse -> 403 Forbidden\n"
                         },
                         {
-                          "text": "Forbidden response payload: {\n  error: {\n    code: \u001b[32m'FORBIDDEN'\u001b[39m,\n    message: \u001b[32m'Akses ditolak: Anda tidak memiliki penugasan aktif pada gudang ini atau gudang berstatus tidak aktif.'\u001b[39m,\n    requestId: \u001b[32m'req_1795292720399_m8iosbp'\u001b[39m\n  }\n}\n"
+                          "text": "Forbidden response payload: {\n  error: {\n    code: \u001b[32m'FORBIDDEN'\u001b[39m,\n    message: \u001b[32m'Akses ditolak: Anda tidak memiliki penugasan aktif pada gudang ini atau gudang berstatus tidak aktif.'\u001b[39m,\n    requestId: \u001b[32m'req_1795369943378_akzp034'\u001b[39m\n  }\n}\n"
                         },
                         {
                           "text": "[E2E Stage 13] Full Reversal and Final Balance Check\n"
@@ -204,7 +204,7 @@
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-11-21T20:25:14.961Z",
+                      "startTime": "2026-11-22T17:52:16.975Z",
                       "annotations": [],
                       "attachments": [
                         {
@@ -230,8 +230,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-11-21T20:25:14.526Z",
-    "duration": 6488.86,
+    "startTime": "2026-11-22T17:52:16.471Z",
+    "duration": 7727.748,
     "expected": 1,
     "skipped": 0,
     "unexpected": 0,

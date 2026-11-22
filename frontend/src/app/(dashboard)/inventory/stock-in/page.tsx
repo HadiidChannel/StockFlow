@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { api, getErrorMessage } from '@/lib/api';
+import { api, getErrorMessage, generateIdempotencyKey } from '@/lib/api';
 import { Warehouse, Product } from '@/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ export default function StockInPage() {
   const [items, setItems] = useState<StockInLineItem[]>([
     { productId: '', quantity: '1.000' },
   ]);
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(() => generateIdempotencyKey());
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -96,15 +97,23 @@ export default function StockInPage() {
     setIsLoading(true);
 
     try {
-      const res = await api.post('/inventory/stock-in', {
-        warehouseId: selectedWarehouseId,
-        note: note.trim() || undefined,
-        externalReference: externalReference.trim() || undefined,
-        items: items.map((it) => ({
-          productId: it.productId,
-          quantity: it.quantity,
-        })),
-      });
+      const res = await api.post(
+        '/inventory/stock-in',
+        {
+          warehouseId: selectedWarehouseId,
+          note: note.trim() || undefined,
+          externalReference: externalReference.trim() || undefined,
+          items: items.map((it) => ({
+            productId: it.productId,
+            quantity: it.quantity,
+          })),
+        },
+        {
+          headers: {
+            'Idempotency-Key': idempotencyKey,
+          },
+        }
+      );
 
       setSuccessResult(res.data.data);
     } catch (err) {
@@ -139,6 +148,7 @@ export default function StockInPage() {
                 setItems([{ productId: '', quantity: '1.000' }]);
                 setNote('');
                 setExternalReference('');
+                setIdempotencyKey(generateIdempotencyKey());
               }}
             >
               Catat Transaksi Lain

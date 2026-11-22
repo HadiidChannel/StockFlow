@@ -254,11 +254,48 @@ describe('Milestone 6: Real Backend API Integration Flows (Supertest + MySQL)', 
       expect(Number(balanceRes.body.data[0].quantity)).toBe(70);
     });
 
+    it('harus menolak Stock In, Stock Out, dan Reversal tanpa Idempotency-Key header (400)', async () => {
+      const resIn = await request(app)
+        .post('/api/v1/inventory/stock-in')
+        .set('Cookie', [sessionCookie, csrfCookie])
+        .set('X-CSRF-Token', csrfTokenValue)
+        .send({
+          warehouseId: createdWarehouseId,
+          items: [{ productId: createdProductId, quantity: '10.000' }],
+        });
+
+      expect(resIn.status).toBe(400);
+      expect(resIn.body.error.code).toBe('VALIDATION_ERROR');
+      expect(resIn.body.error.message).toContain('Header Idempotency-Key wajib');
+
+      const resOut = await request(app)
+        .post('/api/v1/inventory/stock-out')
+        .set('Cookie', [sessionCookie, csrfCookie])
+        .set('X-CSRF-Token', csrfTokenValue)
+        .send({
+          warehouseId: createdWarehouseId,
+          items: [{ productId: createdProductId, quantity: '5.000' }],
+        });
+
+      expect(resOut.status).toBe(400);
+      expect(resOut.body.error.code).toBe('VALIDATION_ERROR');
+
+      const resRev = await request(app)
+        .post(`/api/v1/inventory/transactions/${createdStockInTxId}/reversal`)
+        .set('Cookie', [sessionCookie, csrfCookie])
+        .set('X-CSRF-Token', csrfTokenValue)
+        .send({ note: 'Reversal without key' });
+
+      expect(resRev.status).toBe(400);
+      expect(resRev.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
     it('harus menolak Stock Out jika kuantitas melebihi sisa saldo (422 Insufficient Stock)', async () => {
       const res = await request(app)
         .post('/api/v1/inventory/stock-out')
         .set('Cookie', [sessionCookie, csrfCookie])
         .set('X-CSRF-Token', csrfTokenValue)
+        .set('Idempotency-Key', `api-idemp-exceed-${testSuffix}`)
         .send({
           warehouseId: createdWarehouseId,
           items: [{ productId: createdProductId, quantity: '9999.000' }],
@@ -274,6 +311,7 @@ describe('Milestone 6: Real Backend API Integration Flows (Supertest + MySQL)', 
         .post(`/api/v1/inventory/transactions/${createdStockInTxId}/reversal`)
         .set('Cookie', [sessionCookie, csrfCookie])
         .set('X-CSRF-Token', csrfTokenValue)
+        .set('Idempotency-Key', `api-idemp-rev-${testSuffix}`)
         .send({
           note: 'Pembalikan transaksi via API integration test',
         });

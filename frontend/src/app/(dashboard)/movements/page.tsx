@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, getErrorMessage } from '@/lib/api';
+import { api, getErrorMessage, generateIdempotencyKey } from '@/lib/api';
 import { StockMovement, Warehouse } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ export default function StockMovementsPage() {
   const [reversalTargetId, setReversalTargetId] = useState<string | null>(null);
   const [reversalTargetRef, setReversalTargetRef] = useState<string>('');
   const [reversalNote, setReversalNote] = useState('');
+  const [reversalIdempotencyKey, setReversalIdempotencyKey] = useState<string>('');
   const [isReversing, setIsReversing] = useState(false);
   const [reversalError, setReversalError] = useState<string | null>(null);
   const [reversalSuccess, setReversalSuccess] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export default function StockMovementsPage() {
     setReversalTargetId(transactionId);
     setReversalTargetRef(referenceNumber);
     setReversalNote('');
+    setReversalIdempotencyKey(generateIdempotencyKey());
     setReversalError(null);
     setReversalSuccess(null);
   };
@@ -79,9 +81,17 @@ export default function StockMovementsPage() {
     setReversalError(null);
 
     try {
-      const res = await api.post(`/inventory/transactions/${reversalTargetId}/reversal`, {
-        note: reversalNote.trim() || undefined,
-      });
+      const res = await api.post(
+        `/inventory/transactions/${reversalTargetId}/reversal`,
+        {
+          note: reversalNote.trim() || undefined,
+        },
+        {
+          headers: {
+            'Idempotency-Key': reversalIdempotencyKey,
+          },
+        }
+      );
 
       setReversalSuccess(
         `Transaksi berhasil dibatalkan. Referensi pembalik: ${res.data.data.referenceNumber}`

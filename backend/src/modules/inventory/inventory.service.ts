@@ -36,6 +36,57 @@ async function withDeadlockRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promi
   }
 }
 
+async function executeWithIdempotencyCatch<T>(
+  action: () => Promise<T>,
+  userId: string,
+  idempotencyKey: string | undefined,
+  currentHash: string
+): Promise<T> {
+  try {
+    return await withDeadlockRetry(action);
+  } catch (err: any) {
+    if (
+      idempotencyKey &&
+      err?.code === 'P2002' &&
+      (err?.meta?.target?.includes('idempotency') ||
+        err?.message?.includes('idempotency') ||
+        err?.meta?.modelName === 'IdempotencyRecord')
+    ) {
+      const record = await prisma.idempotencyRecord.findUnique({
+        where: {
+          userId_idempotencyKey: { userId, idempotencyKey },
+        },
+        include: { transaction: true },
+      });
+      if (record) {
+        if (record.requestHash !== currentHash) {
+          throw new ConflictError(
+            'Idempotency key telah digunakan untuk payload transaksi yang berbeda.',
+            'IDEMPOTENCY_CONFLICT'
+          );
+        }
+        if (record.responseBody) {
+          return {
+            ...(record.responseBody as any),
+            isIdempotentReplay: true,
+          } as T;
+        }
+        if (record.transaction) {
+          return {
+            id: record.transaction.id,
+            referenceNumber: record.transaction.referenceNumber,
+            type: record.transaction.type,
+            status: record.transaction.status,
+            postedAt: record.transaction.postedAt,
+            isIdempotentReplay: true,
+          } as T;
+        }
+      }
+    }
+    throw err;
+  }
+}
+
 function validateUniqueProductLines(items: Array<{ productId: string }>) {
   const ids = items.map((i) => i.productId);
   if (new Set(ids).size !== ids.length) {
@@ -61,9 +112,30 @@ function canonicalize(obj: any): any {
   return result;
 }
 
-function computePayloadHash(payload: any): string {
-  const canonical = canonicalize(payload);
-  return crypto.createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+function normalizePayload(payload: any): any {
+  if (!payload || typeof payload !== 'object') return payload;
+  const copy = { ...payload };
+  if (Array.isArray(copy.items)) {
+    copy.items = [...copy.items].sort((a: any, b: any) =>
+      String(a?.productId || '').localeCompare(String(b?.productId || ''))
+    );
+  }
+  return canonicalize(copy);
+}
+
+function computePayloadHash(
+  organizationId: string,
+  userId: string,
+  operationType: 'IN' | 'OUT' | 'REVERSAL',
+  payload: any
+): string {
+  const canonicalData = {
+    organizationId,
+    userId,
+    operationType,
+    payload: normalizePayload(payload),
+  };
+  return crypto.createHash('sha256').update(JSON.stringify(canonicalData)).digest('hex');
 }
 
 export class InventoryService {
@@ -92,7 +164,9 @@ export class InventoryService {
     }
 
     validateUniqueProductLines(input.items);
-    const currentHash = idempotencyKey ? computePayloadHash(input) : '';
+    const currentHash = idempotencyKey
+      ? computePayloadHash(organizationId, userId, 'IN', input)
+      : '';
 
     // Idempotency check if key provided
     if (idempotencyKey) {
@@ -116,6 +190,13 @@ export class InventoryService {
           );
         }
 
+        if (existingRecord.responseBody) {
+          return {
+            ...(existingRecord.responseBody as any),
+            isIdempotentReplay: true,
+          };
+        }
+
         if (existingRecord.transaction) {
           return {
             id: existingRecord.transaction.id,
@@ -135,8 +216,9 @@ export class InventoryService {
     });
     const timeZone = org?.timezone || 'Asia/Makassar';
 
-    return await withDeadlockRetry(async () => {
-      return await prisma.$transaction(async (tx) => {
+    return await executeWithIdempotencyCatch(
+      async () => {
+        return await prisma.$transaction(async (tx) => {
         // 1. Generate sequence number with organization timezone
         const referenceNumber = await getNextSequenceNumber(tx, 'IN', timeZone);
 
@@ -268,7 +350,7 @@ export class InventoryService {
           postedAt: header.postedAt,
         };
       });
-    });
+    }, userId, idempotencyKey, currentHash);
   }
 
   async processStockOut(
@@ -296,7 +378,9 @@ export class InventoryService {
     }
 
     validateUniqueProductLines(input.items);
-    const currentHash = idempotencyKey ? computePayloadHash(input) : '';
+    const currentHash = idempotencyKey
+      ? computePayloadHash(organizationId, userId, 'OUT', input)
+      : '';
 
     // Idempotency check if key provided
     if (idempotencyKey) {
@@ -320,6 +404,13 @@ export class InventoryService {
           );
         }
 
+        if (existingRecord.responseBody) {
+          return {
+            ...(existingRecord.responseBody as any),
+            isIdempotentReplay: true,
+          };
+        }
+
         if (existingRecord.transaction) {
           return {
             id: existingRecord.transaction.id,
@@ -339,8 +430,9 @@ export class InventoryService {
     });
     const timeZone = org?.timezone || 'Asia/Makassar';
 
-    return await withDeadlockRetry(async () => {
-      return await prisma.$transaction(async (tx) => {
+    return await executeWithIdempotencyCatch(
+      async () => {
+        return await prisma.$transaction(async (tx) => {
         // 1. Validate available stock for ALL items first with pessimistic lock in deterministic sorted order
         const sortedItems = [...input.items].sort((a, b) => a.productId.localeCompare(b.productId));
         const processedItems = [];
@@ -490,7 +582,7 @@ export class InventoryService {
           postedAt: header.postedAt,
         };
       });
-    });
+    }, userId, idempotencyKey, currentHash);
   }
 
   async processReversal(
@@ -503,7 +595,7 @@ export class InventoryService {
     idempotencyKey?: string
   ) {
     const currentHash = idempotencyKey
-      ? computePayloadHash({ transactionId, note: input.note })
+      ? computePayloadHash(organizationId, userId, 'REVERSAL', { transactionId, note: input.note })
       : null;
 
     if (idempotencyKey) {
@@ -523,7 +615,10 @@ export class InventoryService {
             'IDEMPOTENCY_CONFLICT'
           );
         }
-        return existingRecord.responseBody as any;
+        return {
+          ...(existingRecord.responseBody as any),
+          isIdempotentReplay: true,
+        };
       }
     }
 
@@ -564,8 +659,9 @@ export class InventoryService {
     });
     const timeZone = org?.timezone || 'Asia/Makassar';
 
-    return await withDeadlockRetry(async () => {
-      return await prisma.$transaction(async (tx) => {
+    return await executeWithIdempotencyCatch(
+      async () => {
+        return await prisma.$transaction(async (tx) => {
         // Double check if original transaction was reversed concurrently inside transaction
         const freshOriginal = await tx.stockTransaction.findUnique({
           where: { id: transactionId },
@@ -718,7 +814,7 @@ export class InventoryService {
           postedAt: reversalHeader.postedAt,
         };
       });
-    });
+    }, userId, idempotencyKey, currentHash || '');
   }
 
   async listBalances(params: {
