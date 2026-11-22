@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = "Continue"
+$ErrorActionPreference = "Continue"
 
 Write-Host "=========================================================="
 Write-Host " StockFlow Remediation & Verification Evidence Collector"
