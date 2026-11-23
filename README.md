@@ -170,31 +170,34 @@ StockFlow dirancang sebagai sistem Localhost Portfolio Edition yang berjalan pad
 
 Pastikan Docker Desktop sudah terpasang dan berjalan di komputer Anda.
 
-```bash
+```powershell
 # 1. Clone repositori
 git clone https://github.com/username/StockFlow.git
 cd StockFlow
 
-# 2. Siapkan file konfigurasi environment
-cp .env.example .env
+# 2. Jalankan skrip inisialisasi lingkungan lokal terenkripsi (PowerShell)
+# Skrip ini menghasilkan file .env dan .secrets/initial_admin_password.txt secara kriptografis tanpa mengekspos rahasia
+powershell -ExecutionPolicy Bypass -File scripts/init-local.ps1
 
-# 3. Siapkan file rahasia password awal administrator (Docker Compose Secrets)
-mkdir -p .secrets
-echo "AdminStockFlow2026!" > .secrets/initial_admin_password.txt
-
-# 4. Inisialisasi Administrator Awal melalui bootstrap service
+# 3. Inisialisasi Administrator Awal melalui bootstrap service
+# Service membaca password awal secara eksklusif melalui Docker Compose Secrets
 docker compose --profile bootstrap run --rm bootstrap
 
-# 5. Jalankan seluruh layanan aplikasi di latar belakang
+# 4. Jalankan seluruh layanan aplikasi di latar belakang
 docker compose up -d
 ```
 
 Aplikasi siap diakses pada:
-- **Frontend Web & Single Ingress API**: `http://localhost:3000`
+- **Frontend Web & Single Ingress API**: `http://localhost:3000` (terikat loopback 127.0.0.1)
 - **Internal Backend REST API**: Mengalir via same-origin reverse proxy Next.js (`/api/v1`) ke `backend:4000` (port host tertutup)
 - **Internal MySQL 8.4 Database**: `db:3306` (port host tertutup)
 
-Pada login pertama menggunakan akun Administrator (`admin@stockflow.com`), sistem mewajibkan pembaruan password melalui mekanisme `must_change_password` sebelum dapat mengakses dashboard operasional.
+#### Prosedur Akses Pertama Kali:
+1. Buka file password awal administrator menggunakan editor teks lokal (misal: `notepad .secrets/initial_admin_password.txt`).
+2. Akses antarmuka aplikasi di peramban web pada `http://localhost:3000`.
+3. Login menggunakan email `admin@stockflow.com` dan password dari file rahasia tersebut.
+4. Sistem akan langsung memicu forced password change demi standar keamanan. Masukkan password awal dan tentukan password baru permanen Anda.
+5. Setelah penggantian password berhasil, Anda akan dialihkan ke Dashboard operasional. File `.secrets/initial_admin_password.txt` dapat dihapus secara manual setelah inisialisasi selesai.
 
 ---
 
@@ -248,7 +251,9 @@ Frontend berjalan di `http://localhost:3000`.
 
 ## 6. Kredensial Demo Siap Pakai
 
-Data demo siap pakai telah disediakan melalui seeder database (`backend/prisma/seed.ts`):
+> PENTING: Kredensial demo di bawah ini HANYA berlaku untuk mode development lokal yang diisi via seeder (`npm run db:seed`). Pada mode kontainer Docker (production build), akun administrator diinisialisasi secara kriptografis menggunakan `scripts/init-local.ps1` dan tersimpan di `.secrets/initial_admin_password.txt`.
+
+Data demo siap pakai development (`backend/prisma/seed.ts`):
 
 | Peran (Role) | Email | Password | Hak Akses & Scope |
 |---|---|---|---|

@@ -105,3 +105,27 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
 ### D. Verifikasi Siklus Hidup Database Bersih & E2E Testing
 - Siklus inisialisasi dari database kosong telah diverifikasi pada stack MySQL 8.4.13 terisolasi: migrasi 14 tabel relasional, 9 CHECK constraints aktif, dan 2 composite foreign keys.
 - Pengujian Playwright E2E 13 tahap diverifikasi secara live terhadap container produksi yang berjalan, membuktikan alur login bootstrap admin, forced password change, pemeliharaan sesi cookie, transaksi stok, RBAC, dan audit trail tanpa simulasi mock.
+
+---
+
+## 6. Hardening Rilis Portofolio Lokal v1.5
+
+### A. Isolasi Loopback Interface Host (127.0.0.1 Binding)
+- Pemetaan port ingress frontend pada `docker-compose.yml` diubah menjadi `127.0.0.1:3000:3000`.
+- Memastikan port web hanya dapat diakses melalui antarmuka loopback lokal komputer pengembang dan tidak dipublikasikan ke network interface `0.0.0.0` (mencegah akses tanpa otorisasi dari jaringan lokal LAN).
+- Backend (4000) dan MySQL (3306) tetap tertutup 100% dari publikasi port host, hanya berkomunikasi internal di dalam bridge network Docker `stockflow_net`.
+
+### B. Generator Kredensial Kriptografis Mandiri (scripts/init-local.ps1)
+- Pembuatan file `.env` dan `.secrets/initial_admin_password.txt` diotomatisasi melalui skrip PowerShell berbasis API kriptografi .NET (`RandomNumberGenerator`).
+- Menghasilkan nilai acak ber-entropi tinggi (hex 48-64 karakter dan password 24 karakter dengan kombinasi huruf besar, huruf kecil, angka, dan simbol).
+- Password administrator awal disimpan dengan izin terbatas melalui Windows ACL (`icacls.exe`) dan nilainya dilarang dicetak ke terminal atau transcript.
+- Skrip menolak menimpa file yang sudah ada secara otomatis (fail-safe).
+
+### C. Penolakan Nilai Placeholder pada Validasi Environment Backend
+- Schema Zod `backend/src/config/env.ts` diperkuat dengan pola regex yang secara eksplisit menolak nilai rahasia berformat placeholder (`YOUR_`, `CHANGE_ME`, `REPLACE_`, `EXAMPLE_SECRET`, `PLACEHOLDER`), bahkan jika panjang karakternya melebihi batas minimum 32 karakter.
+- Berlaku untuk `SESSION_SECRET`, `CSRF_SECRET`, dan `DATABASE_URL`.
+
+### D. Eliminasi Total Fallback Credential pada Playwright E2E
+- Helper `getInitialAdminPassword()` pada `frontend/tests/e2e/stockflow-lifecycle.spec.ts` dibersihkan dari seluruh fallback password hardcoded.
+- Test runner diwajibkan membaca password nyata dari `E2E_ADMIN_PASSWORD_FILE` atau `.secrets/initial_admin_password.txt`.
+- Jika file secret tidak ditemukan atau kosong, pengujian langsung melempar error dan gagal (fail-fast), menjamin integritas pengujian yang 100% otentik terhadap database hasil bootstrap nyata.

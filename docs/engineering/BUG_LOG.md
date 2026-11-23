@@ -89,3 +89,21 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 - **Fix**: Menambahkan blok top-level `secrets` pada `docker-compose.yml`, mengaitkan secret `initial_admin_password` ke service `bootstrap`, mengabaikan folder `.secrets/` pada `.gitignore`, dan memperbarui `bootstrap.ts` agar menolak password melalui environment variable biasa.
 - **Regression Test**: Eksekusi `docker compose --profile bootstrap run --rm bootstrap` dan 8 unit test di `backend/tests/bootstrap.test.ts` lulus 100%.
 - **Status**: Fixed & Verified
+
+### BUG-009: Binding Port Frontend Docker Compose Mengekspos Host Interface 0.0.0.0
+- **Severity**: Medium
+- **Deskripsi**: Pemetaan port frontend sebelumnya menggunakan `"3000:3000"` yang menyebabkan Docker mempublikasikan port ke seluruh host interface (`0.0.0.0`), membuka kemungkinan akses tidak sengaja dari LAN.
+- **Steps to Reproduce**: Memeriksa output `docker compose port frontend 3000` atau `Get-NetTCPConnection` pada port 3000.
+- **Root Cause**: Ketiadaan binding host IP loopback yang eksplisit pada konfigurasi port Compose.
+- **Fix**: Mengubah port mapping frontend pada `docker-compose.yml` menjadi `"127.0.0.1:3000:3000"`.
+- **Regression Test**: Perintah `docker compose port frontend 3000` dan `Get-NetTCPConnection -LocalPort 3000` membuktikan port 3000 terikat secara eksklusif ke `127.0.0.1`.
+- **Status**: Fixed & Verified
+
+### BUG-010: Kerentanan Fallback Password Hardcoded pada E2E dan Ketiadaan Script Generator Lokal
+- **Severity**: Medium
+- **Deskripsi**: Helper Playwright `getInitialAdminPassword()` memuat password fallback hardcoded jika file secret tidak ditemukan, dan konfigurasi lokal masih bergantung pada pembuatan secret manual yang rawan placeholder.
+- **Steps to Reproduce**: Menjalankan pengujian E2E saat file secret tidak ada, helper tetap mengembalikan password hardcoded tanpa error.
+- **Root Cause**: Ketiadaan generator lingkungan kriptografis dan toleransi fallback diam-diam pada test runner.
+- **Fix**: Mengimplementasikan `scripts/init-local.ps1` dengan API kriptografi .NET, menghapus seluruh fallback hardcoded pada `stockflow-lifecycle.spec.ts` (wajib melempar error jika secret tidak ditemukan), dan menambahkan validasi pola placeholder pada `backend/src/config/env.ts`.
+- **Regression Test**: Unit test `P1-Playwright-01`, `P1-Playwright-02`, dan test suite `env-validation.test.ts` (13 tests) lulus 100%.
+- **Status**: Fixed & Verified

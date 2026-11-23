@@ -2,19 +2,64 @@ import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
-function getInitialAdminPassword(): string {
-  const secretPath = path.resolve('../.secrets/initial_admin_password.txt');
-  if (fs.existsSync(secretPath)) {
-    const pass = fs.readFileSync(secretPath, 'utf8').trim();
-    if (pass) return pass;
+export function getInitialAdminPassword(): string {
+  const customPath = process.env.E2E_ADMIN_PASSWORD_FILE;
+  if (customPath) {
+    const resolvedCustom = path.resolve(customPath);
+    if (!fs.existsSync(resolvedCustom)) {
+      throw new Error(`E2E Failure: File secret dari E2E_ADMIN_PASSWORD_FILE tidak ditemukan pada '${resolvedCustom}'.`);
+    }
+    const content = fs.readFileSync(resolvedCustom, 'utf8').trim();
+    if (!content) {
+      throw new Error(`E2E Failure: File secret pada '${resolvedCustom}' kosong.`);
+    }
+    return content;
   }
-  const rootSecretPath = path.resolve('.secrets/initial_admin_password.txt');
-  if (fs.existsSync(rootSecretPath)) {
-    const pass = fs.readFileSync(rootSecretPath, 'utf8').trim();
-    if (pass) return pass;
+
+  const candidatePaths = [
+    path.resolve('../.secrets/initial_admin_password.txt'),
+    path.resolve('.secrets/initial_admin_password.txt'),
+  ];
+
+  for (const candidate of candidatePaths) {
+    if (fs.existsSync(candidate)) {
+      const content = fs.readFileSync(candidate, 'utf8').trim();
+      if (content) {
+        return content;
+      }
+    }
   }
-  return 'InitialAdminSecurePassword2026!';
+
+  throw new Error(
+    'E2E Failure: File password rahasia initial administrator tidak ditemukan. ' +
+    'Tentukan lokasi file melalui environment variable E2E_ADMIN_PASSWORD_FILE atau ' +
+    'pastikan .secrets/initial_admin_password.txt tersedia. Hardcoded fallback credential dilarang keras.'
+  );
 }
+
+test.describe('StockFlow Administrator Secret File Verification', () => {
+  test('P1-Playwright-01: Memastikan secret file initial admin tersedia dan terbaca tanpa fallback hardcoded', async () => {
+    const password = getInitialAdminPassword();
+    expect(password).toBeDefined();
+    expect(password.length).toBeGreaterThanOrEqual(12);
+    expect(password).not.toBe('AdminStockFlow2026!');
+    expect(password).not.toBe('InitialAdminSecurePassword2026!');
+  });
+
+  test('P1-Playwright-02: Memastikan fungsi melempar error jika secret file tidak ditemukan (zero fallback)', async () => {
+    const originalEnv = process.env.E2E_ADMIN_PASSWORD_FILE;
+    try {
+      process.env.E2E_ADMIN_PASSWORD_FILE = path.resolve('./non_existent_secret_file_999.txt');
+      expect(() => getInitialAdminPassword()).toThrow(/E2E Failure/);
+    } finally {
+      if (originalEnv) {
+        process.env.E2E_ADMIN_PASSWORD_FILE = originalEnv;
+      } else {
+        delete process.env.E2E_ADMIN_PASSWORD_FILE;
+      }
+    }
+  });
+});
 
 test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)', () => {
   const timestamp = Date.now();
@@ -46,8 +91,8 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
     await page.fill('input[type="password"]', initialAdminPassword);
     await page.click('button[type="submit"]');
 
-    // Akun baru hasil bootstrap memicu forced password change
-    await page.waitForURL((url) => url.pathname.includes('/change-password') || url.pathname.includes('/dashboard'), { timeout: 15000 });
+    // Tunggu navigasi ke change-password atau dashboard (jika sudah fresh bootstrap)
+    const reachedAuthTarget = await page.waitForURL((url) => url.pathname.includes('/change-password') || url.pathname.includes('/dashboard'), { timeout: 5000 }).catch(() => null);
 
     if (page.url().includes('/change-password')) {
       console.log('[E2E Stage 1] Administrator Forced Password Change terpicu demi keamanan');
@@ -55,6 +100,13 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
       await page.locator('input[type="password"]').nth(1).fill(permanentAdminPassword);
       await page.locator('input[type="password"]').nth(2).fill(permanentAdminPassword);
       await page.click('button[type="submit"]');
+      await expect(page).toHaveURL(/.*dashboard/);
+    } else if (!reachedAuthTarget && !page.url().includes('/dashboard')) {
+      // Pada skenario eksekusi berulang di mana password telah diganti pada iterasi sebelumnya
+      console.log('[E2E Stage 1] Mencoba login dengan password permanen hasil forced change');
+      await page.fill('input[type="password"]', permanentAdminPassword);
+      await page.click('button[type="submit"]');
+      await page.waitForURL((url) => url.pathname.includes('/dashboard'), { timeout: 10000 });
       await expect(page).toHaveURL(/.*dashboard/);
     } else {
       await expect(page).toHaveURL(/.*dashboard/);

@@ -161,3 +161,25 @@ Aplikasi StockFlow difokuskan sebagai Localhost Portfolio Edition yang berjalan 
 ### Konsekuensi
 - Positif: Keamanan origin deterministik tanpa flag simulasi ad-hoc, secret password terlindungi di luar Git/environment, siap didemokan secara instan dan andal sebagai proyek portofolio Full-Stack.
 - Negatif: Pengujian origin tambahan di luar kanonikal `http://localhost:3000` harus melewati test configuration khusus.
+
+---
+
+## ADR-009: Localhost Loopback Interface Isolation dan Cryptographic Secret Generation
+
+### Status
+Accepted
+
+### Konteks
+Pemetaan port frontend menggunakan `"3000:3000"` pada Docker Compose mempublikasikan port ke seluruh host network interface (`0.0.0.0`), membuka kemungkinan akses tidak disengaja dari jaringan lokal (LAN). Selain itu, inisialisasi manual dari template `.env.example` rentan menggunakan nilai placeholder default. Di sisi lain, helper pengujian E2E sebelumnya memiliki toleransi fallback password hardcoded jika file secret tidak ditemukan.
+
+### Keputusan
+1. Mengikat port publikasi frontend secara eksplisit ke loopback interface host: `"127.0.0.1:3000:3000"` pada `docker-compose.yml`. Backend dan MySQL tetap 100% tertutup dari publikasi port host.
+2. Mengembangkan skrip otomatis `scripts/init-local.ps1` berbasis API kriptografi .NET (`RandomNumberGenerator`) untuk menghasilkan seluruh nilai rahasia (`DB_ROOT_PASSWORD`, `DB_PASSWORD`, `SESSION_SECRET`, `CSRF_SECRET`, dan initial admin password 24 karakter) secara deterministik dan aman tanpa mencetak nilai ke terminal.
+3. Menerapkan proteksi keamanan file Windows ACL (`icacls.exe`) pada file secret untuk membatasi akses hanya kepada pengguna aktif dan administrator sistem.
+4. Menolak penimpaan otomatis jika `.env` atau secret file sudah ada demi menjaga keamanan data dan konsistensi operasional.
+5. Memperketat validasi backend pada `backend/src/config/env.ts` dengan pola regex untuk secara tegas menolak nilai rahasia bertipe placeholder (`YOUR_`, `CHANGE_ME`, `REPLACE_`, `EXAMPLE_SECRET`, `PLACEHOLDER`).
+6. Menghapus seluruh fallback credential hardcoded pada Playwright E2E (`getInitialAdminPassword()`). Test runner diwajibkan membaca file secret nyata dan melempar error eksplisit jika file tidak ditemukan.
+
+### Konsekuensi
+- Positif: Akses aplikasi terbatas secara ketat hanya pada komputer lokal pengembang (127.0.0.1), seluruh kredensial dihasilkan dengan standar kriptografi tinggi, risiko kebocoran placeholder dihilangkan, pengujian E2E sepenuhnya berbasis kredensial bootstrap nyata.
+- Negatif: Pengguna pada sistem operasi Windows perlu menjalankan skrip PowerShell sebelum menjalankan Docker Compose untuk pertama kali.

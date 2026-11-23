@@ -103,17 +103,21 @@ cd ../frontend && npm run dev   # Frontend: port 3000
 ```
 
 ### B. Prosedur Deployment Produksi
-Mode produksi mengisolasi runtime, menjalankan migrator otomatis, dan tidak pernah memuat data dummy atau seeder testing.
+Mode produksi mengisolasi runtime, mengikat frontend hanya ke 127.0.0.1:3000, menjalankan migrator otomatis, dan tidak pernah memuat data dummy atau seeder testing.
 
 ```bash
-# Langkah 1: Siapkan file environment produksi dari template blueprint
-cp .env.example .env
-# Edit .env dan masukkan secret nyata ber-entropi tinggi serta domain HTTPS produksi
+# Langkah 1: Jalankan skrip inisialisasi lingkungan lokal terenkripsi
+# Skrip ini menghasilkan .env dan .secrets/initial_admin_password.txt dengan entropi kriptografis kuat
+powershell -ExecutionPolicy Bypass -File scripts/init-local.ps1
 
-# Langkah 2: Build image produksi tanpa cache
+# Langkah 2: Inisialisasi Administrator Awal (Dedicated Bootstrap Service)
+# Service membaca password awal secara eksklusif dari file secret yang di-mount Docker
+docker compose --profile bootstrap run --rm bootstrap
+
+# Langkah 3: Build image produksi tanpa cache jika belum dilakukan
 docker compose build --no-cache
 
-# Langkah 3: Jalankan stack kontainer di background
+# Langkah 4: Jalankan stack kontainer di background
 docker compose up -d
 
 # Urutan startup kontainer yang terjadi secara otomatis:
@@ -122,22 +126,12 @@ docker compose up -d
 # 3. Container 'backend' menyala setelah migrator berhasil (service_completed_successfully).
 # 4. Container 'frontend' menyala setelah backend siap.
 
-# Langkah 4: Verifikasi status seluruh service
+# Langkah 5: Verifikasi status seluruh service dan binding port loopback
 docker compose ps
-
-# Langkah 5: Inisialisasi Administrator Awal (One-Time Dedicated Bootstrap)
-# Service bootstrap dijalankan satu kali secara eksplisit melalui profile 'bootstrap'.
-# Image runner produksi menjalankan kode terkompilasi 'node dist/scripts/bootstrap.js' tanpa devDependencies.
-
-# Metode A: Menggunakan environment variable saat menjalankan service one-time
-INITIAL_ADMIN_PASSWORD="YourSecurePassword2026!" docker compose run --rm bootstrap
-
-# Metode B: Menggunakan file secret terisolasi
-# echo "YourSecurePassword2026!" > ./secrets/admin_password.txt
-INITIAL_ADMIN_PASSWORD_FILE="./secrets/admin_password.txt" docker compose run --rm bootstrap
+docker compose port frontend 3000
 ```
 
-> PENTING: Jangan pernah menjalankan `npm run db:seed` pada environment produksi. Perintah `npm run db:seed` hanya untuk development karena memuat data transaksi contoh. Untuk produksi, gunakan secara eksklusif `npm run db:bootstrap` yang hanya membuat akun Administrator awal dengan policy keamanan ketat (password minimal 12 karakter, bcrypt cost factor 12, dan flag wajib ganti password pada login pertama).
+> PENTING: Jangan pernah menjalankan `npm run db:seed` pada environment produksi. Perintah `npm run db:seed` hanya untuk development karena memuat data transaksi contoh. Untuk produksi, gunakan secara eksklusif `docker compose --profile bootstrap run --rm bootstrap` yang hanya membuat akun Administrator awal dengan policy keamanan ketat (password minimal 12 karakter, bcrypt cost factor 12, dan flag wajib ganti password pada login pertama). Password awal dibaca secara eksklusif dari `.secrets/initial_admin_password.txt` via Docker Compose Secrets. Variabel environment `INITIAL_ADMIN_PASSWORD` secara tegas ditolak.
 
 ---
 

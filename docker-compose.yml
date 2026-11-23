@@ -103,7 +103,7 @@ services:
       PORT: 3000
       INTERNAL_BACKEND_URL: http://backend:4000
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - backend
     networks:

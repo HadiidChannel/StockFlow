@@ -51,3 +51,22 @@ Dokumen ini memuat panduan identifikasi dan pemecahan masalah teknis yang sering
   - Execution Policy Windows PowerShell membatasi eksekusi file `.ps1`.
 - **Solusi**:
   - Gunakan `npm.cmd` dan `npx.cmd` secara eksplisit alih-alih `npm` dan `npx`.
+  - Untuk menjalankan skrip inisialisasi lingkungan lokal, sertakan parameter bypass: `powershell -ExecutionPolicy Bypass -File scripts/init-local.ps1`.
+
+---
+
+## 5. Masalah Inisialisasi Administrator Bootstrap
+
+### Gejala: `Bootstrap ditolak: Password pada secret file terdeteksi sebagai password default yang tidak aman`
+- **Penyebab**:
+  - File secret `.secrets/initial_admin_password.txt` memuat password contoh atau password umum yang masuk daftar blacklist (seperti `AdminStockFlow2026!`, `password`, atau `admin123456`).
+- **Solusi**:
+  - Hasilkan password awal yang aman dan ber-entropi tinggi secara otomatis menggunakan `scripts/init-local.ps1`.
+  - Pastikan password memiliki panjang minimal 12 karakter dan memuat kombinasi huruf besar, huruf kecil, angka, dan simbol.
+
+### Gejala: `Bootstrap ditolak: INITIAL_ADMIN_PASSWORD melalui environment variable tidak lagi diizinkan`
+- **Penyebab**:
+  - Mengirimkan password awal administrator melalui variabel lingkungan langsung pada perintah shell atau file konfigurasi.
+- **Solusi**:
+  - Gunakan mekanisme Docker Compose Secrets: pasang file secret ke path `/run/secrets/initial_admin_password` dan tentukan variabel `INITIAL_ADMIN_PASSWORD_FILE=/run/secrets/initial_admin_password`.
+  - Jalankan service bootstrap menggunakan profile resmi: `docker compose --profile bootstrap run --rm bootstrap`.

@@ -17,6 +17,21 @@ const INSECURE_DEFAULT_SECRETS = [
   'password',
 ];
 
+const PLACEHOLDER_PATTERNS = [
+  /your_/i,
+  /change_?me/i,
+  /replace_/i,
+  /example_?secret/i,
+  /placeholder/i,
+];
+
+function isPlaceholderOrInsecure(value: string): boolean {
+  if (INSECURE_DEFAULT_SECRETS.includes(value)) {
+    return true;
+  }
+  return PLACEHOLDER_PATTERNS.some((pat) => pat.test(value));
+}
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   APP_DEPLOYMENT_MODE: z.enum(['local', 'production']).default('local'),
@@ -38,30 +53,34 @@ export const envSchema = z.object({
 }).superRefine((data, ctx) => {
   // 1. Validasi saat NODE_ENV === 'production' (berlaku untuk mode local maupun production)
   if (data.NODE_ENV === 'production') {
-    // Session secret tidak boleh menggunakan default
-    if (INSECURE_DEFAULT_SECRETS.includes(data.SESSION_SECRET)) {
+    // Session secret tidak boleh menggunakan default atau placeholder
+    if (isPlaceholderOrInsecure(data.SESSION_SECRET)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['SESSION_SECRET'],
-        message: 'SESSION_SECRET pada production build tidak boleh menggunakan nilai default yang tidak aman.',
+        message: 'SESSION_SECRET pada production build tidak boleh menggunakan placeholder atau nilai default yang tidak aman.',
       });
     }
 
-    // CSRF secret tidak boleh menggunakan default
-    if (INSECURE_DEFAULT_SECRETS.includes(data.CSRF_SECRET)) {
+    // CSRF secret tidak boleh menggunakan default atau placeholder
+    if (isPlaceholderOrInsecure(data.CSRF_SECRET)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['CSRF_SECRET'],
-        message: 'CSRF_SECRET pada production build tidak boleh menggunakan nilai default yang tidak aman.',
+        message: 'CSRF_SECRET pada production build tidak boleh menggunakan placeholder atau nilai default yang tidak aman.',
       });
     }
 
-    // Database password tidak boleh menggunakan default development
-    if (data.DATABASE_URL.includes('stockflow_pass123') || data.DATABASE_URL.includes('root:root')) {
+    // Database password tidak boleh menggunakan default development atau placeholder
+    if (
+      data.DATABASE_URL.includes('stockflow_pass123') ||
+      data.DATABASE_URL.includes('root:root') ||
+      PLACEHOLDER_PATTERNS.some((pat) => pat.test(data.DATABASE_URL))
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['DATABASE_URL'],
-        message: 'DATABASE_URL pada production build tidak boleh menggunakan password default development.',
+        message: 'DATABASE_URL pada production build tidak boleh menggunakan placeholder atau password default development.',
       });
     }
   }
