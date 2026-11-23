@@ -4,12 +4,12 @@
 
 - Test Framework: Playwright v1.65.1 (Chromium Engine)
 - Target Application: StockFlow Inventory and Warehouse Management System
-- Frontend: Next.js 15 (React 19, Tailwind CSS) on http://localhost:3000
-- Backend: Express.js (Node.js, Prisma ORM) on http://localhost:4000
-- Database: MySQL 8.0.30 Community Server on port 3306
-- Execution Mode: Real Browser, Real REST API, Real Database (Zero Mocks)
+- Frontend: Next.js 15 Standalone Reverse Proxy on http://localhost:3000
+- Backend: Express.js on internal Docker network (backend:4000, host port closed)
+- Database: MySQL 8.4 LTS on internal Docker network (db:3306, host port closed)
+- Execution Mode: Real Browser, Real REST API, Real Production Docker Database (Zero Mocks)
 - Result: 13 / 13 Stages Passed (100% Green, 0 Failures, 0 Flaky)
-- Total Test Duration: 5.8s
+- Total Test Duration: 8.1s
 
 ---
 
@@ -35,11 +35,13 @@
 
 ## 3. Detailed Stage Walkthrough and Evidence
 
-### Stage 1: Admin Login
+### Stage 1: Admin Login & Forced Password Change
 - Navigated to `/login`.
-- Input email `admin@stockflow.com` and password `AdminStockFlow2026!`.
+- Input email `admin@stockflow.com` and initial administrator password loaded from `.secrets/initial_admin_password.txt`.
 - Clicked "Masuk ke Sistem".
-- Asserted URL redirect to `/dashboard`.
+- System detected `must_change_password=1` from fresh bootstrap, redirecting to `/change-password`.
+- Form filled with initial password and new permanent administrator password.
+- Submitted password update and asserted URL redirect to `/dashboard`.
 - Asserted header contains text "Administrator".
 
 ### Stage 2: Create Category and Product
@@ -110,7 +112,7 @@
   * Current ending balance: 35 PCS
 
 ### Stage 11 & 12: Unauthorized Warehouse Access and 403 Forbidden
-- Staff session extracted CSRF token from browser cookie `csrf_token`.
+- Staff session extracted CSRF token from browser cookie `sf_csrf`.
 - Staff session dispatched POST `/api/v1/inventory/stock-out` attempting to issue stock from `Gudang Terlarang SUB` (unassigned warehouse).
 - Received HTTP 403 Forbidden response:
   ```json
