@@ -34,6 +34,31 @@ services:
     networks:
       - stockflow_net
 
+  bootstrap:
+    build:
+      context: ./backend
+      target: runner
+    container_name: stockflow_bootstrap_prod
+    profiles:
+      - bootstrap
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
+      INITIAL_ORG_NAME: ${INITIAL_ORG_NAME:-PT StockFlow Logistik Nusantara}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-System Administrator}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@stockflow.com}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+      INITIAL_ADMIN_PASSWORD_FILE: ${INITIAL_ADMIN_PASSWORD_FILE:-}
+    command: ["node", "dist/scripts/bootstrap.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    networks:
+      - stockflow_net
+
   backend:
     build:
       context: ./backend
@@ -50,8 +75,7 @@ services:
       COOKIE_SAME_SITE: "lax"
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET wajib diisi minimal 32 karakter}
       CSRF_SECRET: ${CSRF_SECRET:?CSRF_SECRET wajib diisi minimal 32 karakter}
-    ports:
-      - "4000:4000"
+      ALLOW_LOCALHOST_SIMULATION: ${ALLOW_LOCALHOST_SIMULATION:-false}
     depends_on:
       db:
         condition: service_healthy
@@ -64,6 +88,8 @@ services:
     build:
       context: ./frontend
       target: runner
+      args:
+        INTERNAL_BACKEND_URL: http://backend:4000
     container_name: stockflow_frontend_prod
     restart: always
     environment:

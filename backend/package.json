@@ -15,6 +15,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:bootstrap": "tsx src/scripts/bootstrap.ts",
+    "db:bootstrap:prod": "node dist/scripts/bootstrap.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -29,8 +29,9 @@ app.use(helmet());
 const isProduction = process.env.NODE_ENV === 'production';
 const rawFrontendUrl = process.env.FRONTEND_URL;
 const frontendUrl = rawFrontendUrl ? rawFrontendUrl.replace(/\/+$/, '') : (isProduction ? '' : 'http://localhost:3000');
+const allowLocalhostSimulation = process.env.ALLOW_LOCALHOST_SIMULATION === 'true';
 const allowedOrigins = isProduction
-  ? (frontendUrl ? [frontendUrl] : [])
+  ? (frontendUrl ? (allowLocalhostSimulation ? [frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'] : [frontendUrl]) : [])
   : [frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'].filter(Boolean);
 
 app.use(

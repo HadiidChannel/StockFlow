@@ -1,7 +1,29 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
 
 const prisma = new PrismaClient();
+
+const INSECURE_DEFAULT_PASSWORDS = [
+  'AdminStockFlow2026!',
+  'password',
+  'changeme',
+  'admin12345678',
+  'Admin12345678!',
+  'secret',
+];
+
+function readSecretFileOrEnv(envVar: string, fileEnvVar: string): string | undefined {
+  const filePath = process.env[fileEnvVar];
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      return fs.readFileSync(filePath, 'utf8').trim();
+    } catch (err: any) {
+      console.error(`Gagal membaca secret file dari ${filePath}: ${err.message}`);
+    }
+  }
+  return process.env[envVar];
+}
 
 interface BootstrapArgs {
   orgName?: string;
@@ -31,8 +53,15 @@ export async function bootstrapSystem(args?: BootstrapArgs) {
 
   const orgName = args?.orgName || process.env.INITIAL_ORG_NAME || (isProduction ? undefined : 'PT StockFlow Logistik Nusantara');
   const adminName = args?.adminName || process.env.INITIAL_ADMIN_NAME || (isProduction ? undefined : 'Admin Utama');
-  const adminEmail = (args?.adminEmail || process.env.INITIAL_ADMIN_EMAIL || (isProduction ? undefined : 'admin@stockflow.com'))?.trim().toLowerCase();
-  const rawPassword = args?.adminPassword || process.env.INITIAL_ADMIN_PASSWORD;
+  const rawEmail =
+    args?.adminEmail ||
+    readSecretFileOrEnv('INITIAL_ADMIN_EMAIL', 'INITIAL_ADMIN_EMAIL_FILE') ||
+    (isProduction ? undefined : 'admin@stockflow.com');
+  const adminEmail = rawEmail?.trim().toLowerCase();
+
+  const rawPassword =
+    args?.adminPassword ||
+    readSecretFileOrEnv('INITIAL_ADMIN_PASSWORD', 'INITIAL_ADMIN_PASSWORD_FILE');
 
   if (isProduction) {
     if (!orgName) {
@@ -46,7 +75,12 @@ export async function bootstrapSystem(args?: BootstrapArgs) {
     }
     if (!rawPassword) {
       throw new Error(
-        'INITIAL_ADMIN_PASSWORD wajib diisi pada environment production melalui secret aman dan tidak boleh bernilai default.'
+        'INITIAL_ADMIN_PASSWORD atau INITIAL_ADMIN_PASSWORD_FILE wajib diisi pada environment production melalui secret aman.'
+      );
+    }
+    if (INSECURE_DEFAULT_PASSWORDS.includes(rawPassword)) {
+      throw new Error(
+        'INITIAL_ADMIN_PASSWORD pada production tidak boleh menggunakan password default development.'
       );
     }
     validatePasswordPolicy(rawPassword);

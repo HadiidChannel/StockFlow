@@ -6,8 +6,10 @@ import { ForbiddenError } from '../utils/app-error';
 function getAllowedOrigins(): string[] {
   const isProduction = process.env.NODE_ENV === 'production';
   const envUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/+$/, '') : undefined;
+  const allowLocalhostSimulation = process.env.ALLOW_LOCALHOST_SIMULATION === 'true';
   if (isProduction) {
-    return envUrl ? [envUrl] : [];
+    if (!envUrl) return [];
+    return allowLocalhostSimulation ? [envUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'] : [envUrl];
   }
   const origins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
   if (envUrl && !origins.includes(envUrl)) {

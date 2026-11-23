@@ -30,6 +30,9 @@ export const envSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET minimal 32 karakter'),
   CSRF_SECRET: z.string().min(32, 'CSRF_SECRET minimal 32 karakter'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  ALLOW_LOCALHOST_SIMULATION: z
+    .union([z.boolean(), z.enum(['true', 'false']).transform((v) => v === 'true')])
+    .default(false),
   INITIAL_ORG_NAME: z.string().optional(),
   INITIAL_ADMIN_NAME: z.string().optional(),
   INITIAL_ADMIN_EMAIL: z.string().email().optional(),

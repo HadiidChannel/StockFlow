@@ -44,3 +44,30 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 - **Fix**: Mengimplementasikan script background daemon `scripts/chrome-daemon.js` yang menjaga Chrome tetap berjalan dan secara otomatis mengekstrak `pathname` dari endpoint `/json/version` ke dalam `DevToolsActivePort`.
 - **Regression Test**: Subagent browser berhasil tersambung, melakukan navigasi, dan mengambil screenshot seluruh halaman.
 - **Status**: Fixed & Verified
+
+### BUG-004: Next.js Build-Time Reverse Proxy Fallback ke Localhost
+- **Severity**: High
+- **Deskripsi**: Reverse proxy rewrite Next.js menghasilkan fallback ke `http://localhost:4000` di dalam image Docker production jika environment variable build tidak disuplai secara eksplisit.
+- **Steps to Reproduce**: Menjalankan build Docker frontend tanpa build argument `INTERNAL_BACKEND_URL`.
+- **Root Cause**: File `next.config.ts` membaca variabel yang tidak di-inject pada fase build Next.js sehingga `routes-manifest.json` mengekspos destination localhost yang tidak dapat diakses di dalam container jaringan Docker.
+- **Fix**: Menambahkan `ARG INTERNAL_BACKEND_URL="http://backend:4000"` pada `frontend/Dockerfile` dan menyetel default production rewrite ke service name `http://backend:4000`.
+- **Regression Test**: File `.next/routes-manifest.json` tervalidasi memuat `destination: http://backend:4000/api/v1/:path*`.
+- **Status**: Fixed & Verified
+
+### BUG-005: Publikasi Port Host Backend dan Database pada Konfigurasi Production
+- **Severity**: High
+- **Deskripsi**: File `docker-compose.yml` mengekspos port 4000 backend dan port 3306 database secara langsung ke jaringan host.
+- **Steps to Reproduce**: Memeriksa direktif `ports` pada service backend dan db di `docker-compose.yml`.
+- **Root Cause**: Konfigurasi port development terbawa ke dalam konfigurasi production Docker compose.
+- **Fix**: Menghapus publikasi host port untuk backend dan db. Hanya port 3000 frontend yang dipublikasikan sebagai ingress tunggal. Komunikasi backend dan database berlangsung privat di jaringan Docker internal `stockflow_net`.
+- **Regression Test**: Perintah `netstat -ano | findstr ":4000"` membuktikan tidak ada listener host pada port 4000.
+- **Status**: Fixed & Verified
+
+### BUG-006: Inisialisasi Administrator Awal Bergantung pada Dev Dependencies dan Rentan Bocor
+- **Severity**: High
+- **Deskripsi**: Skrip inisialisasi administrator awal dijalankan dengan `tsx` yang tidak tersedia pada runner image production, rentan membocorkan password di argumen terminal, dan tidak memiliki proteksi eksekusi berulang.
+- **Steps to Reproduce**: Menjalankan skrip inisialisasi awal pada image production tanpa dependensi dev.
+- **Root Cause**: Ketiadaan service inisialisasi mandiri pada konfigurasi Docker compose serta validasi kredensial yang lemah.
+- **Fix**: Membuat service mandiri `bootstrap` (`profiles: ["bootstrap"]`) dengan runner image production compiled (`node dist/scripts/bootstrap.js`), mendukung pembacaan secret file (`INITIAL_ADMIN_PASSWORD_FILE`), menerapkan validasi kompleksitas password 12+ karakter, dan memasang one-time execution guard.
+- **Regression Test**: Test suite `backend/tests/bootstrap.test.ts` (6 automated tests) dan eksekusi Docker runner compose memverifikasi seluruh kriteria keamanan.
+- **Status**: Fixed & Verified

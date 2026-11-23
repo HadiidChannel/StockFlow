@@ -119,3 +119,23 @@ Aplikasi hanya mengizinkan Full Reversal (pembalikan penuh). Edit parsial atau p
 1. Mempertahankan prinsip immutable accounting ledger pada `stock_movements`.
 2. Setiap transaksi yang dibalik memiliki referensi eksplisit ke transaksi asal melalui kolom `correction_of_transaction_id`.
 3. Mengurangi kompleksitas validasi dan mencegah inkonsistensi saldo historis.
+
+---
+
+## ADR-007: Next.js Build-Time Reverse Proxy dan Isolasi Jaringan Internal Produksi
+
+### Status
+Accepted
+
+### Konteks
+Pada arsitektur produksi kontainer Docker, browser client berkomunikasi melalui same-origin relative path `/api/v1`. Next.js standalone menserialisasikan konfigurasi rewrites ke dalam `routes-manifest.json` saat proses `next build` dijalankan. Jika variabel `INTERNAL_BACKEND_URL` tidak tersedia saat build, konfigurasi akan menggunakan fallback `http://localhost:4000`, sehingga kontainer frontend produksi gagal meneruskan request ke backend. Selain itu, mengekspos port 4000 backend ke host publik melanggar prinsip defense-in-depth dan membocorkan arsitektur port internal.
+
+### Keputusan
+1. Meneruskan `INTERNAL_BACKEND_URL: http://backend:4000` secara eksplisit sebagai build argument dan builder environment variable pada `frontend/Dockerfile` dan `docker-compose.yml`.
+2. Mengonfigurasi `frontend/next.config.ts` agar fallback produksi bernilai `http://backend:4000` (hanya menggunakan `http://localhost:4000` pada mode development non-produksi).
+3. Menghapus publikasi host port untuk service backend (`ports: - "4000:4000"`) dan database pada `docker-compose.yml`. Komunikasi backend dan database dilakukan secara eksklusif melalui Docker internal network terisolasi (`stockflow_net`).
+4. Membangun dedicated service `bootstrap` dengan profile `bootstrap` untuk menjalankan inisialisasi Administrator awal menggunakan production runtime image (`node dist/scripts/bootstrap.js`), dengan dukungan file secret (`INITIAL_ADMIN_PASSWORD_FILE`) dan tanpa development dependencies.
+
+### Konsekuensi
+- Positif: Isolasi jaringan internal sempurna, API path same-origin relatif tervalidasi pada build-time, port backend dan database tertutup rapat dari jaringan publik, proses bootstrap aman dan idempotent.
+- Negatif: Pengujian langsung ke port 4000 dari host dinonaktifkan pada profil produksi; seluruh trafik web client wajib melalui reverse proxy Next.js pada port 3000.

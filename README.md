@@ -43,21 +43,23 @@ StockFlow dibangun dengan pemisahan tanggung jawab (Separation of Concerns) yang
 |  - Tailwind CSS, shadcn/ui Primitives, Recharts, Motion           |
 +----------------------------------+--------------------------------+
                                    |
-                       HTTP / JSON | (Port 3000 / 4000)
+                       HTTP / JSON | (Port 3000 Single Ingress)
                                    v
 +----------------------------------+--------------------------------+
 |                   FRONTEND TIER (Next.js 15)                      |
 |  - Server-Side Rendering (SSR) & Layout Inheritance               |
+|  - Same-Origin Reverse Proxy (/api/v1 -> backend:4000)           |
 |  - Client State Management & Interactive Form Validation          |
 |  - Theme Management (Light, Dark, System Preference)             |
 +----------------------------------+--------------------------------+
                                    |
+          Internal Docker Network  | (backend:4000, Host Port Closed)
                        REST API v1 | Cookie: sf_session, sf_csrf
                                    v
 +----------------------------------+--------------------------------+
 |                    BACKEND TIER (Express.js)                      |
 |  - Security Middleware: Helmet, CORS Allowlist, Rate Limiting    |
-|  - Session-Based Cookie Auth (Argon2id / SHA-256 Hashing)        |
+|  - Session-Based Cookie Auth (bcrypt cost 12 / SHA-256 Hashing)  |
 |  - Double-Submit Cookie CSRF Protection (X-CSRF-Token)            |
 |  - Role-Based Access Control & Warehouse Scoping Middleware       |
 |  - Zod Request Schema Validation & Normalization                  |
@@ -66,7 +68,8 @@ StockFlow dibangun dengan pemisahan tanggung jawab (Separation of Concerns) yang
 |  - Transactional Sequence Generator (IN-*, OUT-*)                |
 +----------------------------------+--------------------------------+
                                    |
-                        Prisma ORM | MySQL Protocol (Port 3306)
+          Internal Docker Network  | (db:3306, Host Port Closed)
+                        Prisma ORM | MySQL Protocol
                                    v
 +----------------------------------+--------------------------------+
 |                  DATABASE TIER (MySQL 8.4 LTS)                    |

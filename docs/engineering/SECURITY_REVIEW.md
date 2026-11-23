@@ -58,3 +58,22 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
 
 ### A10: Server-Side Request Forgery (SSRF)
 - Backend StockFlow tidak melakukan fetch request ke URL eksternal yang diinput oleh pengguna.
+
+---
+
+## 4. Hardening Rilis Produksi v1.3
+
+### A. Isolasi Penuh Jaringan Host (Host Port Removal)
+- Port 4000 (Backend Express) dan Port 3306 (MySQL) tidak dipublikasikan ke host publik pada konfigurasi `docker-compose.yml`.
+- Seluruh komunikasi backend dan database berlangsung secara eksklusif di dalam Docker bridge network internal (`stockflow_net`).
+- Satu-satunya ingress yang terbuka ke host publik adalah frontend Next.js pada port 3000, yang mengalirkan request API browser melalui same-origin relative path `/api/v1`.
+
+### B. Dedicated Administrator Bootstrap Service
+- Inisialisasi akun Administrator awal dipisahkan dari service operasional yang berjalan reguler.
+- Service `bootstrap` menggunakan compiled production image (`node dist/scripts/bootstrap.js`) tanpa ketergantungan pada tool development (`tsx`).
+- Mendukung pemuatan credential melalui file rahasia (`INITIAL_ADMIN_PASSWORD_FILE`) untuk mencegah kebocoran password pada process arguments atau environment dump.
+- Dilengkapi one-time execution guard yang menolak pembuatan admin duplikat jika akun Administrator sudah ada di sistem.
+
+### C. Rotasi Kredensial dan Sanitasi Bukti Audit
+- Seluruh credential baseline dan development password telah dirotasi secara penuh.
+- File konfigurasi dan bukti audit pada `audit/evidence/` disanitasi secara ketat sehingga tidak menyimpan raw password atau session secret nyata.

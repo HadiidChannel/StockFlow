@@ -124,8 +124,16 @@ docker compose up -d
 # Langkah 4: Verifikasi status seluruh service
 docker compose ps
 
-# Langkah 5: Inisialisasi Administrator Awal (One-Time Bootstrap)
-docker compose exec -it backend npm run db:bootstrap
+# Langkah 5: Inisialisasi Administrator Awal (One-Time Dedicated Bootstrap)
+# Service bootstrap dijalankan satu kali secara eksplisit melalui profile 'bootstrap'.
+# Image runner produksi menjalankan kode terkompilasi 'node dist/scripts/bootstrap.js' tanpa devDependencies.
+
+# Metode A: Menggunakan environment variable saat menjalankan service one-time
+INITIAL_ADMIN_PASSWORD="YourSecurePassword2026!" docker compose run --rm bootstrap
+
+# Metode B: Menggunakan file secret terisolasi
+# echo "YourSecurePassword2026!" > ./secrets/admin_password.txt
+INITIAL_ADMIN_PASSWORD_FILE="./secrets/admin_password.txt" docker compose run --rm bootstrap
 ```
 
 > PENTING: Jangan pernah menjalankan `npm run db:seed` pada environment produksi. Perintah `npm run db:seed` hanya untuk development karena memuat data transaksi contoh. Untuk produksi, gunakan secara eksklusif `npm run db:bootstrap` yang hanya membuat akun Administrator awal dengan policy keamanan ketat (password minimal 12 karakter, bcrypt cost factor 12, dan flag wajib ganti password pada login pertama).
@@ -153,8 +161,8 @@ docker compose exec -i db mysql -u root -p"$DB_ROOT_PASSWORD" stockflow_db < bac
 ---
 
 ## 5. Standar Keamanan Kontainer
-1. User Non-Root: Image runner backend dan frontend berjalan dengan non-root user `node`.
+1. User Non-Root: Image runner backend, frontend, dan bootstrap berjalan dengan non-root user `node`.
 2. Image Minimalis: Backend runner membuang devDependencies (`npm ci --omit=dev`). Frontend runner menggunakan artefak standalone Next.js.
-3. Isolasi Database: Port 3306 tidak diekspos ke host publik pada konfigurasi produksi. Hanya dapat diakses melalui Docker network internal `stockflow_net`.
-4. Sanitasi Secret: Tidak ada secret atau password yang disimpan di dalam Dockerfile layer. Seluruh kredensial diinjeksi via environment variables saat runtime.
+3. Isolasi Total Jaringan Internal: Port 3306 (MySQL) dan Port 4000 (Backend Express) tidak dipublikasikan ke host publik pada konfigurasi produksi. Backend dan database hanya dapat diakses melalui Docker network internal `stockflow_net`.
+4. Sanitasi Secret: Tidak ada secret atau password yang disimpan di dalam Dockerfile layer atau di-log ke terminal. Seluruh kredensial diinjeksi via environment variables atau secret files saat runtime.
 5. Pemeriksaan Kesehatan: Endpoint `/api/v1/health` melakukan verifikasi koneksi database aktif (`SELECT 1`) dengan timeout proteksi.
