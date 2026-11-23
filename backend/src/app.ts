@@ -26,13 +26,13 @@ export const app = express();
 app.use(helmet());
 
 // 2. CORS allowlist
-const isProduction = process.env.NODE_ENV === 'production';
+const isLocalDeployment = process.env.APP_DEPLOYMENT_MODE === 'local' || !process.env.APP_DEPLOYMENT_MODE;
 const rawFrontendUrl = process.env.FRONTEND_URL;
-const frontendUrl = rawFrontendUrl ? rawFrontendUrl.replace(/\/+$/, '') : (isProduction ? '' : 'http://localhost:3000');
-const allowLocalhostSimulation = process.env.ALLOW_LOCALHOST_SIMULATION === 'true';
-const allowedOrigins = isProduction
-  ? (frontendUrl ? (allowLocalhostSimulation ? [frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'] : [frontendUrl]) : [])
-  : [frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'].filter(Boolean);
+const frontendUrl = rawFrontendUrl ? rawFrontendUrl.replace(/\/+$/, '') : (isLocalDeployment ? 'http://localhost:3000' : '');
+
+const allowedOrigins = isLocalDeployment
+  ? ['http://localhost:3000']
+  : (frontendUrl ? [frontendUrl] : []);
 
 app.use(
   cors({

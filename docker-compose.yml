@@ -1,5 +1,9 @@
 name: stockflow-prod
 
+secrets:
+  initial_admin_password:
+    file: ${INITIAL_ADMIN_PASSWORD_FILE:-./.secrets/initial_admin_password.txt}
+
 services:
   db:
     image: mysql:8.4
@@ -42,14 +46,16 @@ services:
     profiles:
       - bootstrap
     restart: "no"
+    secrets:
+      - initial_admin_password
     environment:
       NODE_ENV: production
+      APP_DEPLOYMENT_MODE: ${APP_DEPLOYMENT_MODE:-local}
       DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
       INITIAL_ORG_NAME: ${INITIAL_ORG_NAME:-PT StockFlow Logistik Nusantara}
       INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-System Administrator}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@stockflow.com}
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
-      INITIAL_ADMIN_PASSWORD_FILE: ${INITIAL_ADMIN_PASSWORD_FILE:-}
+      INITIAL_ADMIN_PASSWORD_FILE: /run/secrets/initial_admin_password
     command: ["node", "dist/scripts/bootstrap.js"]
     depends_on:
       db:
@@ -67,15 +73,15 @@ services:
     restart: always
     environment:
       NODE_ENV: production
+      APP_DEPLOYMENT_MODE: ${APP_DEPLOYMENT_MODE:-local}
       PORT: 4000
       DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
-      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL wajib diisi URL domain HTTPS produksi}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
-      COOKIE_SECURE: "true"
-      COOKIE_SAME_SITE: "lax"
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET wajib diisi minimal 32 karakter}
       CSRF_SECRET: ${CSRF_SECRET:?CSRF_SECRET wajib diisi minimal 32 karakter}
-      ALLOW_LOCALHOST_SIMULATION: ${ALLOW_LOCALHOST_SIMULATION:-false}
     depends_on:
       db:
         condition: service_healthy

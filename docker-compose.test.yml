@@ -1,0 +1,70 @@
+name: stockflow-test
+
+secrets:
+  initial_admin_password:
+    file: ${INITIAL_ADMIN_PASSWORD_FILE:-./.secrets/initial_admin_password.txt}
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: stockflow_test_db
+    restart: "no"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD wajib diisi}
+      MYSQL_DATABASE: stockflow_db
+      MYSQL_USER: ${DB_USER:-stockflow_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi}
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    networks:
+      - stockflow_test_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD wajib diisi}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  migrator:
+    image: stockflow-prod-migrator:latest
+    container_name: stockflow_test_migrator
+    restart: "no"
+    environment:
+      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - stockflow_test_net
+
+  bootstrap:
+    image: stockflow-prod-bootstrap:latest
+    container_name: stockflow_test_bootstrap
+    profiles:
+      - bootstrap
+    restart: "no"
+    secrets:
+      - initial_admin_password
+    environment:
+      NODE_ENV: production
+      APP_DEPLOYMENT_MODE: local
+      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
+      INITIAL_ORG_NAME: ${INITIAL_ORG_NAME:-PT StockFlow Logistik Nusantara}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-System Administrator}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@stockflow.com}
+      INITIAL_ADMIN_PASSWORD_FILE: /run/secrets/initial_admin_password
+    command: ["node", "dist/scripts/bootstrap.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    networks:
+      - stockflow_test_net
+
+volumes:
+  mysql_test_data:
+    driver: local
+
+networks:
+  stockflow_test_net:
+    driver: bridge

@@ -3,7 +3,7 @@
 > **Know your stock. Move with confidence.**  
 > Sistem manajemen inventaris dan pergudangan multi-lokasi (B2B SaaS IWMS) level produksi dengan transaksi atomik, pencegahan saldo negatif berbasis locking, audit ledger immutable, dan kontrol akses berbutir halus (RBAC).
 
-[![Full-Stack Production Ready](https://img.shields.io/badge/Status-Production%20Ready-success)](#)
+[![Localhost Portfolio Ready](https://img.shields.io/badge/Status-Localhost%20Portfolio%20Ready-success)](#)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript%20Strict-blue)](#)
 [![Next.js 15](https://img.shields.io/badge/Frontend-Next.js%2015%20App%20Router-black)](#)
 [![Express.js](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express-green)](#)
@@ -164,6 +164,8 @@ StockFlow dibangun dengan pemisahan tanggung jawab (Separation of Concerns) yang
 
 ## 5. Panduan Menjalankan Aplikasi
 
+StockFlow dirancang sebagai sistem Localhost Portfolio Edition yang berjalan pada mesin lokal pengembang (`http://localhost:3000`) dengan arsitektur produksi terisolasi: single ingress frontend port 3000, internal backend API di `backend:4000`, dan database MySQL 8.4 di `db:3306` (keduanya tertutup dari publikasi port host).
+
 ### Opsi A: Menjalankan Menggunakan Docker Compose (Direkomendasikan)
 
 Pastikan Docker Desktop sudah terpasang dan berjalan di komputer Anda.
@@ -176,13 +178,23 @@ cd StockFlow
 # 2. Siapkan file konfigurasi environment
 cp .env.example .env
 
-# 3. Jalankan container development
-docker compose -f docker-compose.dev.yml up --build
+# 3. Siapkan file rahasia password awal administrator (Docker Compose Secrets)
+mkdir -p .secrets
+echo "AdminStockFlow2026!" > .secrets/initial_admin_password.txt
+
+# 4. Inisialisasi Administrator Awal melalui bootstrap service
+docker compose --profile bootstrap run --rm bootstrap
+
+# 5. Jalankan seluruh layanan aplikasi di latar belakang
+docker compose up -d
 ```
-Aplikasi akan dapat diakses pada:
-- **Frontend Web**: `http://localhost:3000`
-- **Backend REST API**: `http://localhost:4000/api/v1`
-- **MySQL Database**: `localhost:3306`
+
+Aplikasi siap diakses pada:
+- **Frontend Web & Single Ingress API**: `http://localhost:3000`
+- **Internal Backend REST API**: Mengalir via same-origin reverse proxy Next.js (`/api/v1`) ke `backend:4000` (port host tertutup)
+- **Internal MySQL 8.4 Database**: `db:3306` (port host tertutup)
+
+Pada login pertama menggunakan akun Administrator (`admin@stockflow.com`), sistem mewajibkan pembaruan password melalui mekanisme `must_change_password` sebelum dapat mengakses dashboard operasional.
 
 ---
 
@@ -251,7 +263,7 @@ Data demo siap pakai telah disediakan melalui seeder database (`backend/prisma/s
 Proyek ini dilengkapi dengan pengujian otomatis menyeluruh:
 
 ```bash
-# Menjalankan pengujian backend (Unit & Integration API - 80 tests)
+# Menjalankan pengujian backend (Unit, Integration API, Security, & Bootstrap - 92 tests)
 cd backend
 npm test
 
@@ -264,11 +276,11 @@ cd frontend
 npx playwright test
 ```
 
-### Ringkasan Hasil Pengujian:
-- **Backend Tests**: 80 tests passed across 10 test files (AppError, Zod Validation, RBAC Permissions, CSRF Token Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Concurrency Locking, Multi-Table Atomic Rollbacks, and API Health).
-- **Frontend Tests**: 9 tests passed (Utils formatters, Concurrency calculation, Audit ledger reconciliation, Reversal logic).
-- **Playwright Browser E2E**: 13-stage comprehensive inventory lifecycle workflow passed in 7.6s (real database & same-origin relative API path, zero mock).
-- **Total**: 89 automated tests passing hijau 100% dengan exit code 0.
+### Ringkasan Hasil Pengujian v1.4:
+- **Backend Tests**: 92 tests passed across 11 test files (AppError, Zod Validation, RBAC Permissions, CSRF Token Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Concurrency Locking, Multi-Table Atomic Rollbacks, Environment Validation, and Docker Secrets Bootstrap).
+- **Frontend Tests**: 9 tests passed across 2 test files (Utils formatters, Concurrency calculation, Audit ledger reconciliation, Reversal logic).
+- **Playwright Browser E2E**: 13-stage comprehensive inventory lifecycle workflow passed in 8.9s against running production Docker containers (fresh database initialization, bootstrap admin login, forced password change, real REST API, and zero mock).
+- **Total**: 101 automated tests passing hijau 100% dengan exit code 0.
 
 ---
 

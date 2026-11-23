@@ -47,33 +47,34 @@ DATABASE_URL="mysql://stockflow_user:ganti_dengan_app_password_berentropi_tinggi
 
 # Backend Configuration
 NODE_ENV=production
+APP_DEPLOYMENT_MODE=local
 PORT=4000
-FRONTEND_URL="https://app.stockflow.com"
+FRONTEND_URL="http://localhost:3000"
 COOKIE_DOMAIN=""
-COOKIE_SECURE="true"
+COOKIE_SECURE="false"
 COOKIE_SAME_SITE="lax"
 SESSION_SECRET="ganti_dengan_session_secret_acak_minimal_32_karakter"
 CSRF_SECRET="ganti_dengan_csrf_secret_acak_minimal_32_karakter"
 LOG_LEVEL="info"
 
-# Initial Bootstrap (Hanya digunakan saat bootstrap akun awal)
+# Initial Bootstrap (Menggunakan Docker Compose Secrets)
+# File secret diletakkan pada: .secrets/initial_admin_password.txt
 INITIAL_ORG_NAME="PT StockFlow Logistik Nusantara"
 INITIAL_ADMIN_NAME="System Administrator"
 INITIAL_ADMIN_EMAIL="admin@stockflow.com"
-INITIAL_ADMIN_PASSWORD="GantiPasswordKuatAdmin2026!"
 
 # Frontend Configuration
-# Kosongkan NEXT_PUBLIC_API_URL agar browser menggunakan same-origin relatif /api/v1
-NEXT_PUBLIC_API_URL=""
+# NEXT_PUBLIC_API_URL bernilai /api/v1 agar browser menggunakan same-origin relatif
+NEXT_PUBLIC_API_URL="/api/v1"
 INTERNAL_BACKEND_URL="http://backend:4000"
 ```
 
-### Validasi Fail-Fast pada Mode Produksi
+### Validasi Fail-Fast pada Lingkungan Produksi
 Jika `NODE_ENV=production`, server backend akan menolak startup dan berhenti seketika (fail-fast) jika:
-- `SESSION_SECRET` atau `CSRF_SECRET` menggunakan nilai default development.
-- `COOKIE_SECURE` bernilai false.
-- `DATABASE_URL` menggunakan kredensial default development (`stockflow_pass123`).
-- `FRONTEND_URL` tidak didefinisikan, bernilai localhost, bernilai 127.0.0.1, atau tidak menggunakan protokol HTTPS.
+- `SESSION_SECRET` atau `CSRF_SECRET` menggunakan nilai default development yang tidak aman.
+- `DATABASE_URL` menggunakan kredensial default development (`stockflow_pass123` atau `root:root`).
+- Pada `APP_DEPLOYMENT_MODE=local`: `FRONTEND_URL` tidak bernilai tepat canonical `http://localhost:3000`.
+- Pada `APP_DEPLOYMENT_MODE=production`: `COOKIE_SECURE` bernilai false, atau `FRONTEND_URL` memuat localhost/127.0.0.1 atau tidak menggunakan HTTPS.
 
 ---
 

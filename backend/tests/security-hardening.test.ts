@@ -60,8 +60,10 @@ describe('Milestone 4: Security Hardening (P1-05, P1-06, P1-07)', () => {
     it('harus menolak request POST dari localhost pada mode production dan hanya menerima domain production', () => {
       const originalEnv = process.env.NODE_ENV;
       const originalFrontend = process.env.FRONTEND_URL;
+      const originalMode = process.env.APP_DEPLOYMENT_MODE;
       try {
         process.env.NODE_ENV = 'production';
+        process.env.APP_DEPLOYMENT_MODE = 'production';
         process.env.FRONTEND_URL = 'https://app.stockflow.com';
 
         const reqLocalhost = {
@@ -80,6 +82,28 @@ describe('Milestone 4: Security Hardening (P1-05, P1-06, P1-07)', () => {
       } finally {
         process.env.NODE_ENV = originalEnv;
         process.env.FRONTEND_URL = originalFrontend;
+        process.env.APP_DEPLOYMENT_MODE = originalMode;
+      }
+    });
+
+    it('harus menolak request POST dari port localhost yang berbeda atau 127.0.0.1 pada mode local', () => {
+      const originalMode = process.env.APP_DEPLOYMENT_MODE;
+      try {
+        process.env.APP_DEPLOYMENT_MODE = 'local';
+
+        const reqPort8080 = {
+          method: 'POST',
+          headers: { origin: 'http://localhost:8080' },
+        } as unknown as Request;
+        expect(() => validateOrigin(reqPort8080)).toThrow(ForbiddenError);
+
+        const req127 = {
+          method: 'POST',
+          headers: { origin: 'http://127.0.0.1:3000' },
+        } as unknown as Request;
+        expect(() => validateOrigin(req127)).toThrow(ForbiddenError);
+      } finally {
+        process.env.APP_DEPLOYMENT_MODE = originalMode;
       }
     });
   });

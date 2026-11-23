@@ -19,6 +19,7 @@ const INSECURE_DEFAULT_SECRETS = [
 
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  APP_DEPLOYMENT_MODE: z.enum(['local', 'production']).default('local'),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL wajib diisi'),
   FRONTEND_URL: z.string().url('FRONTEND_URL harus berupa URL yang valid').default('http://localhost:3000'),
@@ -30,63 +31,75 @@ export const envSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET minimal 32 karakter'),
   CSRF_SECRET: z.string().min(32, 'CSRF_SECRET minimal 32 karakter'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
-  ALLOW_LOCALHOST_SIMULATION: z
-    .union([z.boolean(), z.enum(['true', 'false']).transform((v) => v === 'true')])
-    .default(false),
   INITIAL_ORG_NAME: z.string().optional(),
   INITIAL_ADMIN_NAME: z.string().optional(),
   INITIAL_ADMIN_EMAIL: z.string().email().optional(),
-  INITIAL_ADMIN_PASSWORD: z.string().min(12).optional(),
+  INITIAL_ADMIN_PASSWORD_FILE: z.string().optional(),
 }).superRefine((data, ctx) => {
+  // 1. Validasi saat NODE_ENV === 'production' (berlaku untuk mode local maupun production)
   if (data.NODE_ENV === 'production') {
-    // 1. Session secret tidak boleh menggunakan default
+    // Session secret tidak boleh menggunakan default
     if (INSECURE_DEFAULT_SECRETS.includes(data.SESSION_SECRET)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['SESSION_SECRET'],
-        message: 'SESSION_SECRET pada production tidak boleh menggunakan nilai default yang tidak aman.',
+        message: 'SESSION_SECRET pada production build tidak boleh menggunakan nilai default yang tidak aman.',
       });
     }
 
-    // 2. CSRF secret tidak boleh menggunakan default
+    // CSRF secret tidak boleh menggunakan default
     if (INSECURE_DEFAULT_SECRETS.includes(data.CSRF_SECRET)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['CSRF_SECRET'],
-        message: 'CSRF_SECRET pada production tidak boleh menggunakan nilai default yang tidak aman.',
+        message: 'CSRF_SECRET pada production build tidak boleh menggunakan nilai default yang tidak aman.',
       });
     }
 
-    // 3. Cookie secure wajib aktif pada production
-    if (!data.COOKIE_SECURE) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['COOKIE_SECURE'],
-        message: 'COOKIE_SECURE wajib bernilai true pada environment production.',
-      });
-    }
-
-    // 4. Database password tidak boleh menggunakan default development
+    // Database password tidak boleh menggunakan default development
     if (data.DATABASE_URL.includes('stockflow_pass123') || data.DATABASE_URL.includes('root:root')) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['DATABASE_URL'],
-        message: 'DATABASE_URL pada production tidak boleh menggunakan password default development.',
+        message: 'DATABASE_URL pada production build tidak boleh menggunakan password default development.',
+      });
+    }
+  }
+
+  // 2. Validasi spesifik target deployment: APP_DEPLOYMENT_MODE
+  if (data.APP_DEPLOYMENT_MODE === 'production') {
+    // Mode deployment publik / production:
+    // a. Cookie secure wajib aktif
+    if (!data.COOKIE_SECURE) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['COOKIE_SECURE'],
+        message: 'COOKIE_SECURE wajib bernilai true pada deployment target production.',
       });
     }
 
-    // 5. FRONTEND_URL wajib didefinisikan secara eksplisit dan tidak boleh localhost / 127.0.0.1 pada production
+    // b. FRONTEND_URL wajib HTTPS dan tidak boleh localhost / 127.0.0.1
     if (!data.FRONTEND_URL || data.FRONTEND_URL.includes('localhost') || data.FRONTEND_URL.includes('127.0.0.1')) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['FRONTEND_URL'],
-        message: 'FRONTEND_URL pada production tidak boleh kosong, menggunakan localhost, atau 127.0.0.1.',
+        message: 'FRONTEND_URL pada deployment target production tidak boleh kosong, menggunakan localhost, atau 127.0.0.1.',
       });
     } else if (!data.FRONTEND_URL.startsWith('https://')) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['FRONTEND_URL'],
-        message: 'FRONTEND_URL pada production wajib menggunakan protokol HTTPS.',
+        message: 'FRONTEND_URL pada deployment target production wajib menggunakan protokol HTTPS.',
+      });
+    }
+  } else if (data.APP_DEPLOYMENT_MODE === 'local') {
+    // Mode deployment local portfolio:
+    // FRONTEND_URL harus tepat canonical http://localhost:3000
+    if (data.FRONTEND_URL !== 'http://localhost:3000') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['FRONTEND_URL'],
+        message: 'FRONTEND_URL pada mode APP_DEPLOYMENT_MODE=local harus tepat http://localhost:3000.',
       });
     }
   }

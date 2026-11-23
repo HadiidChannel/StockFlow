@@ -13,23 +13,47 @@ const INSECURE_DEFAULT_PASSWORDS = [
   'secret',
 ];
 
-function readSecretFileOrEnv(envVar: string, fileEnvVar: string): string | undefined {
-  const filePath = process.env[fileEnvVar];
-  if (filePath && fs.existsSync(filePath)) {
-    try {
-      return fs.readFileSync(filePath, 'utf8').trim();
-    } catch (err: any) {
-      console.error(`Gagal membaca secret file dari ${filePath}: ${err.message}`);
-    }
-  }
-  return process.env[envVar];
-}
-
 interface BootstrapArgs {
   orgName?: string;
   adminName?: string;
   adminEmail?: string;
   adminPassword?: string;
+}
+
+function readPasswordSecret(argsPassword?: string): string {
+  if (argsPassword) {
+    return argsPassword;
+  }
+
+  // Cek apakah ada environment variable biasa INITIAL_ADMIN_PASSWORD
+  const rawEnv = process.env.INITIAL_ADMIN_PASSWORD;
+  if (rawEnv && rawEnv.trim() !== '') {
+    throw new Error(
+      'INITIAL_ADMIN_PASSWORD tidak diizinkan melalui environment variable biasa. Gunakan secret file melalui INITIAL_ADMIN_PASSWORD_FILE demi keamanan kredensial.'
+    );
+  }
+
+  const filePath = process.env.INITIAL_ADMIN_PASSWORD_FILE;
+  if (!filePath || filePath.trim() === '') {
+    throw new Error('INITIAL_ADMIN_PASSWORD_FILE wajib disediakan dan merujuk pada secret file yang valid.');
+  }
+
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Secret file tidak ditemukan pada path: ${filePath}`);
+  }
+
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf8').trim();
+  } catch (err: any) {
+    throw new Error(`Gagal membaca secret file dari ${filePath}: ${err.message}`);
+  }
+
+  if (!content || content.length === 0) {
+    throw new Error('Secret file initial_admin_password kosong.');
+  }
+
+  return content;
 }
 
 function validatePasswordPolicy(password: string): void {
@@ -53,15 +77,10 @@ export async function bootstrapSystem(args?: BootstrapArgs) {
 
   const orgName = args?.orgName || process.env.INITIAL_ORG_NAME || (isProduction ? undefined : 'PT StockFlow Logistik Nusantara');
   const adminName = args?.adminName || process.env.INITIAL_ADMIN_NAME || (isProduction ? undefined : 'Admin Utama');
-  const rawEmail =
-    args?.adminEmail ||
-    readSecretFileOrEnv('INITIAL_ADMIN_EMAIL', 'INITIAL_ADMIN_EMAIL_FILE') ||
-    (isProduction ? undefined : 'admin@stockflow.com');
+  const rawEmail = args?.adminEmail || process.env.INITIAL_ADMIN_EMAIL || (isProduction ? undefined : 'admin@stockflow.com');
   const adminEmail = rawEmail?.trim().toLowerCase();
 
-  const rawPassword =
-    args?.adminPassword ||
-    readSecretFileOrEnv('INITIAL_ADMIN_PASSWORD', 'INITIAL_ADMIN_PASSWORD_FILE');
+  const rawPassword = readPasswordSecret(args?.adminPassword);
 
   if (isProduction) {
     if (!orgName) {
@@ -73,21 +92,14 @@ export async function bootstrapSystem(args?: BootstrapArgs) {
     if (!adminEmail) {
       throw new Error('INITIAL_ADMIN_EMAIL wajib diisi pada environment production.');
     }
-    if (!rawPassword) {
-      throw new Error(
-        'INITIAL_ADMIN_PASSWORD atau INITIAL_ADMIN_PASSWORD_FILE wajib diisi pada environment production melalui secret aman.'
-      );
-    }
     if (INSECURE_DEFAULT_PASSWORDS.includes(rawPassword)) {
       throw new Error(
-        'INITIAL_ADMIN_PASSWORD pada production tidak boleh menggunakan password default development.'
+        'Password bootstrap pada production tidak boleh menggunakan password default development.'
       );
     }
-    validatePasswordPolicy(rawPassword);
   }
 
-  const effectivePassword = rawPassword || 'AdminStockFlow2026!';
-  validatePasswordPolicy(effectivePassword);
+  validatePasswordPolicy(rawPassword);
 
   console.log('Memulai proses inisialisasi (bootstrap) satu kali StockFlow...');
 
@@ -143,7 +155,7 @@ export async function bootstrapSystem(args?: BootstrapArgs) {
 
     // 4. Hash password dengan bcrypt cost factor 12
     const salt = await bcrypt.genSalt(12);
-    const passwordHash = await bcrypt.hash(effectivePassword, salt);
+    const passwordHash = await bcrypt.hash(rawPassword, salt);
 
     // 5. Buat initial administrator dengan flag mustChangePassword: true
     const user = await tx.user.create({

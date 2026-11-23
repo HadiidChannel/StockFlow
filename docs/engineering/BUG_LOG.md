@@ -71,3 +71,21 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 - **Fix**: Membuat service mandiri `bootstrap` (`profiles: ["bootstrap"]`) dengan runner image production compiled (`node dist/scripts/bootstrap.js`), mendukung pembacaan secret file (`INITIAL_ADMIN_PASSWORD_FILE`), menerapkan validasi kompleksitas password 12+ karakter, dan memasang one-time execution guard.
 - **Regression Test**: Test suite `backend/tests/bootstrap.test.ts` (6 automated tests) dan eksekusi Docker runner compose memverifikasi seluruh kriteria keamanan.
 - **Status**: Fixed & Verified
+
+### BUG-007: Kerentanan Flag ALLOW_LOCALHOST_SIMULATION pada Kebijakan Origin
+- **Severity**: Medium
+- **Deskripsi**: Penggunaan flag `ALLOW_LOCALHOST_SIMULATION=true` berpotensi membuka celah keamanan karena mengubah trusted origin secara ad-hoc saat `NODE_ENV=production`.
+- **Steps to Reproduce**: Memeriksa konfigurasi CORS allowlist ketika flag simulasi diaktifkan pada mode production.
+- **Root Cause**: Ketiadaan pemisahan eksplisit antara build mode (`NODE_ENV`) dan deployment target (`APP_DEPLOYMENT_MODE`).
+- **Fix**: Menghapus flag `ALLOW_LOCALHOST_SIMULATION` dari seluruh sistem. Memperkenalkan `APP_DEPLOYMENT_MODE=local` yang secara eksplisit dan terkontrol mengizinkan canonical origin `http://localhost:3000`.
+- **Regression Test**: Test suite `env-validation.test.ts` dan `security-hardening.test.ts` memverifikasi penolakan origin selain canonical `http://localhost:3000`.
+- **Status**: Fixed & Verified
+
+### BUG-008: Ketiadaan Definisi Top-Level Docker Compose Secrets pada Bootstrap
+- **Severity**: Medium
+- **Deskripsi**: Service bootstrap sebelumnya membaca environment variable `INITIAL_ADMIN_PASSWORD_FILE` namun `docker-compose.yml` belum mendefinisikan top-level `secrets` sehingga file secret belum termount secara otomatis ke kontainer.
+- **Steps to Reproduce**: Menjalankan compose bootstrap tanpa menyuplai volume mount manual untuk file secret.
+- **Root Cause**: Konfigurasi Docker Compose belum mengimplementasikan spesifikasi Docker Compose Secrets.
+- **Fix**: Menambahkan blok top-level `secrets` pada `docker-compose.yml`, mengaitkan secret `initial_admin_password` ke service `bootstrap`, mengabaikan folder `.secrets/` pada `.gitignore`, dan memperbarui `bootstrap.ts` agar menolak password melalui environment variable biasa.
+- **Regression Test**: Eksekusi `docker compose --profile bootstrap run --rm bootstrap` dan 8 unit test di `backend/tests/bootstrap.test.ts` lulus 100%.
+- **Status**: Fixed & Verified

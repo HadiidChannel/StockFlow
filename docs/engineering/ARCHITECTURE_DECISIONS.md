@@ -139,3 +139,25 @@ Pada arsitektur produksi kontainer Docker, browser client berkomunikasi melalui 
 ### Konsekuensi
 - Positif: Isolasi jaringan internal sempurna, API path same-origin relatif tervalidasi pada build-time, port backend dan database tertutup rapat dari jaringan publik, proses bootstrap aman dan idempotent.
 - Negatif: Pengujian langsung ke port 4000 dari host dinonaktifkan pada profil produksi; seluruh trafik web client wajib melalui reverse proxy Next.js pada port 3000.
+
+---
+
+## ADR-008: Localhost Portfolio Environment Architecture & Docker Compose Secrets
+
+### Status
+Accepted
+
+### Konteks
+Aplikasi StockFlow difokuskan sebagai Localhost Portfolio Edition yang berjalan secara mandiri dan optimal pada komputer lokal pengembang menggunakan Docker Compose tanpa memerlukan domain publik, VPS, atau sertifikat HTTPS publik. Penggunaan flag simulasi `ALLOW_LOCALHOST_SIMULATION` pada rilis sebelumnya berpotensi melemahkan kebijakan trusted origin ketika `NODE_ENV=production`. Selain itu, Docker Compose Secrets dibutuhkan agar pembacaan password awal administrator tidak mengandalkan environment variable biasa yang rentan terlihat di process table.
+
+### Keputusan
+1. Memisahkan konsep build mode (`NODE_ENV=production`) dan target deployment (`APP_DEPLOYMENT_MODE=local`).
+2. Menghapus flag `ALLOW_LOCALHOST_SIMULATION` dari seluruh sistem.
+3. Mengunci trusted origin secara kanonikal ke `http://localhost:3000` pada mode local, dan menolak port lain, IP 127.0.0.1, atau domain asing.
+4. Mengimplementasikan file-backed Docker Compose Secrets (`initial_admin_password`) yang di-mount secara otomatis ke `/run/secrets/initial_admin_password` pada kontainer bootstrap.
+5. Menolak pengiriman password administrator awal melalui environment variable biasa `INITIAL_ADMIN_PASSWORD` dan mewajibkan secret file.
+6. Menyetel `COOKIE_SECURE=false` pada mode local agar sesi autentikasi browser bekerja secara native pada protokol HTTP localhost, dengan tetap mempertahankan seluruh kontrol keamanan session cookie (HttpOnly, SameSite=Lax, SHA-256 opaque token).
+
+### Konsekuensi
+- Positif: Keamanan origin deterministik tanpa flag simulasi ad-hoc, secret password terlindungi di luar Git/environment, siap didemokan secara instan dan andal sebagai proyek portofolio Full-Stack.
+- Negatif: Pengujian origin tambahan di luar kanonikal `http://localhost:3000` harus melewati test configuration khusus.

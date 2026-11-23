@@ -1,4 +1,20 @@
 import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
+
+function getInitialAdminPassword(): string {
+  const secretPath = path.resolve('../.secrets/initial_admin_password.txt');
+  if (fs.existsSync(secretPath)) {
+    const pass = fs.readFileSync(secretPath, 'utf8').trim();
+    if (pass) return pass;
+  }
+  const rootSecretPath = path.resolve('.secrets/initial_admin_password.txt');
+  if (fs.existsSync(rootSecretPath)) {
+    const pass = fs.readFileSync(rootSecretPath, 'utf8').trim();
+    if (pass) return pass;
+  }
+  return 'InitialAdminSecurePassword2026!';
+}
 
 test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)', () => {
   const timestamp = Date.now();
@@ -18,17 +34,32 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
 
   test('Complete 13-stage inventory lifecycle workflow', async ({ page, context }) => {
     // -------------------------------------------------------------------------
-    // Stage 1: Admin Login
+    // Stage 1: Admin Login & Initial Forced Password Change
     // -------------------------------------------------------------------------
-    console.log('[E2E Stage 1] Admin Login');
+    console.log('[E2E Stage 1] Admin Login (Fresh Bootstrap Account)');
+    const initialAdminPassword = getInitialAdminPassword();
+    const permanentAdminPassword = 'AdminPermanentPassword2026!';
+
     await page.goto('/login');
     await expect(page).toHaveTitle(/StockFlow/i);
     await page.fill('input[type="email"]', 'admin@stockflow.com');
-    await page.fill('input[type="password"]', 'AdminStockFlow2026!');
+    await page.fill('input[type="password"]', initialAdminPassword);
     await page.click('button[type="submit"]');
 
-    // Verify redirect to dashboard and admin role
-    await expect(page).toHaveURL(/.*dashboard/);
+    // Akun baru hasil bootstrap memicu forced password change
+    await page.waitForURL((url) => url.pathname.includes('/change-password') || url.pathname.includes('/dashboard'), { timeout: 15000 });
+
+    if (page.url().includes('/change-password')) {
+      console.log('[E2E Stage 1] Administrator Forced Password Change terpicu demi keamanan');
+      await page.locator('input[type="password"]').first().fill(initialAdminPassword);
+      await page.locator('input[type="password"]').nth(1).fill(permanentAdminPassword);
+      await page.locator('input[type="password"]').nth(2).fill(permanentAdminPassword);
+      await page.click('button[type="submit"]');
+      await expect(page).toHaveURL(/.*dashboard/);
+    } else {
+      await expect(page).toHaveURL(/.*dashboard/);
+    }
+
     await expect(page.locator('header')).toContainText('Administrator');
 
     // -------------------------------------------------------------------------

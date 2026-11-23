@@ -21,13 +21,14 @@ Dokumen ini mencatat ringkasan eksekusi pengujian pada setiap fase pengembangan.
 | 2026-11-22 | Remediation v1.1 | Dependency Security & Playwright E2E | 76 | 76 | 0 | PASS | 0 npm vulnerabilities, 13-stage browser E2E, MySQL 8.4 verification |
 | 2026-11-23 | Final Release v1.2 | Production Origin & Multi-Table Rollback | 80 | 80 | 0 | PASS | Fail-fast prod origin, standalone docker, 5-table rollback, 0 leaks |
 | 2026-11-23 | Final Release v1.3 | Reverse Proxy, Bootstrap Security & Docker Isolation | 95 | 95 | 0 | PASS | Internal proxy rewrite, dedicated bootstrap, host port isolation, 13-stage Docker E2E |
+| 2026-11-24 | Release v1.4 | Localhost Portfolio Edition & Docker Secrets | 101 | 101 | 0 | PASS | APP_DEPLOYMENT_MODE local, Docker Secrets bootstrap, fresh MySQL 8.4 lifecycle, 13-stage Playwright E2E |
 
-### Ringkasan Eksekusi Pengujian Otomatis Final (v1.3 Release Gate)
-- **Backend Test Suite**: 86 Passed across 11 test files (100%)
+### Ringkasan Eksekusi Pengujian Otomatis Final (v1.4 Localhost Portfolio Gate)
+- **Backend Test Suite**: 92 Passed across 11 test files (100%)
 - **Frontend Test Suite**: 9 Passed across 2 test files (100%)
-- **Playwright Browser E2E**: 1 Passed (13-stage comprehensive workflow in 8.1s against live Docker production stack, exit code 0)
+- **Playwright Browser E2E**: 1 Passed (13-stage comprehensive workflow in 8.9s against fresh bootstrapped Docker production stack, exit code 0)
 - **TypeScript Typecheck**: 0 Type errors (Backend & Frontend)
 - **ESLint Analysis**: 0 Errors, 0 Warnings
 - **Next.js Production Build**: Standalone bundle generated, routes-manifest with internal backend rewrite, exit code 0
-- **Total Test Otomatis**: 95 automated unit/integration tests passing hijau 100% (0 failed, 0 skipped) + 1 comprehensive E2E test suite
+- **Total Test Otomatis**: 101 automated unit/integration tests passing hijau 100% (0 failed, 0 skipped) + 1 comprehensive E2E test suite
 - **Vulnerabilities**: 0 Critical, 0 High, 0 Moderate, 0 Low (npm audit exit code 0)

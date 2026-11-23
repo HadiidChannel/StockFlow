@@ -122,7 +122,7 @@
         {
           "title": "StockFlow Full Lifecycle End-to-End Testing (Real Database & API)",
           "file": "stockflow-lifecycle.spec.ts",
-          "line": 3,
+          "line": 19,
           "column": 6,
           "specs": [
             {
@@ -141,32 +141,35 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 8130,
+                      "duration": 8855,
                       "errors": [],
                       "stdout": [
                         {
-                          "text": "[E2E Stage 1] Admin Login\n"
+                          "text": "[E2E Stage 1] Admin Login (Fresh Bootstrap Account)\n"
+                        },
+                        {
+                          "text": "[E2E Stage 1] Administrator Forced Password Change terpicu demi keamanan\n"
                         },
                         {
                           "text": "[E2E Stage 2] Create Category and Product\n"
                         },
                         {
-                          "text": "Created Product UUID: 278d2127-676c-44f5-9758-bd65fdec2823\n"
+                          "text": "Created Product UUID: 9957d9c8-b775-4dba-9905-a6f9a54fd82d\n"
                         },
                         {
                           "text": "[E2E Stage 3] Create Warehouses\n"
                         },
                         {
-                          "text": "Unassigned Warehouse UUID for RBAC Test: fea2a2b6-640b-4801-9826-3e5c3ad40c75\n"
+                          "text": "Unassigned Warehouse UUID for RBAC Test: 1b2b1829-2c2e-4674-8767-f46c6f620fcd\n"
                         },
                         {
                           "text": "[E2E Stage 4] Stock In 50 Units\n"
                         },
                         {
-                          "text": "Stock In - Warehouse UUID: 594b3dc4-71ac-47a1-bbde-d3f0076d9f08\n"
+                          "text": "Stock In - Warehouse UUID: 94337c1f-5fc0-427a-9d47-d8b22a0284e3\n"
                         },
                         {
-                          "text": "Stock In - Product UUID: 278d2127-676c-44f5-9758-bd65fdec2823\n"
+                          "text": "Stock In - Product UUID: 9957d9c8-b775-4dba-9905-a6f9a54fd82d\n"
                         },
                         {
                           "text": "[E2E Stage 5] Verify Inventory Balance\n"
@@ -193,7 +196,7 @@
                           "text": "[E2E Stage 11 & 12] Access Unassigned Warehouse -> 403 Forbidden\n"
                         },
                         {
-                          "text": "Forbidden response payload: {\n  error: {\n    code: \u001b[32m'FORBIDDEN'\u001b[39m,\n    message: \u001b[32m'Akses ditolak: Anda tidak memiliki penugasan aktif pada gudang ini atau gudang berstatus tidak aktif.'\u001b[39m,\n    requestId: \u001b[32m'req_1795447065838_o2m20t3'\u001b[39m\n  }\n}\n"
+                          "text": "Forbidden response payload: {\n  error: {\n    code: \u001b[32m'FORBIDDEN'\u001b[39m,\n    message: \u001b[32m'Akses ditolak: Anda tidak memiliki penugasan aktif pada gudang ini atau gudang berstatus tidak aktif.'\u001b[39m,\n    requestId: \u001b[32m'req_1795450762292_7flh2sa'\u001b[39m\n  }\n}\n"
                         },
                         {
                           "text": "[E2E Stage 13] Full Reversal and Final Balance Check\n"
@@ -204,7 +207,7 @@
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-11-23T15:17:38.276Z",
+                      "startTime": "2026-11-23T16:19:13.828Z",
                       "annotations": [],
                       "attachments": [
                         {
@@ -220,7 +223,7 @@
               ],
               "id": "692257f46f6fa3328bdb-34fda8f9d2d1d16ff8d8",
               "file": "stockflow-lifecycle.spec.ts",
-              "line": 19,
+              "line": 35,
               "column": 3
             }
           ]
@@ -230,8 +233,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-11-23T15:17:37.806Z",
-    "duration": 8850.569000000001,
+    "startTime": "2026-11-23T16:19:13.171Z",
+    "duration": 9990.92,
     "expected": 1,
     "skipped": 0,
     "unexpected": 0,

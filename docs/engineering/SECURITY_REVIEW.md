@@ -77,3 +77,31 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
 ### C. Rotasi Kredensial dan Sanitasi Bukti Audit
 - Seluruh credential baseline dan development password telah dirotasi secara penuh.
 - File konfigurasi dan bukti audit pada `audit/evidence/` disanitasi secara ketat sehingga tidak menyimpan raw password atau session secret nyata.
+
+---
+
+## 5. Hardening Rilis Portofolio Lokal v1.4
+
+### A. Eliminasi Total Mekanisme ALLOW_LOCALHOST_SIMULATION
+- Toggle `ALLOW_LOCALHOST_SIMULATION` yang sebelumnya mengizinkan simulasi origin secara kondisional telah dihapus sepenuhnya dari codebase.
+- Pemisahan tanggung jawab konfigurasi dibuat eksplisit:
+  - `NODE_ENV=production`: Mengatur optimasi build, logging, dan kompilasi production image.
+  - `APP_DEPLOYMENT_MODE`: Menentukan target environment aktual (`local` untuk portofolio lokal pada komputer pengguna, atau `production` untuk cloud/VPS publik).
+- Pada mode `APP_DEPLOYMENT_MODE=local`, origin tepercaya tunggal (canonical trusted origin) dikunci secara ketat ke `http://localhost:3000`.
+
+### B. Validasi Ketat Origin CORS dan CSRF pada Localhost
+- CORS allowlist dan CSRF middleware memvalidasi `Origin` dan `Referer` secara presisi.
+- Permintaan dari IP langsung seperti `http://127.0.0.1:3000` atau port localhost lain (misal `http://localhost:8080`) secara eksplisit ditolak dengan status HTTP 403 Forbidden.
+- Mengeliminasi risiko Cross-Origin Request Forgery dan serangan DNS rebinding lokal.
+
+### C. File-Backed Docker Compose Secrets untuk Administrator Bootstrap
+- Password akun Administrator awal tidak lagi diperbolehkan disuplai melalui ordinary environment variable (`INITIAL_ADMIN_PASSWORD`).
+- Menggunakan top-level Docker Compose Secrets (`initial_admin_password`) yang di-mount secara aman dan read-only ke `/run/secrets/initial_admin_password` di dalam container.
+- Skrip `bootstrap.ts` memvalidasi keberadaan file secret dan menolak eksekusi jika variabel environment biasa digunakan.
+- Password wajib memenuhi standar kompleksitas NIST (minimal 12 karakter, mengandung huruf besar, huruf kecil, angka, dan simbol).
+- One-time execution guard memastikan eksekusi kedua diabaikan dengan aman tanpa mengubah data.
+- Akun Administrator awal dibuat dengan status `must_change_password = 1`, mewajibkan admin memperbarui password pada login pertama sebelum dapat membuka dashboard.
+
+### D. Verifikasi Siklus Hidup Database Bersih & E2E Testing
+- Siklus inisialisasi dari database kosong telah diverifikasi pada stack MySQL 8.4.13 terisolasi: migrasi 14 tabel relasional, 9 CHECK constraints aktif, dan 2 composite foreign keys.
+- Pengujian Playwright E2E 13 tahap diverifikasi secara live terhadap container produksi yang berjalan, membuktikan alur login bootstrap admin, forced password change, pemeliharaan sesi cookie, transaksi stok, RBAC, dan audit trail tanpa simulasi mock.
