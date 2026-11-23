@@ -31,7 +31,7 @@ const rawFrontendUrl = process.env.FRONTEND_URL;
 const frontendUrl = rawFrontendUrl ? rawFrontendUrl.replace(/\/+$/, '') : (isLocalDeployment ? 'http://localhost:3000' : '');
 
 const allowedOrigins = isLocalDeployment
-  ? ['http://localhost:3000']
+  ? ['http://localhost:3000', 'http://127.0.0.1:3100', 'http://localhost:3100']
   : (frontendUrl ? [frontendUrl] : []);
 
 app.use(

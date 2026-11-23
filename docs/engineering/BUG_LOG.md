@@ -107,3 +107,48 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 - **Fix**: Mengimplementasikan `scripts/init-local.ps1` dengan API kriptografi .NET, menghapus seluruh fallback hardcoded pada `stockflow-lifecycle.spec.ts` (wajib melempar error jika secret tidak ditemukan), dan menambahkan validasi pola placeholder pada `backend/src/config/env.ts`.
 - **Regression Test**: Unit test `P1-Playwright-01`, `P1-Playwright-02`, dan test suite `env-validation.test.ts` (13 tests) lulus 100%.
 - **Status**: Fixed & Verified
+
+### BUG-011: Ketiadaan Isolasi Lingkungan Pengujian E2E dari Aplikasi Utama
+- **Severity**: High
+- **Deskripsi**: Pengujian Playwright E2E sebelumnya dijalankan langsung ke stack aplikasi utama di port 3000 atau berbagi volume database produksi `mysql_prod_data`, memicu risiko polusi data pengujian dan potensi perusakan data aplikasi utama saat pengujian diulang.
+- **Steps to Reproduce**: Menjalankan suite pengujian Playwright E2E secara langsung ke localhost:3000.
+- **Root Cause**: Tidak tersedianya file compose dedicated dan siklus hidup database sekali pakai untuk kebutuhan E2E.
+- **Fix**: Menyediakan `docker-compose.e2e.yml` dengan nama project `stockflow-e2e-test`, port loopback `127.0.0.1:3100`, volume terpisah `mysql_e2e_data`, network terpisah `stockflow_e2e_net`, serta skrip orkestrator `scripts/run-e2e.ps1`.
+- **Regression Test**: Pengujian E2E berjalan 100% pada port 3100 dengan database disposable, dan status kontainer utama pada port 3000 terbukti tetap utuh dan aktif.
+- **Status**: Fixed & Verified
+
+### BUG-012: Keberadaan Kredensial Statis dan Hardcoded pada Test Suite E2E
+- **Severity**: Medium
+- **Deskripsi**: File `frontend/tests/e2e/stockflow-lifecycle.spec.ts` sebelumnya memuat password statis seperti `AdminPermanentPassword2026!` dan `StaffPassword2026!` serta branch login alternatif yang mengasumsikan password statis.
+- **Steps to Reproduce**: Memeriksa variabel password pada `stockflow-lifecycle.spec.ts`.
+- **Root Cause**: Pola pengujian masa lalu yang belum mengadopsi pembangkitan kredensial acak kriptografis secara menyeluruh.
+- **Fix**: Mengimplementasikan fungsi pembantu `generateSecureRandomPassword(length)` berbasis `crypto.randomInt` untuk menghasilkan seluruh password sementara dan permanen secara acak pada runtime, serta menghapus branch login fallback statis.
+- **Regression Test**: Eksekusi Playwright E2E berhasil 3 passed dalam 8.8 detik dengan 0 kredensial statis.
+- **Status**: Fixed & Verified
+
+### BUG-013: False Positive Assertion Bypass pada Test Inisialisasi Bootstrap
+- **Severity**: Medium
+- **Deskripsi**: Pengujian `backend/tests/bootstrap.test.ts` sebelumnya menggunakan pengkondisian `if (existingAdmin)` sehingga jika database telah memiliki admin, kode pembuatan bootstrap awal tidak pernah dieksekusi dan tidak ada assertion yang dijalankan.
+- **Steps to Reproduce**: Menjalankan vitest pada database yang sudah terinisialisasi.
+- **Root Cause**: Penggunaan percabangan kondisional di dalam unit test alih-alih isolasi fixture.
+- **Fix**: Mengisolasi pengujian dengan memindahkan sementara role admin lama ke dummy role `TEMP_TEST_ROLE`, mengeksekusi bootstrap pada kondisi database kosong, memvalidasi pembuatan user, flag `mustChangePassword`, hash bcrypt, dan penolakan pada eksekusi kedua, lalu mengembalikan data admin lama pada blok `finally`.
+- **Regression Test**: Test suite `backend/tests/bootstrap.test.ts` berhasil 8 passed dari 8 tests secara konsisten.
+- **Status**: Fixed & Verified
+
+### BUG-014: Skrip scripts/init-local.ps1 Belum Memiliki Staged Rollback dan Pengecekan Windows ACL Ketat
+- **Severity**: Medium
+- **Deskripsi**: Skrip `init-local.ps1` sebelumnya dapat meninggalkan artefak parsial jika terjadi kegagalan di tengah proses dan belum memverifikasi `$LASTEXITCODE` dari perintah `icacls.exe`.
+- **Steps to Reproduce**: Menghentikan skrip atau memicu error saat penulisan file secret.
+- **Root Cause**: Penulisan langsung ke file target tanpa tahapan staged temporary files dan penanganan error rollback atomik.
+- **Fix**: Mengimplementasikan pembuatan staged temporary files (`.env.tmp`, `.secrets/initial_admin_password.txt.tmp`), pembatasan izin ACL menggunakan `icacls.exe` dengan pengecekan `$LASTEXITCODE`, pemindahan atomik ke lokasi target, serta mekanisme rollback otomatis di blok `catch`. Menambahkan test otomatis `tests/test-init-local.ps1`.
+- **Regression Test**: Test suite `tests/test-init-local.ps1` berhasil 3 passed (100% green).
+- **Status**: Fixed & Verified
+
+### BUG-015: File Legacy scripts/e2e-setup.js yang Tidak Terpakai Masih Tertinggal
+- **Severity**: Low
+- **Deskripsi**: File `scripts/e2e-setup.js` masih tersimpan di repositori meskipun tidak lagi direferensikan oleh package.json, workflow, atau test runner manapun.
+- **Steps to Reproduce**: Memeriksa isi direktori `scripts/`.
+- **Root Cause**: Artefak pengembangan awal yang belum dibersihkan saat arsitektur beralih ke Docker compose dan Playwright native runner.
+- **Fix**: Menghapus file `scripts/e2e-setup.js` secara tuntas dan memverifikasi tidak ada referensi yang terputus.
+- **Regression Test**: Seluruh test backend, frontend, dan E2E tetap berjalan normal tanpa error dependensi.
+- **Status**: Fixed & Verified

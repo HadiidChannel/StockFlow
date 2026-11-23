@@ -268,7 +268,7 @@ Data demo siap pakai development (`backend/prisma/seed.ts`):
 Proyek ini dilengkapi dengan pengujian otomatis menyeluruh:
 
 ```bash
-# Menjalankan pengujian backend (Unit, Integration API, Security, & Bootstrap - 92 tests)
+# Menjalankan pengujian backend (Unit, Integration API, Security, & Bootstrap - 95 tests)
 cd backend
 npm test
 
@@ -276,16 +276,19 @@ npm test
 cd frontend
 npm test
 
-# Menjalankan pengujian browser End-to-End (Playwright Chromium - 13 stages)
-cd frontend
-npx playwright test
+# Menjalankan pengujian lingkungan lokal terisolasi otomatis (Init script test - 3 tests)
+powershell -ExecutionPolicy Bypass -File tests/test-init-local.ps1
+
+# Menjalankan pengujian browser End-to-End terisolasi (Playwright Chromium pada port 3100 - 3 tests, 13 stages)
+powershell -ExecutionPolicy Bypass -File scripts/run-e2e.ps1
 ```
 
-### Ringkasan Hasil Pengujian v1.4:
-- **Backend Tests**: 92 tests passed across 11 test files (AppError, Zod Validation, RBAC Permissions, CSRF Token Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Concurrency Locking, Multi-Table Atomic Rollbacks, Environment Validation, and Docker Secrets Bootstrap).
+### Ringkasan Hasil Pengujian v1.6:
+- **Backend Tests**: 95 tests passed across 11 test files (AppError, Zod Validation, RBAC Permissions, CSRF Token Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Concurrency Locking, Multi-Table Atomic Rollbacks, Environment Validation, and Docker Secrets Bootstrap with fresh creation and one-time execution guard).
 - **Frontend Tests**: 9 tests passed across 2 test files (Utils formatters, Concurrency calculation, Audit ledger reconciliation, Reversal logic).
-- **Playwright Browser E2E**: 13-stage comprehensive inventory lifecycle workflow passed in 8.9s against running production Docker containers (fresh database initialization, bootstrap admin login, forced password change, real REST API, and zero mock).
-- **Total**: 101 automated tests passing hijau 100% dengan exit code 0.
+- **Playwright Browser E2E**: 3 tests / 13-stage comprehensive inventory lifecycle workflow passed in 8.8s against isolated E2E Docker stack on port 3100 (fresh disposable database initialization, bootstrap admin login, forced password change, real REST API, and zero static/hardcoded credentials).
+- **Setup Automation Tests**: 3 tests passed in `tests/test-init-local.ps1` (fresh generation, overwrite guard, Windows ACL verification).
+- **Total**: 107 automated tests passing hijau 100% dengan exit code 0.
 
 ---
 
@@ -294,23 +297,31 @@ npx playwright test
 ```text
 StockFlow/
 ├── arahan/                      # Arsip dokumen spesifikasi resmi (PRD, FSD, ERD, Schema)
-├── docker-compose.yml           # Konfigurasi container produksi
+├── docker-compose.yml           # Konfigurasi container produksi (Port 3000, project: stockflow-prod)
 ├── docker-compose.dev.yml       # Konfigurasi container development hot-reload
+├── docker-compose.e2e.yml       # Konfigurasi container E2E terisolasi (Port 3100, project: stockflow-e2e-test)
 ├── .env.example                 # Blueprint variabel environment
 ├── SPEC.md                      # Dokumen spesifikasi acuan engineering
 ├── README.md                    # Dokumentasi utama proyek portofolio
+├── scripts/
+│   ├── init-local.ps1           # Generator kredensial kriptografis .NET dengan Windows ACL & rollback
+│   └── run-e2e.ps1              # Orkestrator pengujian Playwright E2E pada stack terisolasi port 3100
+├── tests/
+│   └── test-init-local.ps1      # Pengujian otomatis untuk skrip inisialisasi lingkungan lokal
 ├── tasks/
 │   ├── plan.md                  # Rencana arsitektur dan milestone bertahap
 │   └── todo.md                  # Checklist eksekusi tugas
 ├── docs/
 │   ├── engineering/             # Dokumentasi teknis & rekayasa perangkat lunak
-│   │   ├── ARCHITECTURE_DECISIONS.md  # Catatan keputusan arsitektur (ADR)
+│   │   ├── ARCHITECTURE_DECISIONS.md  # Catatan keputusan arsitektur (ADR-001 s.d. ADR-010)
 │   │   ├── SECURITY_REVIEW.md         # Threat modeling & audit OWASP Top 10
 │   │   ├── TESTING_STRATEGY.md        # Rencana piramida testing
 │   │   ├── TEST_RESULTS.md            # Catatan riwayat eksekusi pengujian
-│   │   ├── BUG_LOG.md                 # Pelacakan issue dan regresi bug
-│   │   ├── DEPLOYMENT_GUIDE.md        # Panduan deployment production
+│   │   ├── BUG_LOG.md                 # Pelacakan issue dan regresi bug (BUG-001 s.d. BUG-015)
+│   │   ├── DEPLOYMENT_GUIDE.md        # Panduan deployment production & isolasi E2E
 │   │   ├── DATABASE_MAINTENANCE.md    # Backup, restore, dan migrasi database
+│   │   ├── E2E_REPORT.md              # Laporan pengujian browser Playwright E2E 13 tahap
+│   │   ├── FINAL_RELEASE_REPORT_V1_6.md # Laporan komprehensif rilis final v1.6
 │   │   └── TROUBLESHOOTING.md         # Solusi masalah teknis umum
 │   └── learning/                # Dokumentasi materi fundamental
 │       ├── LEARNING_ROADMAP.md        # Peta jalan pembelajaran teknologi
@@ -320,6 +331,7 @@ StockFlow/
 │       └── guides/                    # Modul panduan teknologi kontekstual (01-09)
 ├── backend/                     # REST API Express.js & TypeScript
 │   ├── Dockerfile
+│   ├── vitest.config.ts         # Konfigurasi vitest backend dengan fileParallelism: false
 │   ├── prisma/
 │   │   ├── schema.prisma        # 14 Tabel relasional MySQL
 │   │   └── seed.ts              # Seeder data realistis multi-gudang
@@ -329,16 +341,17 @@ StockFlow/
 │   │   ├── utils/               # AppError, Logger, Transaction Sequence Generator
 │   │   ├── app.ts               # Express configuration
 │   │   └── server.ts            # Server entrypoint & graceful shutdown
-│   └── tests/                   # Vitest unit & integration test suite
+│   └── tests/                   # Vitest unit & integration test suite (95 tests)
 └── frontend/                    # Next.js 15 App Router & React 19
     ├── Dockerfile
+    ├── playwright.config.ts     # Konfigurasi Playwright E2E terikat ke port 3100
     ├── tailwind.config.ts       # Design tokens Indigo & Mint
     ├── src/
     │   ├── app/                 # Next.js Pages: (marketing), (auth), (dashboard)
     │   ├── components/          # Reusable UI & Layout components
     │   ├── lib/                 # API client, CSRF interceptor, formatters
     │   └── types/               # TypeScript domain contracts
-    └── tests/                   # Vitest frontend & workflow logic test suite
+    └── tests/                   # Vitest frontend (9 tests) & Playwright E2E (3 tests)
 ```
 
 ---

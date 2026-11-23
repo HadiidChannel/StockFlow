@@ -1,0 +1,36 @@
+On branch fix/stockflow-localhost-final-v16
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   README.md
+	modified:   backend/src/app.ts
+	modified:   backend/src/config/env.ts
+	modified:   backend/src/middleware/csrf.ts
+	modified:   backend/tests/bootstrap.test.ts
+	modified:   docs/engineering/ARCHITECTURE_DECISIONS.md
+	modified:   docs/engineering/BUG_LOG.md
+	modified:   docs/engineering/DEPLOYMENT_GUIDE.md
+	modified:   docs/engineering/E2E_REPORT.md
+	modified:   docs/engineering/FINAL_RELEASE_REPORT_V1_3.md
+	modified:   docs/engineering/FINAL_RELEASE_REPORT_V1_4.md
+	modified:   docs/engineering/SECURITY_REVIEW.md
+	modified:   docs/engineering/TEST_RESULTS.md
+	modified:   docs/engineering/TROUBLESHOOTING.md
+	modified:   docs/learning/ARCHITECTURE_OVERVIEW.md
+	modified:   docs/learning/LEARNING_ROADMAP.md
+	modified:   frontend/playwright.config.ts
+	modified:   frontend/tests/e2e/results.json
+	modified:   frontend/tests/e2e/stockflow-lifecycle.spec.ts
+	deleted:    scripts/e2e-setup.js
+	modified:   scripts/init-local.ps1
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	backend/vitest.config.ts
+	docker-compose.e2e.yml
+	docs/engineering/FINAL_RELEASE_REPORT_V1_6.md
+	evidence/
+	scripts/run-e2e.ps1
+	tests/
+
+no changes added to commit (use "git add" and/or "git commit -a")

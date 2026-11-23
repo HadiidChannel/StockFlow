@@ -183,3 +183,24 @@ Pemetaan port frontend menggunakan `"3000:3000"` pada Docker Compose mempublikas
 ### Konsekuensi
 - Positif: Akses aplikasi terbatas secara ketat hanya pada komputer lokal pengembang (127.0.0.1), seluruh kredensial dihasilkan dengan standar kriptografi tinggi, risiko kebocoran placeholder dihilangkan, pengujian E2E sepenuhnya berbasis kredensial bootstrap nyata.
 - Negatif: Pengguna pada sistem operasi Windows perlu menjalankan skrip PowerShell sebelum menjalankan Docker Compose untuk pertama kali.
+
+---
+
+## ADR-010: Isolasi Lingkungan Pengujian E2E dan Siklus Hidup Infrastruktur Sekali Pakai
+
+### Status
+Accepted
+
+### Konteks
+Sebelumnya, pengujian Playwright E2E dijalankan langsung terhadap aplikasi utama di port 3000 atau berbagi volume database produksi (`mysql_prod_data`). Hal ini menimbulkan risiko polusi data pengujian ke dalam database utama, potensi race condition dengan data demo, serta risiko reset database yang merusak integritas lingkungan lokal utama. Di samping itu, pengujian E2E membutuhkan jaminan lingkungan bersih (clean slate) pada setiap eksekusi agar pengujian 13 tahap daur hidup inventaris bersifat deterministik.
+
+### Keputusan
+1. Membuat konfigurasi Docker Compose terisolasi `docker-compose.e2e.yml` dengan nama project tersendiri: `stockflow-e2e-test`.
+2. Mengikat ingress frontend pengujian E2E secara eksklusif ke port loopback terpisah: `127.0.0.1:3100:3000`. Port aplikasi utama `127.0.0.1:3000` tetap aktif dan tidak pernah diganggu.
+3. Menyediakan jaringan Docker internal terisolasi: `stockflow_e2e_net` dan volume database sekali pakai: `mysql_e2e_data`.
+4. Mengembangkan skrip orkestrasi otomatis `scripts/run-e2e.ps1` yang menjalankan siklus lengkap: pengecekan port, pembuatan kredensial dinamis, inisialisasi database fresh, migrasi skema Prisma, eksekusi bootstrap administrator satu kali, peluncuran frontend/backend, eksekusi Playwright E2E, serta pembersihan otomatis (`docker compose down -v`) pada blok finally.
+5. Menghilangkan seluruh kredensial statis dan fallback hardcoded dari test suite Playwright (`stockflow-lifecycle.spec.ts`) dengan menggenerasi password dinamis secara kriptografis menggunakan `crypto.randomInt`.
+
+### Konsekuensi
+- Positif: Isolasi 100% antara database utama dan database pengujian, zero data pollution, pengujian dapat dijalankan berulang kali secara deterministik tanpa merusak data aplikasi utama, kredensial dinamis menghilangkan risiko paparan secret.
+- Negatif: Eksekusi pengujian E2E memerlukan waktu beberapa puluh detik untuk proses inisialisasi kontainer database dan migrasi skema sekali pakai.

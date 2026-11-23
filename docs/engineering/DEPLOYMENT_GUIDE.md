@@ -10,18 +10,18 @@ StockFlow didesain untuk deployment kontainer terisolasi menggunakan Docker Comp
 
 ```text
 [ Internet / Browser Client ]
-              │
-              ▼
+              â”‚
+              â-¼
     [ Reverse Proxy / Ingress ]
-              │
-              ▼
+              â”‚
+              â-¼
    [ Frontend Next.js :3000 ]
-     │ (Same-Origin Relative /api/v1)
-     │ Next.js Rewrites (Internal Bridge)
-     ▼
+     â”‚ (Same-Origin Relative /api/v1)
+     â”‚ Next.js Rewrites (Internal Bridge)
+     â-¼
    [ Backend Express.js :4000 ]
-     │
-     ▼
+     â”‚
+     â-¼
    [ MySQL 8.4 LTS :3306 (Internal Bridge) ]
 ```
 
@@ -161,3 +161,39 @@ docker compose exec -i db mysql -u root -p"$DB_ROOT_PASSWORD" stockflow_db < bac
 3. Isolasi Total Jaringan Internal: Port 3306 (MySQL) dan Port 4000 (Backend Express) tidak dipublikasikan ke host publik pada konfigurasi produksi. Backend dan database hanya dapat diakses melalui Docker network internal `stockflow_net`.
 4. Sanitasi Secret: Tidak ada secret atau password yang disimpan di dalam Dockerfile layer atau di-log ke terminal. Seluruh kredensial diinjeksi via environment variables atau secret files saat runtime.
 5. Pemeriksaan Kesehatan: Endpoint `/api/v1/health` melakukan verifikasi koneksi database aktif (`SELECT 1`) dengan timeout proteksi.
+
+---
+
+## 6. Prosedur Pengujian End-to-End (E2E) Terisolasi
+
+StockFlow menyediakan lingkungan pengujian Playwright E2E yang sepenuhnya terisolasi dari aplikasi utama untuk menjamin zero test data pollution dan zero downtime pada port produksi.
+
+### Perbandingan Lingkungan Aplikasi Utama vs Stack E2E
+
+| Parameter | Aplikasi Utama (Main Stack) | Stack Pengujian E2E (E2E Test Stack) |
+| :--- | :--- | :--- |
+| File Compose | `docker-compose.yml` | `docker-compose.e2e.yml` |
+| Project Name | `stockflow-prod` | `stockflow-e2e-test` |
+| Ingress URL | `http://localhost:3000` (`127.0.0.1:3000`) | `http://127.0.0.1:3100` (`127.0.0.1:3100`) |
+| Network Docker | `stockflow_net` | `stockflow_e2e_net` |
+| Database Volume | `mysql_prod_data` (Persistent) | `mysql_e2e_data` (Disposable / Ephemeral) |
+| Kredensial Admin | Dibaca dari `.secrets/initial_admin_password.txt` | Dihasilkan secara acak via `crypto.randomInt` |
+| Siklus Hidup | Long-running production demo | Otomatis dibuat, diuji, dan dibersihkan (`down -v`) |
+
+### Menjalankan Pengujian E2E Terisolasi
+
+Untuk mengeksekusi rangkaian pengujian E2E 13 tahap:
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/run-e2e.ps1
+```
+
+Skrip runner akan melakukan secara otomatis:
+1. Memverifikasi ketersediaan port 3100 pada loopback host (`127.0.0.1`).
+2. Membuat kredensial kriptografis dinamis untuk database dan user E2E.
+3. Menjalankan container database `stockflow_e2e_db` dan menunggu status healthy.
+4. Menjalankan migrator skema database E2E (`prisma migrate deploy`).
+5. Mengeksekusi bootstrap administrator satu kali untuk akun awal E2E.
+6. Menjalankan backend dan frontend E2E pada port `3100`.
+7. Menjalankan Playwright test suite (`frontend/tests/e2e/stockflow-lifecycle.spec.ts`).
+8. Melakukan teardown bersih (`docker compose down -v`) untuk menghapus volume database sekali pakai `mysql_e2e_data`.
+9. Membuktikan bahwa kontainer aplikasi utama pada port `3000` tetap aktif dan tidak tersentuh.

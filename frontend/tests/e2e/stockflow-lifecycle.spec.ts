@@ -1,6 +1,35 @@
 import { test, expect } from '@playwright/test';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+
+export function generateSecureRandomPassword(length = 24): string {
+  const uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowers = 'abcdefghijklmnopqrstuvwxyz';
+  const digits = '0123456789';
+  const specials = '!@#$%^&*()-_=+';
+  const allChars = uppers + lowers + digits + specials;
+
+  const getRandomChar = (charset: string) => charset[crypto.randomInt(0, charset.length)];
+
+  const chars = [
+    getRandomChar(uppers),
+    getRandomChar(lowers),
+    getRandomChar(digits),
+    getRandomChar(specials),
+  ];
+
+  for (let i = chars.length; i < length; i++) {
+    chars.push(getRandomChar(allChars));
+  }
+
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.join('');
+}
 
 export function getInitialAdminPassword(): string {
   const customPath = process.env.E2E_ADMIN_PASSWORD_FILE;
@@ -17,8 +46,10 @@ export function getInitialAdminPassword(): string {
   }
 
   const candidatePaths = [
-    path.resolve('../.secrets/initial_admin_password.txt'),
+    path.resolve('.secrets/e2e_initial_admin_password.txt'),
+    path.resolve('../.secrets/e2e_initial_admin_password.txt'),
     path.resolve('.secrets/initial_admin_password.txt'),
+    path.resolve('../.secrets/initial_admin_password.txt'),
   ];
 
   for (const candidate of candidatePaths) {
@@ -33,7 +64,7 @@ export function getInitialAdminPassword(): string {
   throw new Error(
     'E2E Failure: File password rahasia initial administrator tidak ditemukan. ' +
     'Tentukan lokasi file melalui environment variable E2E_ADMIN_PASSWORD_FILE atau ' +
-    'pastikan .secrets/initial_admin_password.txt tersedia. Hardcoded fallback credential dilarang keras.'
+    'pastikan .secrets/e2e_initial_admin_password.txt tersedia. Hardcoded fallback credential dilarang keras.'
   );
 }
 
@@ -72,7 +103,9 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
   const warehouseUnassignedCode = `W2${timestamp.toString().slice(-4)}`;
   const staffEmail = `staff.${timestamp}@stockflow.com`;
   const staffName = `Staf Operasional ${timestamp}`;
-  const staffPassword = 'StaffPassword2026!';
+  const staffPassword = generateSecureRandomPassword(20);
+  const newStaffPassword = generateSecureRandomPassword(24);
+  const permanentAdminPassword = generateSecureRandomPassword(24);
 
   let createdProductId = '';
   let unassignedWarehouseId = '';
@@ -83,7 +116,6 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
     // -------------------------------------------------------------------------
     console.log('[E2E Stage 1] Admin Login (Fresh Bootstrap Account)');
     const initialAdminPassword = getInitialAdminPassword();
-    const permanentAdminPassword = 'AdminPermanentPassword2026!';
 
     await page.goto('/login');
     await expect(page).toHaveTitle(/StockFlow/i);
@@ -91,27 +123,16 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
     await page.fill('input[type="password"]', initialAdminPassword);
     await page.click('button[type="submit"]');
 
-    // Tunggu navigasi ke change-password atau dashboard (jika sudah fresh bootstrap)
-    const reachedAuthTarget = await page.waitForURL((url) => url.pathname.includes('/change-password') || url.pathname.includes('/dashboard'), { timeout: 5000 }).catch(() => null);
+    // Pada environment terisolasi fresh, initial admin wajib diarahkan ke /change-password
+    await page.waitForURL((url) => url.pathname.includes('/change-password'), { timeout: 15000 });
+    console.log('[E2E Stage 1] Administrator Forced Password Change terpicu demi keamanan');
+    await page.locator('input[type="password"]').first().fill(initialAdminPassword);
+    await page.locator('input[type="password"]').nth(1).fill(permanentAdminPassword);
+    await page.locator('input[type="password"]').nth(2).fill(permanentAdminPassword);
+    await page.click('button[type="submit"]');
 
-    if (page.url().includes('/change-password')) {
-      console.log('[E2E Stage 1] Administrator Forced Password Change terpicu demi keamanan');
-      await page.locator('input[type="password"]').first().fill(initialAdminPassword);
-      await page.locator('input[type="password"]').nth(1).fill(permanentAdminPassword);
-      await page.locator('input[type="password"]').nth(2).fill(permanentAdminPassword);
-      await page.click('button[type="submit"]');
-      await expect(page).toHaveURL(/.*dashboard/);
-    } else if (!reachedAuthTarget && !page.url().includes('/dashboard')) {
-      // Pada skenario eksekusi berulang di mana password telah diganti pada iterasi sebelumnya
-      console.log('[E2E Stage 1] Mencoba login dengan password permanen hasil forced change');
-      await page.fill('input[type="password"]', permanentAdminPassword);
-      await page.click('button[type="submit"]');
-      await page.waitForURL((url) => url.pathname.includes('/dashboard'), { timeout: 10000 });
-      await expect(page).toHaveURL(/.*dashboard/);
-    } else {
-      await expect(page).toHaveURL(/.*dashboard/);
-    }
-
+    await page.waitForURL((url) => url.pathname.includes('/dashboard'), { timeout: 15000 });
+    await expect(page).toHaveURL(/.*dashboard/);
     await expect(page.locator('header')).toContainText('Administrator');
 
     // -------------------------------------------------------------------------
@@ -266,7 +287,6 @@ test.describe('StockFlow Full Lifecycle End-to-End Testing (Real Database & API)
     // Security guard: new users must change password on first login
     await expect(page).toHaveURL(/.*change-password/);
     console.log('[E2E Stage 8] Forced password change security guard verified');
-    const newStaffPassword = 'StaffPermanentPassword2026!';
     await page.locator('input[type="password"]').first().fill(staffPassword);
     await page.locator('input[type="password"]').nth(1).fill(newStaffPassword);
     await page.locator('input[type="password"]').nth(2).fill(newStaffPassword);

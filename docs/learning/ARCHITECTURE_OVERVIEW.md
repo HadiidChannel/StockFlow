@@ -51,30 +51,30 @@ StockFlow dibangun dengan pola 3-Tier Web Architecture yang memisahkan Presentat
 
 ```text
 [ Staff / Admin ]
-        │
-        ├── 1. Submit Transaksi (Gudang, Item, Kuantitas)
-        ▼
+        â”‚
+        â”œâ”€â”€ 1. Submit Transaksi (Gudang, Item, Kuantitas)
+        â-¼
 [ Backend Express Router & Middleware ]
-        │
-        ├── 2. Verifikasi Session Cookie & CSRF Token
-        ├── 3. Verifikasi Role & Scope Penugasan Gudang
-        ├── 4. Validasi Skema Input (Zod: kuantitas > 0, 3 desimal)
-        ▼
+        â”‚
+        â”œâ”€â”€ 2. Verifikasi Session Cookie & CSRF Token
+        â”œâ”€â”€ 3. Verifikasi Role & Scope Penugasan Gudang
+        â”œâ”€â”€ 4. Validasi Skema Input (Zod: kuantitas > 0, 3 desimal)
+        â-¼
 [ Inventory Transaction Service ]
-        │
-        ├── 5. Buka Database Transaction (BEGIN TRANSACTION)
-        ├── 6. Kunci Baris Saldo: SELECT ... FOR UPDATE pada inventory_balances
-        ├── 7. Jika Stock Out: Validasi balance_before >= kuantitas_diminta
-        │      └─ Jika kurang: ROLLBACK & kembalikan 422 INSUFFICIENT_STOCK
-        ├── 8. Dapatkan Nomor Transaksi Baru (IN-YYYYMMDD-X / OUT-YYYYMMDD-X)
-        ├── 9. Hitung balance_after dan Perbarui inventory_balances
-        ├── 10. Insert Header stock_transactions
-        ├── 11. Insert Detail stock_transaction_items
-        ├── 12. Insert Ledger stock_movements
-        ├── 13. Catat Idempotency Record (jika key disediakan)
-        ├── 14. Simpan Transaksi (COMMIT TRANSACTION)
-        ▼
+        â”‚
+        â”œâ”€â”€ 5. Buka Database Transaction (BEGIN TRANSACTION)
+        â”œâ”€â”€ 6. Kunci Baris Saldo: SELECT ... FOR UPDATE pada inventory_balances
+        â”œâ”€â”€ 7. Jika Stock Out: Validasi balance_before >= kuantitas_diminta
+        â”‚      â””â”€ Jika kurang: ROLLBACK & kembalikan 422 INSUFFICIENT_STOCK
+        â”œâ”€â”€ 8. Dapatkan Nomor Transaksi Baru (IN-YYYYMMDD-X / OUT-YYYYMMDD-X)
+        â”œâ”€â”€ 9. Hitung balance_after dan Perbarui inventory_balances
+        â”œâ”€â”€ 10. Insert Header stock_transactions
+        â”œâ”€â”€ 11. Insert Detail stock_transaction_items
+        â”œâ”€â”€ 12. Insert Ledger stock_movements
+        â”œâ”€â”€ 13. Catat Idempotency Record (jika key disediakan)
+        â”œâ”€â”€ 14. Simpan Transaksi (COMMIT TRANSACTION)
+        â-¼
 [ Response JSON ]
-        │
-        └── 15. Kembalikan Status 201 Created dengan Data Referensi
+        â”‚
+        â””â”€â”€ 15. Kembalikan Status 201 Created dengan Data Referensi
 ```

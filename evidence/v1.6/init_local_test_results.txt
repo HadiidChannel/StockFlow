@@ -1,0 +1,22 @@
+=== Running Automated Tests for scripts/init-local.ps1 ===
+[Test 1] Executing init-local.ps1 on fresh directory...
+WARNING: Terjadi kegagalan saat inisialisasi lingkungan lokal: Access to the path is denied.. Memulai rollback...
+powershell.exe : D:\Les Web Programming\Project Belajar\StokFlow\scripts\init-local.ps1 : The property 'Count' cannot 
+be found on this 
+At line:1 char:825
++ ...  $initOut = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (D:\Les Web Prog... found on this :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+object. Verify that the property exists.
+    + CategoryInfo          : NotSpecified: (:) [init-local.ps1], PropertyNotFoundException
+    + FullyQualifiedErrorId : PropertyNotFoundStrict,init-local.ps1
+ 
+Test 1 Failed: init-local.ps1 exited with code 1 on fresh directory
+At D:\Les Web Programming\Project Belajar\StokFlow\tests\test-init-local.ps1:22 char:9
++         throw "Test 1 Failed: init-local.ps1 exited with code $LASTEX ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (Test 1 Failed: ...fresh directory:String) [], RuntimeException
+    + FullyQualifiedErrorId : Test 1 Failed: init-local.ps1 exited with code 1 on fresh directory
+ 

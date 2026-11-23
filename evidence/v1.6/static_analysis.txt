@@ -1,0 +1,26 @@
+=== BACKEND TYPECHECK ===
+
+> stockflow-backend@1.0.0 typecheck
+> tsc --noEmit
+
+
+
+=== BACKEND LINT ===
+
+> stockflow-backend@1.0.0 lint
+> eslint src/
+
+
+
+=== FRONTEND TYPECHECK ===
+
+> stockflow-frontend@1.0.0 typecheck
+> tsc --noEmit
+
+
+
+=== FRONTEND LINT ===
+
+> stockflow-frontend@1.0.0 lint
+> eslint src/
+

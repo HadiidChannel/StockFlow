@@ -113,12 +113,13 @@ export const envSchema = z.object({
     }
   } else if (data.APP_DEPLOYMENT_MODE === 'local') {
     // Mode deployment local portfolio:
-    // FRONTEND_URL harus tepat canonical http://localhost:3000
-    if (data.FRONTEND_URL !== 'http://localhost:3000') {
+    // FRONTEND_URL harus tepat canonical http://localhost:3000 atau port E2E terisolasi (3100)
+    const allowedLocalUrls = ['http://localhost:3000', 'http://localhost:3100', 'http://127.0.0.1:3100'];
+    if (!allowedLocalUrls.includes(data.FRONTEND_URL)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['FRONTEND_URL'],
-        message: 'FRONTEND_URL pada mode APP_DEPLOYMENT_MODE=local harus tepat http://localhost:3000.',
+        message: 'FRONTEND_URL pada mode APP_DEPLOYMENT_MODE=local harus tepat http://localhost:3000 atau port E2E terisolasi (3100).',
       });
     }
   }

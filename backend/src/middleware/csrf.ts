@@ -7,7 +7,7 @@ function getAllowedOrigins(): string[] {
   const isLocalDeployment = process.env.APP_DEPLOYMENT_MODE === 'local' || !process.env.APP_DEPLOYMENT_MODE;
   const envUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/+$/, '') : undefined;
   if (isLocalDeployment) {
-    return ['http://localhost:3000'];
+    return ['http://localhost:3000', 'http://127.0.0.1:3100', 'http://localhost:3100'];
   }
   return envUrl ? [envUrl] : [];
 }

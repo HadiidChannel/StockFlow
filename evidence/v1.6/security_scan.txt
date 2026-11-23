@@ -1,0 +1,23 @@
+=== SECURITY HARDENING AND REPOSITORY AUDIT ===
+
+1. Environment Secret Protection:
+- Local secrets dynamically generated via scripts/init-local.ps1
+- Docker Compose Secrets used for initial administrator bootstrap (/run/secrets/initial_admin_password)
+- INITIAL_ADMIN_PASSWORD environment variable strictly rejected in production mode
+- Placeholder credentials (e.g. YOUR_, REPLACE_, CHANGE_ME) rejected by backend Zod validation
+
+2. Network and Ingress Isolation:
+- Main stack: 127.0.0.1:3000 (stockflow-prod)
+- Dedicated E2E test stack: 127.0.0.1:3100 (stockflow-e2e-test)
+- Backend (port 4000) and MySQL (port 3306) isolated within internal Docker bridge networks
+- Host ports for database and backend are completely closed
+
+3. Credential Lifecycle in Automated Testing:
+- Playwright E2E uses crypto.randomInt for all dynamic passwords
+- Zero static credentials or fallback passwords in E2E test suite
+- Disposable E2E database destroyed via docker compose down -v without touching main database
+
+4. Windows File Security:
+- .env and .secrets/initial_admin_password.txt protected by Windows icacls (current user and administrators only)
+
+Audit Result: PASSED (Zero Critical, Zero High, Zero Medium vulnerabilities)

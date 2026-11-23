@@ -22,22 +22,22 @@ Arsitektur aplikasi menerapkan pola *Same-Origin Reverse Proxy*:
 
 ```
 [ Browser Klien ]
-        │
-        │ HTTP Request ke http://localhost:3000
-        ▼
+        â”‚
+        â”‚ HTTP Request ke http://localhost:3000
+        â-¼
 [ Frontend Ingress: Next.js 15 Standalone (Port 3000) ]
-        │
-        ├─► /dashboard, /inventory, /products, dsb. (Next.js SSR & Static Assets)
-        │
-        └─► /api/v1/:path* (Next.js Build-Time Internal Proxy Rewrite)
-                 │
-                 │ Jaringan Privat Docker (stockflow_net)
-                 │ Host Destination: http://backend:4000/api/v1/:path*
-                 ▼
+        â”‚
+        â”œâ”€â-º /dashboard, /inventory, /products, dsb. (Next.js SSR & Static Assets)
+        â”‚
+        â””â”€â-º /api/v1/:path* (Next.js Build-Time Internal Proxy Rewrite)
+                 â”‚
+                 â”‚ Jaringan Privat Docker (stockflow_net)
+                 â”‚ Host Destination: http://backend:4000/api/v1/:path*
+                 â-¼
      [ Backend Tier: Express.js (Port 4000 - Host Port Closed) ]
-                 │
-                 │ Soket Database Privat
-                 ▼
+                 â”‚
+                 â”‚ Soket Database Privat
+                 â-¼
      [ Database Tier: MySQL 8.4 LTS (Port 3306 - Host Port Closed) ]
 ```
 

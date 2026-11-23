@@ -1,0 +1,107 @@
+name: stockflow-e2e-test
+services:
+  backend:
+    restart: 'no'
+    container_name: stockflow_e2e_backend
+    environment:
+      APP_DEPLOYMENT_MODE: local
+      COOKIE_DOMAIN: ""
+      COOKIE_SAME_SITE: lax
+      COOKIE_SECURE: "false"
+      CSRF_SECRET: [REDACTED_SECRET]
+      DATABASE_URL: mysql://stockflow_e2e_user:[REDACTED_SECRET]@db:3306/stockflow_e2e_db
+      FRONTEND_URL: http://127.0.0.1:3100
+      LOG_LEVEL: info
+      NODE_ENV: production
+      PORT: "4000"
+      SESSION_SECRET: [REDACTED_SECRET]
+    networks:
+      stockflow_e2e_net: null
+    build:
+      context: D:\Les Web Programming\Project Belajar\StokFlow\backend
+      dockerfile: Dockerfile
+      target: runner
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+      migrator:
+        condition: service_completed_successfully
+        required: true
+  db:
+    restart: 'no'
+    container_name: stockflow_e2e_db
+    environment:
+      MYSQL_DATABASE: stockflow_e2e_db
+      MYSQL_PASSWORD: [REDACTED_SECRET]
+      MYSQL_ROOT_PASSWORD: [REDACTED_SECRET]
+      MYSQL_USER: stockflow_e2e_user
+    image: mysql:8.4
+    networks:
+      stockflow_e2e_net: null
+    volumes:
+      - type: volume
+        source: mysql_e2e_data
+        target: /var/lib/mysql
+        volume: {}
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - -h
+        - localhost
+        - -u
+        - root
+        - -p22231f43a1bcbd3a7b76a9121f80239725001358b03ee889
+      timeout: 3s
+      interval: 3s
+      retries: 25
+  frontend:
+    restart: 'no'
+    container_name: stockflow_e2e_frontend
+    environment:
+      INTERNAL_BACKEND_URL: http://backend:4000
+      NODE_ENV: production
+      PORT: "3000"
+    networks:
+      stockflow_e2e_net: null
+    build:
+      context: D:\Les Web Programming\Project Belajar\StokFlow\frontend
+      dockerfile: Dockerfile
+      args:
+        INTERNAL_BACKEND_URL: http://backend:4000
+      target: runner
+    depends_on:
+      backend:
+        condition: service_started
+        required: true
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 3000
+        published: "3100"
+        protocol: tcp
+  migrator:
+    restart: 'no'
+    container_name: stockflow_e2e_migrator
+    environment:
+      DATABASE_URL: mysql://stockflow_e2e_user:[REDACTED_SECRET]@db:3306/stockflow_e2e_db
+    networks:
+      stockflow_e2e_net: null
+    build:
+      context: D:\Les Web Programming\Project Belajar\StokFlow\backend
+      dockerfile: Dockerfile
+      target: migrator
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+networks:
+  stockflow_e2e_net:
+    name: stockflow-e2e-test_stockflow_e2e_net
+    driver: bridge
+volumes:
+  mysql_e2e_data:
+    name: stockflow-e2e-test_mysql_e2e_data
+    driver: local

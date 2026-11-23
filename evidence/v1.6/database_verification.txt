@@ -1,0 +1,123 @@
+=== STOCKFLOW DATABASE VERIFICATION EVIDENCE (MySQL 8.4 LTS) ===
+
+mysql_version
+8.4.13
+TABLE_NAME	CONSTRAINT_NAME	CHECK_CLAUSE
+inventory_balances	chk_inventory_balance_quantity	(`quantity` >= 0)
+products	chk_products_cost_price	((`cost_price` is null) or (`cost_price` >= 0))
+products	chk_products_minimum_stock	(`minimum_stock` >= 0)
+stock_movements	chk_movements_balance_after	(`balance_after` >= 0)
+stock_movements	chk_movements_balance_before	(`balance_before` >= 0)
+stock_movements	chk_movements_quantity	(`quantity` > 0)
+stock_transaction_items	chk_items_balance_after	(`balance_after` >= 0)
+stock_transaction_items	chk_items_balance_before	(`balance_before` >= 0)
+stock_transaction_items	chk_items_quantity	(`quantity` > 0)
+TABLE_NAME	COLUMN_NAME	CONSTRAINT_NAME	REFERENCED_TABLE_NAME	REFERENCED_COLUMN_NAME
+categories	created_by	fk_categories_created_by	users	id
+categories	organization_id	fk_categories_organization	organizations	id
+categories	updated_by	fk_categories_updated_by	users	id
+idempotency_records	transaction_id	fk_idempotency_transaction	stock_transactions	id
+idempotency_records	user_id	fk_idempotency_user	users	id
+inventory_balances	product_id	fk_balance_product	products	id
+inventory_balances	warehouse_id	fk_balance_warehouse	warehouses	id
+products	category_id	fk_products_category	categories	id
+products	created_by	fk_products_created_by	users	id
+products	organization_id	fk_products_organization	organizations	id
+products	updated_by	fk_products_updated_by	users	id
+sessions	user_id	fk_sessions_user	users	id
+stock_movements	product_id	fk_movements_product	products	id
+stock_movements	transaction_id	fk_movements_transaction	stock_transactions	id
+stock_movements	transaction_item_id	fk_movements_transaction_item	stock_transaction_items	id
+stock_movements	transaction_id	fk_movements_transaction_item_product	stock_transaction_items	transaction_id
+stock_movements	transaction_item_id	fk_movements_transaction_item_product	stock_transaction_items	id
+stock_movements	product_id	fk_movements_transaction_item_product	stock_transaction_items	product_id
+stock_movements	transaction_id	fk_movements_transaction_warehouse	stock_transactions	id
+stock_movements	warehouse_id	fk_movements_transaction_warehouse	stock_transactions	warehouse_id
+stock_movements	warehouse_id	fk_movements_warehouse	warehouses	id
+stock_transaction_items	product_id	fk_items_product	products	id
+stock_transaction_items	transaction_id	fk_items_transaction	stock_transactions	id
+stock_transactions	correction_of_transaction_id	fk_transactions_correction_of	stock_transactions	id
+stock_transactions	created_by	fk_transactions_created_by	users	id
+stock_transactions	organization_id	fk_transactions_organization	organizations	id
+stock_transactions	warehouse_id	fk_transactions_warehouse	warehouses	id
+user_warehouse_assignments	assigned_by	fk_uwa_assigned_by	users	id
+user_warehouse_assignments	user_id	fk_uwa_user	users	id
+user_warehouse_assignments	warehouse_id	fk_uwa_warehouse	warehouses	id
+users	created_by	fk_users_created_by	users	id
+users	organization_id	fk_users_organization	organizations	id
+users	role_id	fk_users_role	roles	id
+users	updated_by	fk_users_updated_by	users	id
+warehouses	created_by	fk_warehouses_created_by	users	id
+warehouses	organization_id	fk_warehouses_organization	organizations	id
+warehouses	updated_by	fk_warehouses_updated_by	users	id
+*************************** 1. row ***************************
+       Table: inventory_balances
+Create Table: CREATE TABLE `inventory_balances` (
+  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `product_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `warehouse_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `quantity` decimal(18,3) NOT NULL DEFAULT '0.000',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_balance_product_warehouse` (`product_id`,`warehouse_id`),
+  KEY `idx_balance_warehouse_product` (`warehouse_id`,`product_id`),
+  CONSTRAINT `fk_balance_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_balance_warehouse` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `chk_inventory_balance_quantity` CHECK ((`quantity` >= 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+*************************** 1. row ***************************
+       Table: stock_transactions
+Create Table: CREATE TABLE `stock_transactions` (
+  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `organization_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `warehouse_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_by` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_by_name_snapshot` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` enum('IN','OUT') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reference_number` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('POSTED') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'POSTED',
+  `note` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `external_reference` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `correction_of_transaction_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `warehouse_name_snapshot` varchar(160) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `warehouse_code_snapshot` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `posted_at` datetime(3) NOT NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_transactions_reference` (`reference_number`),
+  UNIQUE KEY `uq_transactions_id_warehouse` (`id`,`warehouse_id`),
+  UNIQUE KEY `uq_transactions_correction_of` (`correction_of_transaction_id`),
+  KEY `idx_transactions_posted` (`posted_at`),
+  KEY `idx_transactions_type_posted` (`type`,`posted_at`),
+  KEY `idx_transactions_warehouse_posted` (`warehouse_id`,`posted_at`),
+  KEY `fk_transactions_organization` (`organization_id`),
+  KEY `fk_transactions_created_by` (`created_by`),
+  CONSTRAINT `fk_transactions_correction_of` FOREIGN KEY (`correction_of_transaction_id`) REFERENCES `stock_transactions` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_transactions_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_transactions_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_transactions_warehouse` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+*************************** 1. row ***************************
+       Table: stock_transaction_items
+Create Table: CREATE TABLE `stock_transaction_items` (
+  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `transaction_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `product_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `product_name_snapshot` varchar(160) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sku_snapshot` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unit_snapshot` varchar(24) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `quantity` decimal(18,3) NOT NULL,
+  `balance_before` decimal(18,3) NOT NULL,
+  `balance_after` decimal(18,3) NOT NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_items_transaction_product` (`transaction_id`,`product_id`),
+  UNIQUE KEY `uq_items_tx_id_product` (`transaction_id`,`id`,`product_id`),
+  KEY `idx_items_product_transaction` (`product_id`,`transaction_id`),
+  CONSTRAINT `fk_items_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_items_transaction` FOREIGN KEY (`transaction_id`) REFERENCES `stock_transactions` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `chk_items_balance_after` CHECK ((`balance_after` >= 0)),
+  CONSTRAINT `chk_items_balance_before` CHECK ((`balance_before` >= 0)),
+  CONSTRAINT `chk_items_quantity` CHECK ((`quantity` > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

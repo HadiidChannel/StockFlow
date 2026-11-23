@@ -1,0 +1,51 @@
+=== BACKEND BUILD ===
+
+> stockflow-backend@1.0.0 build
+> tsc
+
+
+
+=== FRONTEND BUILD ===
+
+> stockflow-frontend@1.0.0 build
+> next build
+
+   ▲ Next.js 15.5.29
+   - Environments: .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 3.5s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/17) ...
+   Generating static pages (4/17) 
+   Generating static pages (8/17) 
+   Generating static pages (12/17) 
+ ✓ Generating static pages (17/17)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      46 kB         161 kB
+├ ○ /_not-found                            997 B         104 kB
+├ ○ /categories                          4.05 kB         138 kB
+├ ○ /change-password                     3.11 kB         137 kB
+├ ○ /dashboard                            110 kB         248 kB
+├ ○ /inventory                           3.89 kB         142 kB
+├ ○ /inventory/stock-in                   4.5 kB         142 kB
+├ ○ /inventory/stock-out                  4.6 kB         142 kB
+├ ○ /login                               3.79 kB         142 kB
+├ ○ /movements                           4.94 kB         139 kB
+├ ○ /organization                        3.66 kB         138 kB
+├ ○ /products                            4.77 kB         139 kB
+├ ○ /settings                            2.23 kB         114 kB
+├ ○ /users                               5.73 kB         140 kB
+└ ○ /warehouses                          4.17 kB         138 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/255-d1a5c4d6b601e986.js       46.3 kB
+  ├ chunks/4bd1b696-409494caf8c83275.js  54.2 kB
+  └ other shared chunks (total)          2.04 kB
+
+
+○  (Static)  prerendered as static content
+

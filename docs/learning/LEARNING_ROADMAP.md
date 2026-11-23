@@ -8,15 +8,15 @@ Dokumen ini memetakan materi dan konsep fundamental rekayasa perangkat lunak yan
 
 ```text
                   [ StockFlow Learning Roadmap ]
-                               │
-       ┌───────────────────────┼───────────────────────┐
-       ▼                       ▼                       ▼
+                               â”‚
+       â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+       â-¼                       â-¼                       â-¼
  [ Frontend Tier ]       [ Backend Tier ]       [ Database & DevOps ]
-   • JS & TS Core          • Node.js Event Loop    • Relational Modeling
-   • React Architecture    • Express Middleware    • ACID Transactions
-   • Next.js App Router    • REST API Contracts    • Pessimistic Locking
-   • Tailwind & UI/UX      • Auth & Session Mgmt   • Prisma ORM
-   • Motion & State        • Security Hardening    • Docker Containerization
+   â€¢ JS & TS Core          â€¢ Node.js Event Loop    â€¢ Relational Modeling
+   â€¢ React Architecture    â€¢ Express Middleware    â€¢ ACID Transactions
+   â€¢ Next.js App Router    â€¢ REST API Contracts    â€¢ Pessimistic Locking
+   â€¢ Tailwind & UI/UX      â€¢ Auth & Session Mgmt   â€¢ Prisma ORM
+   â€¢ Motion & State        â€¢ Security Hardening    â€¢ Docker Containerization
 ```
 
 ---

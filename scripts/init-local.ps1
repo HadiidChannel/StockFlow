@@ -6,18 +6,27 @@
 # ==============================================================================
 
 [CmdletBinding()]
-param()
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$TargetProjectRoot
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 # 1. Resolve Project Root Directory
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path
+if ([string]::IsNullOrWhiteSpace($TargetProjectRoot)) {
+    $projectRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path
+} else {
+    $projectRoot = (Resolve-Path $TargetProjectRoot).Path
+}
 
 $envFilePath = Join-Path $projectRoot ".env"
 $secretsDirPath = Join-Path $projectRoot ".secrets"
 $secretPasswordFilePath = Join-Path $secretsDirPath "initial_admin_password.txt"
+$tempSecretPath = Join-Path $secretsDirPath "initial_admin_password.txt.tmp"
+$tempEnvPath = Join-Path $projectRoot ".env.tmp"
 
 # 2. Safety Guards: Do not overwrite existing configuration
 if (Test-Path -LiteralPath $envFilePath) {
@@ -93,40 +102,50 @@ function Get-CryptoRandomPassword([int]$length = 24) {
     }
 }
 
+function Set-SecureAcl([string]$targetPath, [bool]$isDirectory = $false) {
+    if (-not (Test-Path -LiteralPath $targetPath)) {
+        throw "Target path '$targetPath' tidak ditemukan saat konfigurasi ACL."
+    }
+    $userName = $env:USERNAME
+    if ($isDirectory) {
+        & icacls.exe "$targetPath" /inheritance:r /grant:r "${userName}:(OI)(CI)(R,W)" /grant:r "*S-1-5-32-544:(OI)(CI)(R,W)" | Out-Null
+    } else {
+        & icacls.exe "$targetPath" /inheritance:r /grant:r "${userName}:(R,W)" /grant:r "*S-1-5-32-544:(R,W)" | Out-Null
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw "Gagal menerapkan Windows ACL pada '$targetPath'. Exit code: $LASTEXITCODE"
+    }
+}
+
 # 4. Generate High-Entropy Cryptographic Secrets
-# Database credentials use pure hex (URL-safe for DATABASE_URL parsing)
 $dbRootPassword = Get-CryptoRandomHex 24
 $dbPassword = Get-CryptoRandomHex 24
-
-# Session & CSRF secrets (64 hex characters = 256 bits entropy)
 $sessionSecret = Get-CryptoRandomHex 32
 $csrfSecret = Get-CryptoRandomHex 32
-
-# Initial Admin Password (24 characters, NIST compliant complexity)
 $initialAdminPassword = Get-CryptoRandomPassword 24
 
-# 5. Atomic File Generation
+# 5. Staged Generation and Atomic Replacement with Rollback
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+$createdSecretsDir = $false
+$createdTempSecret = $false
+$createdSecretFile = $false
+$createdTempEnv = $false
+$createdEnvFile = $false
 
 try {
-    # Ensure .secrets directory exists
+    # 5a. Ensure .secrets directory exists and has restricted ACL
     if (-not (Test-Path -LiteralPath $secretsDirPath)) {
         New-Item -ItemType Directory -Path $secretsDirPath -Force | Out-Null
+        $createdSecretsDir = $true
+        Set-SecureAcl -targetPath $secretsDirPath -isDirectory $true
     }
 
-    # Write initial admin password file
-    $tempSecretPath = "$secretPasswordFilePath.tmp"
+    # 5b. Staged secret file generation
     [System.IO.File]::WriteAllText($tempSecretPath, $initialAdminPassword, $utf8NoBom)
-    Move-Item -LiteralPath $tempSecretPath -Destination $secretPasswordFilePath -Force
+    $createdTempSecret = $true
+    Set-SecureAcl -targetPath $tempSecretPath -isDirectory $false
 
-    # Restrict file permissions using Windows icacls (current user and administrators only)
-    try {
-        & icacls.exe "$secretPasswordFilePath" /inheritance:r /grant:r "$($env:USERNAME):(R,W)" /grant:r "*S-1-5-32-544:(R,W)" | Out-Null
-    } catch {
-        # Graceful notice if running in non-elevated or restricted context
-    }
-
-    # Prepare .env template
+    # 5c. Staged .env generation
     $envContent = @"
 # Database Configuration
 DB_ROOT_PASSWORD=$dbRootPassword
@@ -155,16 +174,46 @@ INITIAL_ADMIN_NAME="System Administrator"
 INITIAL_ORG_NAME="PT StockFlow Logistik Nusantara"
 "@
 
-    # Write .env file atomically
-    $tempEnvPath = "$envFilePath.tmp"
     [System.IO.File]::WriteAllText($tempEnvPath, $envContent, $utf8NoBom)
+    $createdTempEnv = $true
+    Set-SecureAcl -targetPath $tempEnvPath -isDirectory $false
+
+    # 5d. Atomic replacement to final destinations
+    Move-Item -LiteralPath $tempSecretPath -Destination $secretPasswordFilePath -Force
+    $createdSecretFile = $true
+    $createdTempSecret = $false
+    Set-SecureAcl -targetPath $secretPasswordFilePath -isDirectory $false
+
     Move-Item -LiteralPath $tempEnvPath -Destination $envFilePath -Force
+    $createdEnvFile = $true
+    $createdTempEnv = $false
+    Set-SecureAcl -targetPath $envFilePath -isDirectory $false
 
 } catch {
-    # Cleanup on error
-    if (Test-Path -LiteralPath "$secretPasswordFilePath.tmp") { Remove-Item -LiteralPath "$secretPasswordFilePath.tmp" -Force }
-    if (Test-Path -LiteralPath "$envFilePath.tmp") { Remove-Item -LiteralPath "$envFilePath.tmp" -Force }
-    Write-Error "Terjadi kegagalan saat membuat konfigurasi rahasia: $_"
+    # 5e. Strict Rollback on Any Failure
+    $errorMessage = $_.Exception.Message
+    Write-Warning "Terjadi kegagalan saat inisialisasi lingkungan lokal: $errorMessage. Memulai rollback..."
+
+    if ($createdTempSecret -or (Test-Path -LiteralPath $tempSecretPath)) {
+        Remove-Item -LiteralPath $tempSecretPath -Force -ErrorAction SilentlyContinue
+    }
+    if ($createdSecretFile -and (Test-Path -LiteralPath $secretPasswordFilePath)) {
+        Remove-Item -LiteralPath $secretPasswordFilePath -Force -ErrorAction SilentlyContinue
+    }
+    if ($createdTempEnv -or (Test-Path -LiteralPath $tempEnvPath)) {
+        Remove-Item -LiteralPath $tempEnvPath -Force -ErrorAction SilentlyContinue
+    }
+    if ($createdEnvFile -and (Test-Path -LiteralPath $envFilePath)) {
+        Remove-Item -LiteralPath $envFilePath -Force -ErrorAction SilentlyContinue
+    }
+    if ($createdSecretsDir -and (Test-Path -LiteralPath $secretsDirPath)) {
+        $remaining = Get-ChildItem -LiteralPath $secretsDirPath -Force -ErrorAction SilentlyContinue
+        if ($null -eq $remaining -or $remaining.Count -eq 0) {
+            Remove-Item -LiteralPath $secretsDirPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    Write-Error "Inisialisasi lingkungan lokal dibatalkan dan seluruh artefak parsial berhasil di-rollback: $errorMessage"
     exit 1
 }
 

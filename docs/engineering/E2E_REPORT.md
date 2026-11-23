@@ -3,13 +3,13 @@
 ## 1. Executive Summary
 
 - Test Framework: Playwright v1.65.1 (Chromium Engine)
-- Target Application: StockFlow Inventory and Warehouse Management System
-- Frontend: Next.js 15 Standalone Reverse Proxy on http://localhost:3000
+- Target Application: StockFlow Inventory and Warehouse Management System (Dedicated E2E Stack)
+- Frontend Ingress: Next.js 15 Standalone Reverse Proxy on http://127.0.0.1:3100
 - Backend: Express.js on internal Docker network (backend:4000, host port closed)
-- Database: MySQL 8.4 LTS on internal Docker network (db:3306, host port closed)
-- Execution Mode: Real Browser, Real REST API, Real Production Docker Database (Zero Mocks)
-- Result: 13 / 13 Stages Passed (100% Green, 0 Failures, 0 Flaky)
-- Total Test Duration: 8.1s
+- Database: MySQL 8.4 LTS on internal Docker network (db:3306, host port closed, disposable volume mysql_e2e_data)
+- Execution Mode: Real Browser, Real REST API, Real Production Docker Database (Zero Mocks, Zero Hardcoded Credentials)
+- Result: 3 Tests / 13 Stages Passed (100% Green, 0 Failures, 0 Flaky)
+- Total Test Duration: 8.8s
 
 ---
 
@@ -89,9 +89,9 @@
 ### Stage 8: Warehouse Staff Login (P0-02 Forced Password Change)
 - Clicked logout button in navigation topbar.
 - Verified redirect to `/login`.
-- Logged in with staff email and temporary password.
+- Logged in with staff email and temporary password (dynamically generated 20-character crypto password).
 - Verified security enforcement redirect to `/change-password` because `mustChangePassword` is `true`.
-- Entered current password and new permanent password (`StaffPermanentPassword2026!`).
+- Entered current password and new permanent password (dynamically generated 24-character crypto password).
 - Submitted password change form.
 - Verified redirect to `/dashboard` with header displaying staff name and "Warehouse Staff" badge.
 

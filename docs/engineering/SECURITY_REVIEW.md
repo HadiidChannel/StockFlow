@@ -129,3 +129,36 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
 - Helper `getInitialAdminPassword()` pada `frontend/tests/e2e/stockflow-lifecycle.spec.ts` dibersihkan dari seluruh fallback password hardcoded.
 - Test runner diwajibkan membaca password nyata dari `E2E_ADMIN_PASSWORD_FILE` atau `.secrets/initial_admin_password.txt`.
 - Jika file secret tidak ditemukan atau kosong, pengujian langsung melempar error dan gagal (fail-fast), menjamin integritas pengujian yang 100% otentik terhadap database hasil bootstrap nyata.
+
+---
+
+## 7. Hardening Rilis Portofolio Lokal v1.6
+
+### A. Isolasi Total Lingkungan Pengujian E2E (Port 3100 & Dedicated Docker Project)
+- Pengujian Playwright E2E dijalankan pada konfigurasi compose terpisah `docker-compose.e2e.yml` dengan project name `stockflow-e2e-test`.
+- Ingress E2E terikat secara eksklusif ke port loopback `127.0.0.1:3100`.
+- Memisahkan network (`stockflow_e2e_net`) dan volume persistent database (`mysql_e2e_data`).
+- Seluruh pengujian E2E menggunakan database sekali pakai (disposable database) yang diinisialisasi secara fresh dan dibersihkan otomatis (`docker compose down -v`) pada akhir eksekusi tanpa pernah menyentuh volume data aplikasi utama (`mysql_prod_data`).
+- Aplikasi utama pada port `3000` tetap aktif, sehat, dan tidak terganggu selama maupun sesudah pengujian E2E.
+
+### B. Kredensial Acak Kriptografis pada Seluruh Alur Pengujian E2E
+- Seluruh password yang digunakan dalam skenario E2E Playwright (`permanentAdminPassword`, `staffPassword`, `newStaffPassword`) dibuat secara dinamis menggunakan modul kriptografi `crypto.randomInt`.
+- Password memenuhi standar kompleksitas minimal 20 hingga 24 karakter dengan kombinasi huruf besar, huruf kecil, angka, dan karakter khusus.
+- Tidak ada password statis atau kredensial hardcoded yang tersimpan pada source code pengujian.
+- Seluruh nilai password dilarang dicetak pada console log maupun laporan bukti pengujian.
+
+### C. Staged File Creation, Rollback Atomik, dan Verifikasi Windows ACL pada init-local.ps1
+- Skrip `scripts/init-local.ps1` menggunakan pendekatan pembuatan bertahap (staged) melalui file temporer (`.env.tmp` dan `.secrets/initial_admin_password.txt.tmp`).
+- Penerapan izin Windows ACL (`icacls.exe`) membatasi hak akses file hanya kepada user aktif dan grup Administrator lokal.
+- Variabel status `$LASTEXITCODE` divalidasi secara ketat setelah setiap pemanggilan `icacls.exe`. Jika terjadi kegagalan, skrip secara otomatis melakukan rollback penuh (menghapus seluruh file sementara dan artefak parsial) serta keluar dengan kode error 1.
+- Pemindahan file ke tujuan akhir dilakukan secara atomik menggunakan operasi `Move-Item -Force`.
+- Verifikasi otomatis terhadap skrip generator diuji melalui `tests/test-init-local.ps1` yang mencakup 3 skenario pengujian (fresh generation, overwrite guard, dan ACL validation).
+
+### D. Perbaikan False Positive pada Bootstrap Unit Test Suite
+- Pengujian unit pada `backend/tests/bootstrap.test.ts` diperbaiki dengan menghilangkan pengkondisian `if (existingAdmin)`.
+- Menggunakan pendekatan fixture terisolasi di mana role admin lama dipindahkan sementara ke role dummy, mengeksekusi bootstrap pada kondisi database kosong, memverifikasi pembuatan akun, enkripsi password bcrypt, status `mustChangePassword`, serta penolakan duplikasi pada eksekusi kedua. Data lama dikembalikan utuh pada blok `finally`.
+
+### E. Sanitasi Penuh Bukti Pengujian dan Laporan Audit
+- Seluruh file bukti verifikasi pada folder `evidence/v1.6/` dan `audit/evidence/v1.6/` diperiksa melalui pemindai otomatis `secret_scan.txt`.
+- Nilai secret, hash, dan password disanitasi menjadi `[REDACTED_SECRET]` pada konfigurasi compose dan log audit.
+- Terbukti 0 kredensial atau password mentah yang terekspos pada seluruh artefak verifikasi.

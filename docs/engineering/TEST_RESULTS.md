@@ -23,13 +23,15 @@ Dokumen ini mencatat ringkasan eksekusi pengujian pada setiap fase pengembangan.
 | 2026-11-23 | Final Release v1.3 | Reverse Proxy, Bootstrap Security & Docker Isolation | 95 | 95 | 0 | PASS | Internal proxy rewrite, dedicated bootstrap, host port isolation, 13-stage Docker E2E |
 | 2026-11-24 | Release v1.4 | Localhost Portfolio Edition & Docker Secrets | 101 | 101 | 0 | PASS | APP_DEPLOYMENT_MODE local, Docker Secrets bootstrap, fresh MySQL 8.4 lifecycle, 13-stage Playwright E2E |
 | 2026-11-24 | Release v1.5 | Localhost Network Isolation & Cryptographic Secrets | 107 | 107 | 0 | PASS | Loopback binding 127.0.0.1:3000, init-local.ps1 .NET crypto, placeholder secrets rejection, zero-fallback Playwright, sanitized evidence |
+| 2026-11-24 | Release v1.6 | E2E Isolation, Security Hardening & Local Setup Reliability | 107 | 107 | 0 | PASS | Dedicated E2E stack (port 3100), dynamic crypto credentials, init-local rollback + ACL, bootstrap test fix, zero DB pollution |
 
-### Ringkasan Eksekusi Pengujian Otomatis Final (v1.5 Localhost Portfolio Gate)
+### Ringkasan Eksekusi Pengujian Otomatis Final (v1.6 E2E Isolation & Release Gate)
 - **Backend Test Suite**: 95 Passed across 11 test files (100% green, exit code 0)
 - **Frontend Test Suite**: 9 Passed across 2 test files (100% green, exit code 0)
-- **Playwright Browser E2E**: 3 Passed (13-stage comprehensive inventory lifecycle workflow + 2 secret file validation tests in 8.9s against freshly bootstrapped Docker production stack, exit code 0)
+- **Playwright Browser E2E**: 3 Passed (13-stage comprehensive inventory lifecycle workflow + 2 secret file validation tests in 8.8s against isolated E2E Docker stack on port 3100, exit code 0)
+- **Automated Setup Tests**: 3 Passed in tests/test-init-local.ps1 (fresh initialization, safety guard overwrite protection, Windows ACL verification)
 - **TypeScript Typecheck**: 0 Type errors (Backend & Frontend)
-- **ESLint Analysis**: 0 Errors, 0 Warnings
-- **Next.js Production Build**: Standalone bundle generated, routes-manifest with internal backend rewrite, exit code 0
+- **ESLint Analysis**: 0 Errors, 0 Warnings (Backend & Frontend)
+- **Next.js Production Build**: Standalone bundle generated, 17 routes clean compile, exit code 0
 - **Total Test Otomatis**: 107 automated unit, integration, and E2E tests passing hijau 100% (0 failed, 0 skipped)
 - **Vulnerabilities**: 0 Critical, 0 High, 0 Moderate, 0 Low (npm audit exit code 0)

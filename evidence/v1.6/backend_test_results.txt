@@ -1,0 +1,130 @@
+
+> stockflow-backend@1.0.0 test
+> vitest run
+
+npm.cmd : [33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned 
+to become the default in a future major version of Vite:
+At line:1 char:130
++ ... ding } catch {}; $bOut = & npm.cmd test --prefix backend 2>&1 | Out-S ...
++                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33m(!) Your V...ersion of Vite::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` 
+in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mD:/Les Web Programming/Project Belajar/StokFlow/backend[39m
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m1. Authentication Flow[2m > [22m[2mharus menolak login dengan credential yang 
+salah (401)
+[22m[39m[2026-11-23T18:57:06.291Z] [WARN] AppError [UNAUTHORIZED]: Email atau password tidak valid. 
+{"requestId":"req_1795460226218_pom6wxe"}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m2. CSRF Security Enforcement on State-Changing API Endpoints[2m > [22m[2mharus 
+menolak request POST kategori jika tidak menyertakan X-CSRF-Token header (403)
+[22m[39m[2026-11-23T18:57:06.402Z] [WARN] AppError [FORBIDDEN]: Token CSRF tidak ditemukan. 
+{"requestId":"req_1795460226397_ymxw5w4"}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m2. CSRF Security Enforcement on State-Changing API Endpoints[2m > [22m[2mharus 
+menolak request POST kategori jika X-CSRF-Token tidak cocok dengan cookie (403)
+[22m[39m[2026-11-23T18:57:06.412Z] [WARN] AppError [FORBIDDEN]: Token CSRF tidak cocok. 
+{"requestId":"req_1795460226407_ecdh6sx"}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+menolak Stock In, Stock Out, dan Reversal tanpa Idempotency-Key header (400)
+[22m[39m[2026-11-23T18:57:06.596Z] [WARN] AppError [VALIDATION_ERROR]: Header Idempotency-Key wajib disertakan untuk 
+transaksi ini. {"requestId":"req_1795460226591_02cr5su","details":[{"field":"Idempotency-Key","message":"Header 
+Idempotency-Key wajib disertakan untuk transaksi ini."}]}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+menolak Stock In, Stock Out, dan Reversal tanpa Idempotency-Key header (400)
+[22m[39m[2026-11-23T18:57:06.606Z] [WARN] AppError [VALIDATION_ERROR]: Header Idempotency-Key wajib disertakan untuk 
+transaksi ini. {"requestId":"req_1795460226601_en2so2j","details":[{"field":"Idempotency-Key","message":"Header 
+Idempotency-Key wajib disertakan untuk transaksi ini."}]}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+menolak Stock In, Stock Out, dan Reversal tanpa Idempotency-Key header (400)
+[22m[39m[2026-11-23T18:57:06.616Z] [WARN] AppError [VALIDATION_ERROR]: Header Idempotency-Key wajib disertakan untuk 
+transaksi ini. {"requestId":"req_1795460226610_gxdg5xk","details":[{"field":"Idempotency-Key","message":"Header 
+Idempotency-Key wajib disertakan untuk transaksi ini."}]}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+menolak Stock Out jika kuantitas melebihi sisa saldo (422 Insufficient Stock)
+[22m[39m[2026-11-23T18:57:06.633Z] [WARN] AppError [INSUFFICIENT_STOCK]: Stok untuk produk 'Produk Integrasi 6075' 
+tidak mencukupi di gudang Gudang Integrasi 6075. Tersedia: 70, Diminta: 9999. {"requestId":"req_1795460226623_mz9jobw",
+"details":[{"field":"items.8a80fe9e-e808-4eeb-9c61-b8718ce9f29a","message":"Stok tersedia (70) kurang dari kuantitas 
+diminta (9999)."}]}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+berhasil membalik (reversal) transaksi Stock In asal via API
+[22m[39m[2026-11-23T18:57:06.650Z] [WARN] AppError [INSUFFICIENT_STOCK]: Gagal membalik transaksi: Saldo produk 
+'Produk Integrasi 6075' tidak mencukupi untuk dibatalkan (Tersedia: 70, Diperlukan: 100). 
+{"requestId":"req_1795460226638_cyo5r70"}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m5. Session Termination Flow[2m > [22m[2mharus berhasil logout dan mencabut sesi
+[22m[39m[2026-11-23T18:57:06.669Z] [WARN] AppError [UNAUTHORIZED]: Sesi telah dicabut. 
+{"requestId":"req_1795460226667_xat2vwi"}
+
+ [32m✓[39m tests/integration-api-flows.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 633[2mms[22m[39m
+[90mstdout[2m | tests/inventory-integrity.test.ts[2m > [22m[2mMilestone 2 & 3: Inventory Integrity and Concurrency Hardening[2m > [22m[2m4. Idempotency Key Semantics (P1-09)[2m > [22m[2mharus menangani concurrent execution dengan idempotency key yang sama tanpa duplikasi record
+[22m[39mprisma:error 
+Invalid `tx.idempotencyRecord.create()` invocation in
+D:/Les Web Programming/Project Belajar/StokFlow/backend/src/modules/inventory/inventory.service.ts:326:38
+
+  323 const expiresAt = new Date();
+  324 expiresAt.setHours(expiresAt.getHours() + 24);
+  325 
+→ 326 await tx.idempotencyRecord.create(
+Unique constraint failed on the constraint: `uq_idempotency_user_key`
+
+ [32m✓[39m tests/inventory-integrity.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 626[2mms[22m[39m
+[90mstdout[2m | tests/bootstrap.test.ts[2m > [22m[2mP0-03: Production Administrator Bootstrap Security & Docker Compose Secrets[2m > [22m[2mharus berhasil mengeksekusi bootstrap pada database kosong, membuat admin dengan bcrypt hash dan mustChangePassword, serta menolak duplikasi pada pemanggilan kedua
+[22m[39mMemulai proses inisialisasi (bootstrap) satu kali StockFlow...
+
+[90mstdout[2m | tests/bootstrap.test.ts[2m > [22m[2mP0-03: Production Administrator Bootstrap Security & Docker Compose Secrets[2m > [22m[2mharus berhasil mengeksekusi bootstrap pada database kosong, membuat admin dengan bcrypt hash dan mustChangePassword, serta menolak duplikasi pada pemanggilan kedua
+[22m[39mAdministrator awal berhasil dibuat: Admin Fresh Test (admin.fresh@stockflow.com)
+Status: must_change_password diaktifkan secara wajib demi keamanan akun awal.
+
+[90mstdout[2m | tests/bootstrap.test.ts[2m > [22m[2mP0-03: Production Administrator Bootstrap Security & Docker Compose Secrets[2m > [22m[2mharus berhasil mengeksekusi bootstrap pada database kosong, membuat admin dengan bcrypt hash dan mustChangePassword, serta menolak duplikasi pada pemanggilan kedua
+[22m[39mMemulai proses inisialisasi (bootstrap) satu kali StockFlow...
+
+[90mstdout[2m | tests/bootstrap.test.ts[2m > [22m[2mP0-03: Production Administrator Bootstrap Security & Docker Compose Secrets[2m > [22m[2mharus berhasil mengeksekusi bootstrap pada database kosong, membuat admin dengan bcrypt hash dan mustChangePassword, serta menolak duplikasi pada pemanggilan kedua
+[22m[39mBootstrap dibatalkan: Akun Administrator sudah ada pada sistem.
+
+ [32m✓[39m tests/bootstrap.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 330[2mms[22m[39m
+     [33m[2m✓[22m[39m harus berhasil mengeksekusi bootstrap pada database kosong, membuat admin dengan bcrypt hash dan mustChangePassword, serta menolak duplikasi pada pemanggilan kedua [33m 313[2mms[22m[39m
+[90mstderr[2m | tests/api-health.test.ts[2m > [22m[2mAPI Integration Health and Security Headers[2m > 
+[22m[2mGET /api/v1/unknown-endpoint harus mengembalikan 404 standard envelope
+[22m[39m[2026-11-23T18:57:09.326Z] [WARN] AppError [NOT_FOUND]: Endpoint tidak ditemukan. 
+{"requestId":"req_1795460229325_uyptxtl"}
+
+[90mstderr[2m | tests/api-health.test.ts[2m > [22m[2mAPI Integration Health and Security Headers[2m > 
+[22m[2mPOST /api/v1/auth/login dengan body kosong harus mengembalikan 400 VALIDATION_ERROR
+[22m[39m[2026-11-23T18:57:09.354Z] [WARN] AppError [VALIDATION_ERROR]: Validasi input login gagal. 
+{"requestId":"req_1795460229351_uo3a39d","details":[{"field":"email","message":"Invalid input: expected string, 
+received undefined"},{"field":"password","message":"Invalid input: expected string, received undefined"}]}
+
+ [32m✓[39m tests/api-health.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 85[2mms[22m[39m
+ [32m✓[39m tests/business-corrections.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32m✓[39m tests/validation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m tests/rbac.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m tests/env-validation.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/forced-password-change.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m tests/security-hardening.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/app-error.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m11 passed[39m[22m[90m (11)[39m
+[2m      Tests [22m [1m[32m95 passed[39m[22m[90m (95)[39m
+[2m   Start at [22m 02:57:04
+[2m   Duration [22m 7.12s[2m (transform 424ms, setup 0ms, import 2.62s, tests 1.76s, environment 1ms)[22m
+

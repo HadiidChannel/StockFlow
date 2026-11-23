@@ -115,22 +115,22 @@ Arsitektur komunikasi jaringan StockFlow menggunakan pola Same-Origin Reverse Pr
 
 ```
 [ Browser Klien ]
-        │
-        │ HTTP/HTTPS Request ke http://localhost:3000 (atau domain produksi)
-        ▼
+        â”‚
+        â”‚ HTTP/HTTPS Request ke http://localhost:3000 (atau domain produksi)
+        â-¼
 [ Ingress: Next.js Standalone Container (Port 3000) ]
-        │
-        ├─► /dashboard, /inventory, /products, dsb. (Next.js SSR & Static Assets)
-        │
-        └─► /api/v1/:path* (Next.js Rewrites Proxy)
-                 │
-                 │ Internal Docker Bridge Network (stockflow_net)
-                 │ Host Destination: http://backend:4000/api/v1/:path*
-                 ▼
+        â”‚
+        â”œâ”€â-º /dashboard, /inventory, /products, dsb. (Next.js SSR & Static Assets)
+        â”‚
+        â””â”€â-º /api/v1/:path* (Next.js Rewrites Proxy)
+                 â”‚
+                 â”‚ Internal Docker Bridge Network (stockflow_net)
+                 â”‚ Host Destination: http://backend:4000/api/v1/:path*
+                 â-¼
      [ Backend Express.js Container (Port 4000 - Host Port Closed) ]
-                 │
-                 │ Internal Database Socket
-                 ▼
+                 â”‚
+                 â”‚ Internal Database Socket
+                 â-¼
      [ MySQL 8.4 Database Container (Port 3306 - Host Port Closed) ]
 ```
 
