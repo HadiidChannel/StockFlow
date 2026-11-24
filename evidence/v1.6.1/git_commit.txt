@@ -1,15 +1,28 @@
-commit 8a4ba4f4d2004df01f0f138be35cd754ff470083
+commit 2f3dba8232e0866584701d3069047edb5b937da8
+Author: HadiidChannel <hadiidarraad622@gmail.com>
+Date:   Wed Nov 25 00:50:51 2026 +0800
+
+    docs(release): final v1.6.1 checksums and clean secret scan evidence
+
+ evidence/v1.6.1/RELEASE_CHECKSUMS.txt         | 8 ++++----
+ evidence/v1.6.1/source_package_scan.txt       | 2 +-
+ evidence/v1.6.1/verification_package_scan.txt | 2 +-
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+commit 2713682acf060106b45941e8d01f8919b2abd793
 Author: HadiidChannel <hadiidarraad622@gmail.com>
 Date:   Wed Nov 25 00:49:17 2026 +0800
 
     feat(release): official release packaging scripts and checksum evidence for v1.6.1
 
  evidence/v1.6.1/RELEASE_CHECKSUMS.txt         |  10 ++
+ evidence/v1.6.1/git_commit.txt                |  76 ++++-------
+ evidence/v1.6.1/git_status.txt                |   7 +-
  evidence/v1.6.1/source_package_scan.txt       |   8 ++
  evidence/v1.6.1/verification_package_scan.txt |   8 ++
  scripts/package-release.ps1                   | 173 ++++++++++++++++++++++++++
  scripts/scan-secrets.ps1                      |  23 +++-
- 5 files changed, 219 insertions(+), 3 deletions(-)
+ 7 files changed, 249 insertions(+), 56 deletions(-)
 
 commit a13a74bdb37533800b41315efb7889e8d7860f76
 Author: HadiidChannel <hadiidarraad622@gmail.com>
@@ -116,12 +129,3 @@ Date:   Tue Nov 24 03:09:55 2026 +0800
  scripts/run-e2e.ps1                            | 294 +++++++++++++++++++++++++
  tests/test-init-local.ps1                      |  61 +++++
  44 files changed, 1928 insertions(+), 254 deletions(-)
-
-commit cbd19ba8b6683f993a1f4238b5c8fa853de181dd
-Author: HadiidChannel <hadiidarraad622@gmail.com>
-Date:   Tue Nov 24 02:00:21 2026 +0800
-
-    docs: synchronize E2E_REPORT with v1.5 evidence
-
- docs/engineering/E2E_REPORT.md | 20 +++++++++++---------
- 1 file changed, 11 insertions(+), 9 deletions(-)
