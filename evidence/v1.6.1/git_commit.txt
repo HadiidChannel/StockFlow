@@ -1,0 +1,155 @@
+commit 2dfd5834fb90f377eb307fab2c24dd6504508f30
+Author: HadiidChannel <hadiidarraad622@gmail.com>
+Date:   Wed Nov 25 00:38:53 2026 +0800
+
+    fix(remediation): v1.6.1 release blocker remediation, total isolation, and secret hygiene
+
+ .gitignore                                         |   2 +
+ README.md                                          |  25 +-
+ backend/src/scripts/bootstrap.ts                   |   5 +-
+ backend/tests/bootstrap.integration.test.ts        |  74 +++++
+ .../{bootstrap.test.ts => bootstrap.unit.test.ts}  | 224 +++++++-------
+ docker-compose.dev.yml                             |   2 +-
+ docker-compose.e2e.yml                             |   9 +-
+ docker-compose.yml                                 |   2 +-
+ docs/engineering/ARCHITECTURE_DECISIONS.md         |  29 ++
+ docs/engineering/BUG_LOG.md                        |  20 +-
+ docs/engineering/DEPLOYMENT_GUIDE.md               |  12 +-
+ docs/engineering/FINAL_RELEASE_REPORT_V1_6_1.md    | 140 +++++++++
+ docs/engineering/SECURITY_REVIEW.md                |  30 ++
+ docs/engineering/TEST_RESULTS.md                   |  12 +-
+ docs/engineering/TROUBLESHOOTING.md                |   6 +-
+ evidence/v1.6.1/backend_test_results.txt           | 133 +++++++++
+ .../v1.6.1/bootstrap_integration_test_results.txt  |  10 +
+ evidence/v1.6.1/bootstrap_unit_test_results.txt    |  26 ++
+ evidence/v1.6.1/database_verification.txt          | 106 +++++++
+ evidence/v1.6.1/e2e_compose_config_sanitized.txt   |  97 +++++++
+ evidence/v1.6.1/e2e_resource_isolation.txt         |  24 ++
+ evidence/v1.6.1/e2e_test_results.txt               |  34 +++
+ evidence/v1.6.1/frontend_test_results.txt          |  26 ++
+ evidence/v1.6.1/init_local_test_results.txt        |  56 ++++
+ evidence/v1.6.1/main_stack_after.txt               |   5 +
+ evidence/v1.6.1/main_stack_before.txt              |   5 +
+ evidence/v1.6.1/npm_audit.txt                      |   9 +
+ evidence/v1.6.1/release_verification_summary.md    |  91 ++++++
+ evidence/v1.6.1/secret_scan.txt                    |   8 +
+ evidence/v1.6.1/static_analysis.txt                |  27 ++
+ frontend/tests/e2e/results.json                    | 321 ---------------------
+ scripts/init-local.ps1                             |  26 +-
+ scripts/run-e2e.ps1                                |  72 +++--
+ scripts/scan-secrets.ps1                           | 185 ++++++++++++
+ tests/test-init-local.ps1                          | 259 +++++++++++++++--
+ 35 files changed, 1593 insertions(+), 519 deletions(-)
+
+commit c7c50d8031cf3b97d203fb261f8b03ddf9b1fbef
+Author: HadiidChannel <hadiidarraad622@gmail.com>
+Date:   Tue Nov 24 03:09:55 2026 +0800
+
+    feat: StockFlow v1.6 E2E isolation, dynamic credentials, and local setup hardening
+
+ README.md                                      |  41 ++--
+ backend/src/app.ts                             |   2 +-
+ backend/src/config/env.ts                      |   7 +-
+ backend/src/middleware/csrf.ts                 |   2 +-
+ backend/tests/bootstrap.test.ts                | 108 ++++++++-
+ backend/vitest.config.ts                       |   9 +
+ docker-compose.e2e.yml                         | 120 ++++++++++
+ docs/engineering/ARCHITECTURE_DECISIONS.md     |  21 ++
+ docs/engineering/BUG_LOG.md                    |  45 ++++
+ docs/engineering/DEPLOYMENT_GUIDE.md           |  54 ++++-
+ docs/engineering/E2E_REPORT.md                 |  16 +-
+ docs/engineering/FINAL_RELEASE_REPORT_V1_3.md  |  28 +--
+ docs/engineering/FINAL_RELEASE_REPORT_V1_4.md  |  28 +--
+ docs/engineering/FINAL_RELEASE_REPORT_V1_6.md  | 211 ++++++++++++++++++
+ docs/engineering/SECURITY_REVIEW.md            |  33 +++
+ docs/engineering/TEST_RESULTS.md               |  10 +-
+ docs/engineering/TROUBLESHOOTING.md            |  44 ++++
+ docs/learning/ARCHITECTURE_OVERVIEW.md         |  46 ++--
+ docs/learning/LEARNING_ROADMAP.md              |  16 +-
+ evidence/v1.6/backend_test_results.txt         | 130 +++++++++++
+ evidence/v1.6/bootstrap_verification.txt       |  26 +++
+ evidence/v1.6/build_verification.txt           |  51 +++++
+ evidence/v1.6/database_verification.txt        | 123 +++++++++++
+ evidence/v1.6/e2e_compose_config_sanitized.txt | 107 +++++++++
+ evidence/v1.6/e2e_resource_isolation.txt       |  24 ++
+ evidence/v1.6/e2e_test_results.txt             |  34 +++
+ evidence/v1.6/frontend_test_results.txt        |  26 +++
+ evidence/v1.6/git_branch.txt                   |   9 +
+ evidence/v1.6/git_status.txt                   |  36 +++
+ evidence/v1.6/init_local_test_results.txt      |  22 ++
+ evidence/v1.6/main_stack_after.txt             |   5 +
+ evidence/v1.6/main_stack_before.txt            |   5 +
+ evidence/v1.6/npm_audit.txt                    |   6 +
+ evidence/v1.6/release_verification_summary.md  |  35 +++
+ evidence/v1.6/secret_scan.txt                  |   5 +
+ evidence/v1.6/security_scan.txt                |  23 ++
+ evidence/v1.6/static_analysis.txt              |  26 +++
+ frontend/playwright.config.ts                  |   6 +-
+ frontend/tests/e2e/results.json                |  46 ++--
+ frontend/tests/e2e/stockflow-lifecycle.spec.ts |  70 +++---
+ scripts/e2e-setup.js                           |  70 ------
+ scripts/init-local.ps1                         | 101 ++++++---
+ scripts/run-e2e.ps1                            | 294 +++++++++++++++++++++++++
+ tests/test-init-local.ps1                      |  61 +++++
+ 44 files changed, 1928 insertions(+), 254 deletions(-)
+
+commit cbd19ba8b6683f993a1f4238b5c8fa853de181dd
+Author: HadiidChannel <hadiidarraad622@gmail.com>
+Date:   Tue Nov 24 02:00:21 2026 +0800
+
+    docs: synchronize E2E_REPORT with v1.5 evidence
+
+ docs/engineering/E2E_REPORT.md | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
+
+commit f7ca5aa60e378670c681dbf5eb2041caaa88defe
+Author: HadiidChannel <hadiidarraad622@gmail.com>
+Date:   Tue Nov 24 01:56:28 2026 +0800
+
+    feat(release): StockFlow v1.5 Localhost Portfolio Finalization and Security Verification
+
+ README.md                                      |  29 ++-
+ backend/src/config/env.ts                      |  37 ++-
+ backend/tests/env-validation.test.ts           |  93 ++++++++
+ docker-compose.yml                             |   2 +-
+ docs/engineering/ARCHITECTURE_DECISIONS.md     |  22 ++
+ docs/engineering/BUG_LOG.md                    |  18 ++
+ docs/engineering/DEPLOYMENT_GUIDE.md           |  32 ++-
+ docs/engineering/FINAL_RELEASE_REPORT_V1_5.md  | 307 +++++++++++++++++++++++++
+ docs/engineering/SECURITY_REVIEW.md            |  24 ++
+ docs/engineering/TEST_RESULTS.md               |  11 +-
+ docs/engineering/TROUBLESHOOTING.md            |  19 ++
+ frontend/tests/e2e/results.json                | 100 +++++++-
+ frontend/tests/e2e/stockflow-lifecycle.spec.ts |  76 +++++-
+ scripts/init-local.ps1                         | 183 +++++++++++++++
+ 14 files changed, 883 insertions(+), 70 deletions(-)
+
+commit d346f2d82e6db8e2beff4296b0e7b7853bddad23
+Author: HadiidChannel <hadiidarraad622@gmail.com>
+Date:   Tue Nov 24 00:36:58 2026 +0800
+
+    feat(release): StockFlow v1.4 Localhost Portfolio Edition
+
+ .env.example                                   |  36 ++--
+ .gitignore                                     |   2 +
+ README.md                                      |  38 ++--
+ backend/.env.example                           |  26 +--
+ backend/src/app.ts                             |  12 +-
+ backend/src/config/env.ts                      |  51 +++--
+ backend/src/middleware/csrf.ts                 |  14 +-
+ backend/src/scripts/bootstrap.ts               |  70 ++++---
+ backend/tests/bootstrap.test.ts                |  88 +++++----
+ backend/tests/env-validation.test.ts           |  82 ++++++++-
+ backend/tests/security-hardening.test.ts       |  24 +++
+ docker-compose.test.yml                        |  70 +++++++
+ docker-compose.yml                             |  18 +-
+ docs/engineering/ARCHITECTURE_DECISIONS.md     |  22 +++
+ docs/engineering/BUG_LOG.md                    |  18 ++
+ docs/engineering/DEPLOYMENT_GUIDE.md           |  23 +--
+ docs/engineering/FINAL_RELEASE_REPORT_V1_4.md  | 245 +++++++++++++++++++++++++
+ docs/engineering/SECURITY_REVIEW.md            |  28 +++
+ docs/engineering/TEST_RESULTS.md               |   9 +-
+ frontend/tests/e2e/results.json                |  27 +--
+ frontend/tests/e2e/stockflow-lifecycle.spec.ts |  41 ++++-
+ frontend/tsconfig.tsbuildinfo                  |   1 -
+ 22 files changed, 749 insertions(+), 196 deletions(-)

@@ -1,0 +1,10 @@
+  fix/stockflow-audit-remediation     bccda95 chore: normalize encoding in evidence script
+  fix/stockflow-final-release-v12     f67c9d1 feat(release): StockFlow Final Release Remediation v1.2
+  fix/stockflow-final-release-v13     08ca3a0 feat(release): StockFlow Final Release Remediation v1.3
+  fix/stockflow-final-remediation-v11 b540a4c fix(remediation): complete StockFlow v1.1 security hardening, transaction integrity, and verification
+  fix/stockflow-localhost-final-v14   d346f2d feat(release): StockFlow v1.4 Localhost Portfolio Edition
+  fix/stockflow-localhost-final-v15   cbd19ba docs: synchronize E2E_REPORT with v1.5 evidence
+  fix/stockflow-localhost-final-v16   c7c50d8 feat: StockFlow v1.6 E2E isolation, dynamic credentials, and local setup hardening
+* fix/stockflow-localhost-final-v16-1 2dfd583 fix(remediation): v1.6.1 release blocker remediation, total isolation, and secret hygiene
+  main                                ed5b482 feat: complete StockFlow inventory and warehouse management system
+  master                              ed5b482 feat: complete StockFlow inventory and warehouse management system
