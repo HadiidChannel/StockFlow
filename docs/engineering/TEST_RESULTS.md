@@ -25,15 +25,19 @@ Dokumen ini mencatat ringkasan eksekusi pengujian pada setiap fase pengembangan.
 | 2026-11-24 | Release v1.5 | Localhost Network Isolation & Cryptographic Secrets | 107 | 107 | 0 | PASS | Loopback binding 127.0.0.1:3000, init-local.ps1 .NET crypto, placeholder secrets rejection, zero-fallback Playwright, sanitized evidence |
 | 2026-11-24 | Release v1.6 | E2E Isolation, Security Hardening & Local Setup Reliability | 107 | 107 | 0 | PASS | Dedicated E2E stack (port 3100), dynamic crypto credentials, init-local rollback + ACL, bootstrap test fix, zero DB pollution |
 | 2026-11-25 | Release v1.6.1 | Release Blocker Remediation, Full Isolation & Secret Hygiene | 125 | 125 | 0 | PASS | Healthcheck $$MYSQL_ROOT_PASSWORD, SID ACLs, strict mode safe rollback, bootstrap mock unit tests + fail-closed guard, dynamic E2E project namespaces, comprehensive secret scanner |
+| 2026-11-25 | Release v1.6.2 | Verification Integrity & Security Gate Remediation | 147 | 147 | 0 | PASS | Real disposable MySQL 8.4 bootstrap test, 14 guard scenarios, 19 init-local tests with 4 fault rollbacks, Docker label ownership, rebuilt 6-pattern secret scanner, 8 release gates verified |
 
-### Ringkasan Eksekusi Pengujian Otomatis Final (v1.6.1 Release Blocker Remediation)
-- **Backend Test Suite**: 98 Passed across 12 test files (100% green, exit code 0)
+### Ringkasan Eksekusi Pengujian Otomatis Final (v1.6.2 Verification Integrity & Security Gate Remediation)
+- **Backend Test Suite**: 111 Passed across 14 test files (100% green, exit code 0)
 - **Frontend Test Suite**: 9 Passed across 2 test files (100% green, exit code 0)
-- **Automated Setup Tests**: 15 Passed in tests/test-init-local.ps1 (fresh initialization, safety guard overwrite protection, password complexity, entropy checks, console hygiene, Windows ACL with well-known SIDs, Set-StrictMode Latest compatibility, clean rollback)
-- **Playwright Browser E2E**: 3 Passed (13-stage comprehensive inventory lifecycle workflow + 2 secret file validation tests in ~10s against isolated E2E Docker stack on port 3100, exit code 0)
+- **Automated Setup Tests**: 19 Passed in tests/test-init-local.ps1 (fresh initialization, safety guard overwrite protection, password complexity, entropy checks, console hygiene, Windows ACL with well-known SIDs, Set-StrictMode Latest compatibility, 4 transactional fault injection rollbacks)
+- **Bootstrap Integration Test**: 3 Passed in backend/tests/bootstrap.integration.test.ts against real disposable MySQL 8.4 container on port 3307
+- **Bootstrap Fail-Closed Guard Tests**: 14 Passed in backend/tests/bootstrap-guard.test.ts (rejection of non-disposable DBs, protocol validation, run ID matching)
+- **Playwright Browser E2E**: 3 Passed (13-stage comprehensive inventory lifecycle workflow + secret file tests in ~8.4s against isolated E2E Docker stack on port 3100, exit code 0)
+- **Release Verification Gate**: 8/8 Passed in scripts/verify-release.ps1 (archive integrity, checksum manifest matching, file presence, test results, clean git status, loopback bind, zero secrets, zero en/em dashes)
 - **TypeScript Typecheck**: 0 Type errors (Backend & Frontend)
 - **ESLint Analysis**: 0 Errors, 0 Warnings (Backend & Frontend)
 - **Next.js Production Build**: Standalone bundle generated, 17 routes clean compile, exit code 0
-- **Total Test Otomatis**: 125 automated unit, integration, and E2E tests passing hijau 100% (0 failed, 0 skipped, 0 flaky)
+- **Total Test Otomatis & Verification Gates**: 147 automated unit, integration, and E2E tests passing hijau 100% (0 failed, 0 skipped, 0 flaky)
 - **Vulnerabilities**: 0 Critical, 0 High, 0 Moderate, 0 Low (npm audit exit code 0)
-- **Secret Scan**: 100% Clean across all verification artifacts (0 leaks found)
+- **Secret Scan**: 100% Clean across all 309 project files (0 leaks found, 6/6 positive & negative self-tests passed)

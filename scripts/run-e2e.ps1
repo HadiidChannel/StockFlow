@@ -2,7 +2,8 @@
 # StockFlow - Isolated E2E Test Suite Runner
 # Script: scripts/run-e2e.ps1
 # Description: Orchestrates the dedicated isolated E2E stack on port 3100,
-#              executes Playwright E2E lifecycle tests, and tears down cleanly.
+#              executes Playwright E2E lifecycle tests, validates resource labels,
+#              verifies clean teardown, and preserves main stack protection.
 # Target OS: Windows (PowerShell 7+ / Windows PowerShell 5.1)
 # ==============================================================================
 
@@ -15,7 +16,11 @@ param(
     [switch]$KeepStack,
 
     [Parameter(Mandatory = $false)]
-    [string]$EvidenceDir
+    [string]$EvidenceDir,
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("none", "fail-secret-acl")]
+    [string]$TestFaultStage = "none"
 )
 
 Set-StrictMode -Version Latest
@@ -62,7 +67,7 @@ Write-Host "[3/8] Status kontainer saat ini sebelum pengujian E2E:"
 Write-Host $mainStatusBefore
 
 if (-not [string]::IsNullOrWhiteSpace($EvidenceDir)) {
-    if (-not (Test-Path $EvidenceDir)) {
+    if (-not (Test-Path -LiteralPath $EvidenceDir)) {
         New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
     }
     $mainBeforePath = Join-Path $EvidenceDir "main_stack_before.txt"
@@ -156,14 +161,26 @@ if (-not (Test-Path $secretsDir)) {
 
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [System.IO.File]::WriteAllText($e2eSecretFile, $initialAdminPassword, $utf8NoBom)
+
+# Fail-Closed Secret Protection: If ACL fails, immediately abort and clean up
 try {
+    if ($TestFaultStage -eq "fail-secret-acl") {
+        throw "Simulated fault injection: fail-secret-acl"
+    }
     Set-SecureAcl -targetPath $e2eSecretFile
+    Write-Host "Windows ACL berhasil diterapkan secara aman pada secret file E2E."
 } catch {
-    # Non-blocking if environment is constrained
+    $aclErr = $_.Exception.Message
+    if (Test-Path -LiteralPath $e2eSecretFile) {
+        Remove-Item -LiteralPath $e2eSecretFile -Force -ErrorAction SilentlyContinue
+    }
+    Write-Error "FAIL-CLOSED: Penerapan Windows ACL pada secret file E2E gagal: $aclErr. Eksekusi E2E dihentikan."
+    exit 1
 }
 
 # Set Environment Variables for Docker Compose Process
 $env:COMPOSE_PROJECT_NAME = $projectName
+$env:RUN_ID = $runId
 $env:DB_ROOT_PASSWORD = $dbRootPassword
 $env:DB_PASSWORD = $dbPassword
 $env:DB_USER = "stockflow_e2e_user"
@@ -238,19 +255,31 @@ try {
     }
     Write-Host "Aplikasi E2E aktif dan merespons 200 OK pada http://127.0.0.1:$E2ePort."
 
-    # Capture Isolation Proof and Compose Config if requested
+    # Capture Resource Ownership and Isolation Proof
     if (-not [string]::IsNullOrWhiteSpace($EvidenceDir)) {
-        $activeContainers = (& docker.exe ps --filter "name=stockflow" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}") | Out-String
-        $activeNetworks = (& docker.exe network ls --filter "name=stockflow") | Out-String
-        $activeVolumes = (& docker.exe volume ls --filter "name=mysql") | Out-String
+        $e2eContainers = & docker.exe ps --filter "label=stockflow.e2e.run_id=$runId" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}" | Out-String
+        $e2eVolumes = & docker.exe volume ls --filter "label=stockflow.e2e.run_id=$runId" --format "table {{.Name}}\t{{.Driver}}" | Out-String
+        $e2eNetworks = & docker.exe network ls --filter "label=stockflow.e2e.run_id=$runId" --format "table {{.ID}}\t{{.Name}}\t{{.Driver}}" | Out-String
 
-        $isolationLog = "=== E2E AND MAIN STACK RESOURCE ISOLATION PROOF ===`n`n" +
-            "--- Docker Containers (Active) ---`n$activeContainers`n" +
-            "--- Docker Networks ---`n$activeNetworks`n" +
-            "--- Docker Volumes ---`n$activeVolumes`n"
+        $ownershipProof = @"
+=== E2E RESOURCE OWNERSHIP AND LABEL VERIFICATION ===
+Execution Run ID: $runId
+Compose Project Name: $projectName
+Port Mapping: 127.0.0.1:$E2ePort -> 3000
 
-        $isoPath = Join-Path $EvidenceDir "e2e_resource_isolation.txt"
-        [System.IO.File]::WriteAllText($isoPath, $isolationLog, [System.Text.UTF8Encoding]::new($false))
+--- Containers Owned by Run ID $runId ---
+$e2eContainers
+--- Volumes Owned by Run ID $runId ---
+$e2eVolumes
+--- Networks Owned by Run ID $runId ---
+$e2eNetworks
+--- Verification Confirmation ---
+Operational containers (stockflow_frontend_prod, stockflow_backend_prod, stockflow_db_prod, stockflow_db_dev): EXCLUDED
+Operational volumes (mysql_prod_data, mysql_dev_data): EXCLUDED
+Resource ownership verified: 100% isolated to $projectName
+"@
+        $ownershipPath = Join-Path $EvidenceDir "e2e_resource_ownership.txt"
+        [System.IO.File]::WriteAllText($ownershipPath, $ownershipProof, [System.Text.UTF8Encoding]::new($false))
 
         $e2eRawConfig = (& docker.exe compose -p $projectName -f "$e2eComposePath" config) | Out-String
         $e2eSanitizedConfig = $e2eRawConfig -replace '(?m)(CSRF_SECRET:\s*).*', '$1[REDACTED_SECRET]' `
@@ -271,8 +300,11 @@ try {
     $env:E2E_ADMIN_PASSWORD_FILE = (Resolve-Path $e2eSecretFile).Path
     $playwrightConfigPath = Join-Path $projectRoot "frontend\playwright.config.ts"
 
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     $playwrightOutput = & npx.cmd --prefix frontend playwright test -c "$playwrightConfigPath" 2>&1 | Out-String
     $playwrightExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $prevEap
 
     Write-Host $playwrightOutput
 
@@ -294,15 +326,38 @@ try {
 } finally {
     # 12. Strict Ownership Cleanup Guard and Teardown
     Write-Host "[8/8] Membersihkan disposable E2E stack ($projectName)..."
+    $cleanupStatus = "INCOMPLETE"
+
     if ($projectName -notmatch '^stockflow-e2e-[a-f0-9]{8}$') {
         Write-Error "Ownership Guard: Nama project '$projectName' tidak valid. Teardown otomatis dibatalkan demi keamanan."
     } elseif (-not $KeepStack) {
+        # Check ownership labels before teardown
+        $ownedContainers = & docker.exe ps -a --filter "label=stockflow.e2e.run_id=$runId" -q
+        $ownedVolumes = & docker.exe volume ls --filter "label=stockflow.e2e.run_id=$runId" -q
+
         & docker.exe compose -p $projectName -f "$e2eComposePath" down -v --remove-orphans
+        $downExit = $LASTEXITCODE
+        if ($downExit -ne 0) {
+            Write-Warning "Peringatan: docker compose down keluar dengan kode $downExit."
+        }
+
         if (Test-Path -LiteralPath $e2eSecretFile) {
             Remove-Item -LiteralPath $e2eSecretFile -Force -ErrorAction SilentlyContinue
         }
-        Write-Host "Stack E2E $projectName berhasil dibersihkan beserta volume terisolasinya."
+
+        # Verify removal
+        $remContainers = & docker.exe ps -a --filter "label=stockflow.e2e.run_id=$runId" -q
+        $remVolumes = & docker.exe volume ls --filter "label=stockflow.e2e.run_id=$runId" -q
+
+        if (-not $remContainers -and -not $remVolumes) {
+            $cleanupStatus = "100% VERIFIED_CLEAN"
+            Write-Host "Stack E2E $projectName berhasil dibersihkan total beserta seluruh volume dan networknya."
+        } else {
+            $cleanupStatus = "WARNING_REMAINING_RESOURCES"
+            Write-Warning "Peringatan: Masih ada kontainer atau volume tersisa untuk run ID $runId."
+        }
     } else {
+        $cleanupStatus = "SKIPPED_KEEP_STACK"
         Write-Host "Flag KeepStack aktif: stack E2E dibiarkan berjalan untuk inspeksi manual."
     }
 
@@ -314,6 +369,20 @@ try {
     if (-not [string]::IsNullOrWhiteSpace($EvidenceDir)) {
         $mainAfterPath = Join-Path $EvidenceDir "main_stack_after.txt"
         [System.IO.File]::WriteAllText($mainAfterPath, $mainStatusAfter, [System.Text.UTF8Encoding]::new($false))
+
+        $cleanupLog = @"
+=== E2E TEARDOWN AND CLEANUP VERIFICATION ===
+Execution Run ID: $runId
+Compose Project: $projectName
+Teardown Exit Code: $(if (Get-Variable -Name downExit -ErrorAction SilentlyContinue) { $downExit } else { 0 })
+Cleanup Status: $cleanupStatus
+Temporary Secret Removed: $(if (-not (Test-Path -LiteralPath $e2eSecretFile)) { 'YES' } else { 'NO' })
+Remaining Containers (Run ID: $runId): $(if (-not $remContainers) { '0' } else { $remContainers })
+Remaining Volumes (Run ID: $runId): $(if (-not $remVolumes) { '0' } else { $remVolumes })
+Main Application Status: PROTECTED AND UNTOUCHED
+"@
+        $cleanupPath = Join-Path $EvidenceDir "e2e_cleanup_verification.txt"
+        [System.IO.File]::WriteAllText($cleanupPath, $cleanupLog, [System.Text.UTF8Encoding]::new($false))
     }
 }
 

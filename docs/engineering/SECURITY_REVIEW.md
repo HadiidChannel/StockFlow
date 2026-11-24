@@ -192,3 +192,57 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
 ### E. Scanner Rahasia Otomatis Multi-Vektor
 - Mengembangkan skrip scanner `scripts/scan-secrets.ps1` yang memindai argumen CLI (`-p<pass>`), connection strings, variabel environment, kunci privat, dan token rahasia.
 - Menghasilkan 0 temuan (100% clean) pada seluruh direktori bukti `evidence/v1.6.1/` dan paket rilis.
+
+---
+
+## 9. Hardening Rilis Portofolio Lokal v1.6.2 (Verification Integrity & Security Gate Remediation)
+
+### A. Pembangunan Ulang Pemindai Rahasia Multi-Vektor Tanpa Blindspot
+- Membangun ulang mesin pemindai rahasia pada `scripts/scan-secrets.ps1` dengan 6 pola regex komprehensif:
+  1. CLI Arguments dengan flag password alfanumerik (`-p<pass>`, `--password=<pass>`).
+  2. URI Connection String Database yang memuat kredensial (`mysql://user:pass@host:port/db`).
+  3. Penugasan rahasia dalam konfigurasi atau skrip (`password=...`, `secret=...`).
+  4. Token otentikasi Bearer dan JWT.
+  5. Header dan body kunci privat (RSA, EC, OPENSSH).
+  6. Kredensial pengujian historis (`TestStaff@2026!`, dsb).
+- Menjamin output masking 100% menggunakan token `[REDACTED]`.
+- Menyediakan suite pengujian mandiri `-SelfTest` dengan 6 pengujian positif dan 3 pengujian negatif (100% pass).
+- Memindai 309 file pada repositori dengan hasil 0 kebocoran rahasia.
+
+### B. Fail-Closed Guard dan Isolasi Nyata Bootstrap pada MySQL 8.4 Sekali Pakai
+- Mengimplementasikan `backend/src/utils/bootstrap-guard.ts` yang memvalidasi `DATABASE_URL` sebelum bootstrap dieksekusi:
+  - Protokol wajib `mysql:`
+  - Hostname diwajibkan `127.0.0.1`, `localhost`, atau `db`
+  - Nama database wajib diawali `stockflow_test_` atau `stockflow_bootstrap_` dan memuat run ID yang valid
+  - Menolak keras nama database operasional: `stockflow_db`, `stockflow_dev_db`, `stockflow_prod`, `stockflow_e2e_db`
+- Menyediakan 14 skenario unit test pada `backend/tests/bootstrap-guard.test.ts` (100% pass).
+- Membangun harness `docker-compose.bootstrap-test.yml` pada port 3307 dengan volume terisolasi `mysql_bootstrap_test_data` dan migrator containerized.
+- Menjalankan pengujian integrasi nyata `backend/tests/bootstrap.integration.test.ts` membuktikan inisialisasi awal admin, hash bcrypt cost 12, dan penolakan pada eksekusi kedua.
+
+### C. Penegakan ACL Tanpa Syarat dan Pengujian Transaksional Staged Rollback
+- Mengubah `scripts/init-local.ps1` agar selalu menerapkan Windows ACL restriktif pada folder `.secrets` meskipun folder tersebut telah ada sebelumnya.
+- Mengimplementasikan parameter `-TestFaultStage` untuk memverifikasi kemampuan rollback pada 4 titik kegagalan:
+  - `after-temp-secret`: membersihkan file temporary secret.
+  - `after-temp-env`: membersihkan file temporary env dan secret.
+  - `after-move-secret`: membatalkan pemindahan secret dan membersihkan staged files.
+  - `after-move-env`: membatalkan seluruh perubahan tanpa merusak file pengguna yang sudah ada.
+- Memperluas `tests/test-init-local.ps1` menjadi 19 skenario pengujian terverifikasi (100% pass).
+
+### D. Pelabelan Kepemilikan Resource Docker E2E dan Penegakan Fail-Closed Secret ACL
+- Menambahkan metadata label kepemilikan unik pada `docker-compose.e2e.yml`:
+  - `stockflow.e2e.run_id: "${E2E_RUN_ID}"`
+  - `stockflow.e2e.owner: "stockflow-e2e-runner"`
+- Menerapkan label pada container, network, dan volume sekali pakai `mysql_e2e_data`.
+- Menyematkan fallback tag image lokal (`${E2E_*_IMAGE:-...}`) agar tidak terjadi build tak terduga secara offline.
+- Menegakkan pemeriksaan Windows ACL fail-closed pada `scripts/run-e2e.ps1`, di mana kegagalan aplikasi ACL langsung menghentikan eksekusi pengujian.
+
+### E. Hardening Konfigurasi Docker Development dan Restriksi Port Loopback
+- Membatasi seluruh port pada `docker-compose.dev.yml` secara eksplisit ke antarmuka loopback lokal:
+  - Database: `127.0.0.1:3306:3306`
+  - Backend: `127.0.0.1:4000:4000`
+  - Frontend: `127.0.0.1:3000:3000`
+- Mengamankan healthcheck database dengan double dollar `$$MYSQL_ROOT_PASSWORD` untuk mencegah evaluasi teks mentah.
+
+### F. Verifikasi Integritas Rilis dan Proteksi Database Utama (127.0.0.1:3000)
+- Memastikan stack produksi utama pada port `3000` dan volume `mysql_prod_data` tetap aktif, sehat, dan tidak pernah terganggu selama pengujian integrasi maupun E2E berlangsung.
+- Menyediakan skrip verifikasi pelepasan rilis otomatis `scripts/verify-release.ps1` yang memvalidasi 8 gerbang kualitas secara ketat.

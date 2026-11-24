@@ -268,7 +268,7 @@ Data demo siap pakai development (`backend/prisma/seed.ts`):
 Proyek ini dilengkapi dengan pengujian otomatis menyeluruh:
 
 ```bash
-# Menjalankan pengujian backend (Unit, Integration API, Security, & Bootstrap - 98 tests)
+# Menjalankan pengujian backend (Unit, Integration API, Security, & Bootstrap - 111 tests)
 cd backend
 npm test
 
@@ -276,22 +276,30 @@ npm test
 cd frontend
 npm test
 
-# Menjalankan pengujian lingkungan lokal terisolasi otomatis (Init script test - 15 scenarios)
+# Menjalankan pengujian lingkungan lokal terisolasi otomatis (Init script test - 19 scenarios)
 powershell -ExecutionPolicy Bypass -File tests/test-init-local.ps1
+
+# Menjalankan pengujian integrasi bootstrap terisolasi (MySQL 8.4 disposable container - 3 tests)
+powershell -ExecutionPolicy Bypass -File scripts/run-bootstrap-test.ps1
 
 # Menjalankan pengujian browser End-to-End terisolasi (Playwright Chromium pada port 3100 - 3 tests, 13 stages)
 powershell -ExecutionPolicy Bypass -File scripts/run-e2e.ps1
 
-# Menjalankan pemindaian rahasia dan kredensial komprehensif
+# Menjalankan pemindaian rahasia dan kredensial komprehensif (Multi-vector regex scanner)
 powershell -ExecutionPolicy Bypass -File scripts/scan-secrets.ps1
+
+# Menjalankan verifikasi rilis 8 gerbang kualitas
+powershell -ExecutionPolicy Bypass -File scripts/verify-release.ps1
 ```
 
-### Ringkasan Hasil Pengujian v1.6.1:
-- **Backend Tests**: 98 tests passed across 12 test files (AppError, Zod Validation, RBAC Permissions, CSRF Token Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Concurrency Locking, Multi-Table Atomic Rollbacks, Environment Validation, Bootstrap In-Memory Unit Tests, and Bootstrap Fail-Closed Database Guard Integration Test).
+### Ringkasan Hasil Pengujian v1.6.2:
+- **Backend Tests**: 111 tests passed across 14 test files (AppError, Zod Validation, RBAC Permissions, CSRF Token Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Concurrency Locking, Multi-Table Atomic Rollbacks, Environment Validation, Bootstrap In-Memory Unit Tests, Bootstrap Guard Unit Tests, and Bootstrap Disposable Database Integration Test).
 - **Frontend Tests**: 9 tests passed across 2 test files (Utils formatters, Concurrency calculation, Audit ledger reconciliation, Reversal logic).
-- **Setup Automation Tests**: 15 scenarios passed in `tests/test-init-local.ps1` (fresh generation, overwrite guards, password complexity, entropy checks, console hygiene, Windows ACL with well-known SIDs, Set-StrictMode Latest compatibility, and atomic rollback).
-- **Playwright Browser E2E**: 3 tests / 13-stage comprehensive inventory lifecycle workflow passed in ~10s against isolated E2E Docker stack on port 3100 (fresh disposable database initialization, bootstrap admin login, forced password change, real REST API, and zero static/hardcoded credentials).
-- **Total**: 125 automated tests and verification scenarios passing 100% green dengan exit code 0.
+- **Setup Automation Tests**: 19 scenarios passed in `tests/test-init-local.ps1` (fresh generation, overwrite guards, password complexity, entropy checks, console hygiene, Windows ACL with well-known SIDs, Set-StrictMode Latest compatibility, and 4 transactional fault injection rollbacks).
+- **Bootstrap Integration Tests**: 3 tests passed in `backend/tests/bootstrap.integration.test.ts` against real disposable MySQL 8.4 container on port 3307.
+- **Playwright Browser E2E**: 3 tests / 13-stage comprehensive inventory lifecycle workflow passed in ~8.4s against isolated E2E Docker stack on port 3100 (fresh disposable database initialization, bootstrap admin login, forced password change, real REST API, and zero static/hardcoded credentials).
+- **Release Verification Gate**: 8/8 gates passed in `scripts/verify-release.ps1` (archive integrity, checksum matching, file presence, zero leaks, clean git status, zero en/em dashes).
+- **Total**: 147 automated tests and verification gates passing 100% green dengan exit code 0.
 
 ---
 
@@ -301,32 +309,35 @@ powershell -ExecutionPolicy Bypass -File scripts/scan-secrets.ps1
 StockFlow/
 ├── arahan/                      # Arsip dokumen spesifikasi resmi (PRD, FSD, ERD, Schema)
 ├── docker-compose.yml           # Konfigurasi container produksi (Port 3000, project: stockflow-prod)
-├── docker-compose.dev.yml       # Konfigurasi container development hot-reload
-├── docker-compose.e2e.yml       # Konfigurasi container E2E terisolasi (Port 3100, project: stockflow-e2e-test)
+├── docker-compose.dev.yml       # Konfigurasi container development hot-reload (Port 127.0.0.1:3000)
+├── docker-compose.e2e.yml       # Konfigurasi container E2E terisolasi (Port 3100, project: dynamic)
+├── docker-compose.bootstrap-test.yml # Konfigurasi container bootstrap disposable (Port 3307)
 ├── .env.example                 # Blueprint variabel environment
 ├── SPEC.md                      # Dokumen spesifikasi acuan engineering
 ├── README.md                    # Dokumentasi utama proyek portofolio
 ├── scripts/
 │   ├── init-local.ps1           # Generator kredensial kriptografis .NET dengan Windows ACL & rollback
+│   ├── run-bootstrap-test.ps1   # Runner pengujian integrasi bootstrap MySQL 8.4 sekali pakai
 │   ├── run-e2e.ps1              # Orkestrator pengujian Playwright E2E pada stack terisolasi port 3100
-│   ├── scan-secrets.ps1         # Scanner pendeteksi kebocoran kredensial, CLI args, dan token
+│   ├── scan-secrets.ps1         # Scanner pendeteksi kebocoran kredensial multi-vektor dengan self-test
+│   ├── verify-release.ps1       # Verifikator 8 gerbang kualitas dan integritas rilis
 │   └── package-release.ps1      # Pemaket release resmi dengan eksklusi ketat artefak debug
 ├── tests/
-│   └── test-init-local.ps1      # 15 skenario pengujian otomatis untuk skrip inisialisasi lingkungan lokal
+│   └── test-init-local.ps1      # 19 skenario pengujian otomatis untuk skrip inisialisasi lokal
 ├── tasks/
 │   ├── plan.md                  # Rencana arsitektur dan milestone bertahap
 │   └── todo.md                  # Checklist eksekusi tugas
 ├── docs/
 │   ├── engineering/             # Dokumentasi teknis & rekayasa perangkat lunak
-│   │   ├── ARCHITECTURE_DECISIONS.md  # Catatan keputusan arsitektur (ADR-001 s.d. ADR-010)
+│   │   ├── ARCHITECTURE_DECISIONS.md  # Catatan keputusan arsitektur (ADR-001 s.d. ADR-013)
 │   │   ├── SECURITY_REVIEW.md         # Threat modeling & audit OWASP Top 10
 │   │   ├── TESTING_STRATEGY.md        # Rencana piramida testing
-│   │   ├── TEST_RESULTS.md            # Catatan riwayat eksekusi pengujian
-│   │   ├── BUG_LOG.md                 # Pelacakan issue dan regresi bug (BUG-001 s.d. BUG-015)
-│   │   ├── DEPLOYMENT_GUIDE.md        # Panduan deployment production & isolasi E2E
+│   │   ├── TEST_RESULTS.md            # Catatan riwayat eksekusi pengujian (147 test gates)
+│   │   ├── BUG_LOG.md                 # Pelacakan issue dan regresi bug (BUG-001 s.d. BUG-022)
+│   │   ├── DEPLOYMENT_GUIDE.md        # Panduan deployment production, isolasi E2E, & release
 │   │   ├── DATABASE_MAINTENANCE.md    # Backup, restore, dan migrasi database
 │   │   ├── E2E_REPORT.md              # Laporan pengujian browser Playwright E2E 13 tahap
-│   │   ├── FINAL_RELEASE_REPORT_V1_6_1.md # Laporan komprehensif rilis final v1.6.1
+│   │   ├── FINAL_RELEASE_REPORT_V1_6_2.md # Laporan komprehensif rilis final v1.6.2
 │   │   └── TROUBLESHOOTING.md         # Solusi masalah teknis umum
 │   └── learning/                # Dokumentasi materi fundamental
 │       ├── LEARNING_ROADMAP.md        # Peta jalan pembelajaran teknologi
@@ -343,10 +354,10 @@ StockFlow/
 │   ├── src/
 │   │   ├── middleware/          # Auth, CSRF, RBAC, Warehouse Scope, Error
 │   │   ├── modules/             # Auth, Users, Org, Categories, Products, Warehouses, Inventory, Movements, Dashboard
-│   │   ├── utils/               # AppError, Logger, Transaction Sequence Generator
+│   │   ├── utils/               # AppError, Logger, Transaction Sequence Generator, Bootstrap Guard
 │   │   ├── app.ts               # Express configuration
 │   │   └── server.ts            # Server entrypoint & graceful shutdown
-│   └── tests/                   # Vitest unit & integration test suite (95 tests)
+│   └── tests/                   # Vitest unit & integration test suite (111 tests)
 └── frontend/                    # Next.js 15 App Router & React 19
     ├── Dockerfile
     ├── playwright.config.ts     # Konfigurasi Playwright E2E terikat ke port 3100

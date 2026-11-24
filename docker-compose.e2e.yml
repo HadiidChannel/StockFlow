@@ -17,6 +17,11 @@ services:
       - mysql_e2e_data:/var/lib/mysql
     networks:
       - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: db
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: isolated-test
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
       interval: 3s
@@ -24,6 +29,7 @@ services:
       retries: 25
 
   migrator:
+    image: ${E2E_MIGRATOR_IMAGE:-stockflow-e2e-test-migrator:latest}
     build:
       context: ./backend
       target: migrator
@@ -35,8 +41,14 @@ services:
         condition: service_healthy
     networks:
       - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: migrator
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: isolated-test
 
   bootstrap:
+    image: ${E2E_BOOTSTRAP_IMAGE:-stockflow-e2e-test-bootstrap:latest}
     build:
       context: ./backend
       target: runner
@@ -61,8 +73,14 @@ services:
         condition: service_completed_successfully
     networks:
       - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: bootstrap
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: isolated-test
 
   backend:
+    image: ${E2E_BACKEND_IMAGE:-stockflow-e2e-test-backend:latest}
     build:
       context: ./backend
       target: runner
@@ -86,8 +104,14 @@ services:
         condition: service_completed_successfully
     networks:
       - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: backend
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: isolated-test
 
   frontend:
+    image: ${E2E_FRONTEND_IMAGE:-stockflow-e2e-test-frontend:latest}
     build:
       context: ./frontend
       target: runner
@@ -105,11 +129,24 @@ services:
         condition: service_started
     networks:
       - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: frontend
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: isolated-test
 
 volumes:
   mysql_e2e_data:
     driver: local
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: isolated-test
 
 networks:
   stockflow_e2e_net:
     driver: bridge
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: isolated-test

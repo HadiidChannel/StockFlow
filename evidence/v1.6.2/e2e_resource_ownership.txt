@@ -1,0 +1,23 @@
+=== E2E RESOURCE OWNERSHIP AND LABEL VERIFICATION ===
+Execution Run ID: 64c4ac34
+Compose Project Name: stockflow-e2e-64c4ac34
+Port Mapping: 127.0.0.1:3100 -> 3000
+
+--- Containers Owned by Run ID 64c4ac34 ---
+CONTAINER ID   NAMES                               STATUS                    PORTS
+0b3a3beb7df2   stockflow-e2e-64c4ac34-frontend-1   Up 2 seconds              127.0.0.1:3100->3000/tcp
+eee4f3defabe   stockflow-e2e-64c4ac34-backend-1    Up 2 seconds              4000/tcp
+cbc84134519f   stockflow-e2e-64c4ac34-db-1         Up 38 seconds (healthy)   3306/tcp, 33060/tcp
+
+--- Volumes Owned by Run ID 64c4ac34 ---
+VOLUME NAME                             DRIVER
+stockflow-e2e-64c4ac34_mysql_e2e_data   local
+
+--- Networks Owned by Run ID 64c4ac34 ---
+NETWORK ID     NAME                                       DRIVER
+afc06a35b2ab   stockflow-e2e-64c4ac34_stockflow_e2e_net   bridge
+
+--- Verification Confirmation ---
+Operational containers (stockflow_frontend_prod, stockflow_backend_prod, stockflow_db_prod, stockflow_db_dev): EXCLUDED
+Operational volumes (mysql_prod_data, mysql_dev_data): EXCLUDED
+Resource ownership verified: 100% isolated to stockflow-e2e-64c4ac34

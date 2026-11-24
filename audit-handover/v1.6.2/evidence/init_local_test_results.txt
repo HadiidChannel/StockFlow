@@ -1,0 +1,21 @@
+======================================================================
+ Running Automated Verification Tests for scripts/init-local.ps1
+ Target Script: D:\Les Web Programming\Project Belajar\StokFlow\scripts\init-local.ps1
+ Strict Mode: Enabled (Latest)
+======================================================================
+[Scenario 1/19] Menjalankan inisialisasi pada direktori kosong...
+powershell.exe : powershell.exe : D:\Les Web Programming\Project Belajar\StokFlow\scripts\init-local.ps1 : 
+Inisialisasi lingkungan 
+At D:\Les Web Programming\Project Belajar\StokFlow\scripts\capture-evidence.ps1:40 char:19
++ ... estOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (powershell.exe ...asi lingkungan :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+lokal dibatalkan dan 
+At D:\Les Web Programming\Project Belajar\StokFlow\tests\test-init-local.ps1:38 char:19
++ ... nitOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (D:\Les Web Prog...dibatalkan dan :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

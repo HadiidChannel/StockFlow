@@ -8,7 +8,11 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
-    [string]$TargetProjectRoot
+    [string]$TargetProjectRoot,
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("none", "after-temp-secret", "after-temp-env", "after-move-secret", "after-move-env")]
+    [string]$TestFaultStage = "none"
 )
 
 Set-StrictMode -Version Latest
@@ -137,17 +141,21 @@ $createdTempEnv = $false
 $createdEnvFile = $false
 
 try {
-    # 5a. Ensure .secrets directory exists and has restricted ACL
+    # 5a. Ensure .secrets directory exists and has restricted ACL unconditionally
     if (-not (Test-Path -LiteralPath $secretsDirPath)) {
         New-Item -ItemType Directory -Path $secretsDirPath -Force | Out-Null
         $createdSecretsDir = $true
-        Set-SecureAcl -targetPath $secretsDirPath -isDirectory $true
     }
+    Set-SecureAcl -targetPath $secretsDirPath -isDirectory $true
 
     # 5b. Staged secret file generation
     [System.IO.File]::WriteAllText($tempSecretPath, $initialAdminPassword, $utf8NoBom)
     $createdTempSecret = $true
     Set-SecureAcl -targetPath $tempSecretPath -isDirectory $false
+
+    if ($TestFaultStage -eq "after-temp-secret") {
+        throw "Simulated fault injection: after-temp-secret"
+    }
 
     # 5c. Staged .env generation
     $envContent = @"
@@ -182,6 +190,10 @@ INITIAL_ORG_NAME="PT StockFlow Logistik Nusantara"
     $createdTempEnv = $true
     Set-SecureAcl -targetPath $tempEnvPath -isDirectory $false
 
+    if ($TestFaultStage -eq "after-temp-env") {
+        throw "Simulated fault injection: after-temp-env"
+    }
+
     # 5d. Atomic replacement to final destinations (guarding against race conditions)
     if (Test-Path -LiteralPath $secretPasswordFilePath) {
         throw "Target secret file '$secretPasswordFilePath' sudah dibuat oleh proses lain."
@@ -191,6 +203,10 @@ INITIAL_ORG_NAME="PT StockFlow Logistik Nusantara"
     $createdTempSecret = $false
     Set-SecureAcl -targetPath $secretPasswordFilePath -isDirectory $false
 
+    if ($TestFaultStage -eq "after-move-secret") {
+        throw "Simulated fault injection: after-move-secret"
+    }
+
     if (Test-Path -LiteralPath $envFilePath) {
         throw "Target env file '$envFilePath' sudah dibuat oleh proses lain."
     }
@@ -198,6 +214,10 @@ INITIAL_ORG_NAME="PT StockFlow Logistik Nusantara"
     $createdEnvFile = $true
     $createdTempEnv = $false
     Set-SecureAcl -targetPath $envFilePath -isDirectory $false
+
+    if ($TestFaultStage -eq "after-move-env") {
+        throw "Simulated fault injection: after-move-env"
+    }
 
 } catch {
     # 5e. Strict Rollback on Any Failure

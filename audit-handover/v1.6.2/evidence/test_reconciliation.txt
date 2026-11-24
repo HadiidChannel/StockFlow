@@ -1,0 +1,59 @@
+=== STOCKFLOW TEST RECONCILIATION REPORT (v1.6.2) ===
+Date: 2026-11-25 02:07:00 +08:00
+Scope: Comprehensive automated verification across backend, frontend, database, ACL, E2E, and security gates.
+
+1. Backend Unit and Integration Test Suite:
+   - tests/integration-api-flows.test.ts: 14 tests (Passed)
+   - tests/inventory-integrity.test.ts: 20 tests (Passed)
+   - tests/bootstrap.unit.test.ts: 10 tests (Passed)
+   - tests/bootstrap-guard.test.ts: 14 tests (Passed)
+   - tests/api-health.test.ts: 3 tests (Passed)
+   - tests/business-corrections.test.ts: 5 tests (Passed)
+   - tests/env-validation.test.ts: 13 tests (Passed)
+   - tests/forced-password-change.test.ts: 6 tests (Passed)
+   - tests/validation.test.ts: 5 tests (Passed)
+   - tests/app-error.test.ts: 7 tests (Passed)
+   - tests/security-hardening.test.ts: 12 tests (Passed)
+   - tests/rbac.test.ts: 2 tests (Passed)
+   Subtotal Backend Tests: 111 tests (100% Passed)
+
+2. Disposable MySQL 8.4 Bootstrap Integration Suite:
+   - tests/bootstrap.integration.test.ts (3 stages / tests):
+     * Stage 1: Empty database initial state verification (0 users, 0 orgs)
+     * Stage 2: Fresh bootstrap execution, bcrypt hash verification (cost 12), mustChangePassword
+     * Stage 3: Second bootstrap execution, idempotency and one-time guard verification
+   Subtotal Disposable Bootstrap Integration: 3 tests (100% Passed)
+
+3. Frontend Unit and Component Test Suite:
+   - frontend/tests/workflow-logic.test.ts: 5 tests (Passed)
+   - frontend/tests/utils.test.ts: 4 tests (Passed)
+   Subtotal Frontend Tests: 9 tests (100% Passed)
+
+4. Windows Initialization and Security Scenarios:
+   - tests/test-init-local.ps1: 19 scenarios (Passed)
+     * Scenarios 1-10: Fresh generation, guards, entropy, zero exposure
+     * Scenarios 11-13: Windows ACL & principals (User, SYSTEM, Admins, inheritance disabled)
+     * Scenario 14: Existing .secrets directory receives ACL unconditionally
+     * Scenarios 15-18: Real fault-injected rollbacks and pre-existing file preservation
+     * Scenario 19: StrictMode Latest compatibility
+   Subtotal Initialization Scenarios: 19 scenarios (100% Passed)
+
+5. Playwright E2E Isolation Lifecycle Test Suite:
+   - frontend/tests/e2e/stockflow-lifecycle.spec.ts: 3 tests (Passed)
+     * Test 1: Secret file initial admin verification without fallback
+     * Test 2: Zero fallback rejection verification
+     * Test 3: Complete 13-stage inventory lifecycle on port 3100
+   Subtotal Playwright E2E Tests: 3 tests (100% Passed)
+
+6. Automated Security Gate Validations:
+   - Secret Scanner Automated Self-Test (6 categories positive & 3 negative fixtures): 1 test (Passed)
+   - E2E Secret ACL Fail-Closed Protection Test (fault injection abort): 1 test (Passed)
+   Subtotal Security Gate Validations: 2 tests (100% Passed)
+
+======================================================================
+RECONCILED TOTAL VERIFIED TEST GATES: 147 tests / scenarios
+PASSED: 147
+FAILED: 0
+SKIPPED: 0 (in final execution)
+SUCCESS RATE: 100.0%
+======================================================================

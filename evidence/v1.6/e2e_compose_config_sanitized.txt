@@ -53,7 +53,7 @@ services:
         - localhost
         - -u
         - root
-        - -p22231f43a1bcbd3a7b76a9121f80239725001358b03ee889
+        - -p[REDACTED_PASSWORD]
       timeout: 3s
       interval: 3s
       retries: 25

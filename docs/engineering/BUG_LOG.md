@@ -170,3 +170,48 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 - **Fix**: Mengubah healthcheck menjadi `CMD-SHELL` dengan sintaks double dollar `$$MYSQL_ROOT_PASSWORD` sehingga tidak dievaluasi oleh compose config. Memisahkan unit test bootstrap dengan mock Prisma (`bootstrap.unit.test.ts`) dan mengisolasi integration test dengan Fail-Closed Guard (`bootstrap.integration.test.ts`).
 - **Regression Test**: Output `evidence/v1.6.1/e2e_compose_config_sanitized.txt` bersih 100% tanpa password root, 10 unit test bootstrap lolos dengan cepat tanpa DB, dan Fail-Closed Guard menolak eksekusi terhadap database non-test.
 - **Status**: Fixed & Verified
+
+### BUG-018: Ketiadaan Isolasi Database Disposable pada Pengujian Integrasi Bootstrap Admin
+- **Severity**: Critical
+- **Deskripsi**: Logika bootstrap admin sebelumnya belum diuji secara nyata terhadap database MySQL 8.4 murni tanpa menyentuh database operasional, serta ketiadaan fail-closed guard yang menolak eksekusi pada database non-disposable.
+- **Steps to Reproduce**: Menjalankan pengujian bootstrap dengan DATABASE_URL yang mengarah ke database operasional.
+- **Root Cause**: Pengujian hanya mengandalkan mock unit test dan tidak memiliki harness kontainer terisolasi dengan fail-closed guard berbasis run ID.
+- **Fix**: Mengimplementasikan `backend/src/utils/bootstrap-guard.ts` dengan 14 skenario penolakan ketat, arsitektur `docker-compose.bootstrap-test.yml` pada port 3307, dan runner otomatis `scripts/run-bootstrap-test.ps1` yang mengeksekusi integrasi nyata pada kontainer sekali pakai.
+- **Regression Test**: Test suite `backend/tests/bootstrap-guard.test.ts` (14 passed) dan `backend/tests/bootstrap.integration.test.ts` (3 passed) lolos 100% hijau.
+- **Status**: Fixed & Verified
+
+### BUG-019: Kegagalan Rollback Transaksional Penuh dan Ketiadaan Penegakan ACL Folder .secrets Pre-Existing
+- **Severity**: High
+- **Deskripsi**: Skrip `init-local.ps1` tidak melakukan rollback jika terjadi interupsi pada tahap pemindahan file target, serta mengabaikan penetapan ulang izin ACL folder `.secrets` apabila folder tersebut telah ada sebelumnya.
+- **Steps to Reproduce**: Menghentikan proses `init-local.ps1` setelah file temporary dipindahkan, atau memeriksa ACL folder `.secrets` yang dibuat sebelum eksekusi skrip.
+- **Root Cause**: Logika pembuatan folder hanya mengeksekusi `icacls.exe` pada blok pembuatan awal dan penanganan error belum mencakup pembersihan staged files di setiap checkpoint.
+- **Fix**: Menambahkan parameter `-TestFaultStage` dengan 4 checkpoint fault injection, memastikan blok catch membersihkan file temporary tanpa merusak file pengguna yang sudah ada, serta menegakkan `icacls.exe` tanpa syarat pada folder `.secrets`.
+- **Regression Test**: Test suite `tests/test-init-local.ps1` mencakup 19 skenario pengujian termasuk 4 fault injection rollback nyata, seluruhnya lulus 100%.
+- **Status**: Fixed & Verified
+
+### BUG-020: Ketiadaan Pelabelan Kepemilikan Resource Docker E2E dan Penegakan Fail-Closed Secret ACL
+- **Severity**: High
+- **Deskripsi**: Kontainer, network, dan volume Docker E2E tidak memiliki label kepemilikan unik berbasis `run_id` sehingga rentan terjadi konflik resource yatim (orphan), serta skrip runner E2E tidak menghentikan eksekusi secara fail-closed jika penetapan izin ACL rahasia gagal.
+- **Steps to Reproduce**: Menjalankan pengujian E2E paralel atau mensimulasikan kegagalan penetapan izin Windows ACL pada file rahasia E2E.
+- **Root Cause**: Konfigurasi `docker-compose.e2e.yml` tidak mendefinisikan label metadata kepemilikan dan skrip `run-e2e.ps1` tidak memvalidasi status exit code ACL secara ketat.
+- **Fix**: Menambahkan label `stockflow.e2e.run_id` dan `stockflow.e2e.owner` pada seluruh resource E2E, menambahkan fallback tag image lokal (`${E2E_*_IMAGE:-...}`), serta mengimplementasikan fail-closed abort jika ACL secret gagal diaplikasikan.
+- **Regression Test**: Skenario E2E lolos 100% dan verifikasi label Docker tervalidasi pada `evidence/v1.6.2/e2e_resource_ownership.txt`.
+- **Status**: Fixed & Verified
+
+### BUG-021: Blindspot pada Pemindai Rahasia Terhadap String Koneksi Database dan Argumen CLI
+- **Severity**: Medium
+- **Deskripsi**: Skrip pemindai rahasia sebelumnya memiliki celah deteksi pada password alfanumerik dalam argumen CLI `-p<pass>`, string koneksi database, dan tidak memiliki mekanisme pengujian mandiri (self-test).
+- **Steps to Reproduce**: Menyisipkan password alfanumerik pada parameter `-p` atau URI koneksi MySQL pada file uji.
+- **Root Cause**: Ekspresi reguler hanya mendeteksi karakter hexadesimal dan tidak memindai pola URI koneksi database umum serta tidak menyediakan fixture uji positif/negatif.
+- **Fix**: Membangun ulang `scripts/scan-secrets.ps1` dengan 6 pola ekspresi reguler komprehensif, masking 100% `[REDACTED]`, serta menambahkan modul `-SelfTest` terintegrasi yang memvalidasi 6 uji positif dan 3 uji negatif.
+- **Regression Test**: Self-test berhasil 6/6 deteksi dan 3/3 pengecualian valid, serta pemindaian 309 file repositori menghasilkan 0 temuan bocor.
+- **Status**: Fixed & Verified
+
+### BUG-022: Inkonsistensi Packaging Script Terhadap File .env.example dan Port Binding Publik Dev
+- **Severity**: Medium
+- **Deskripsi**: Skrip pemaketan rilis berpotensi mengabaikan template konfigurasi aman `.env.example`, dan `docker-compose.dev.yml` mengikat port ke antarmuka publik `0.0.0.0`.
+- **Steps to Reproduce**: Menjalankan skrip rilis dengan filter regex yang terlalu agresif dan memeriksa port binding pada docker dev.
+- **Root Cause**: Pola exclude `.env*` menghapus `.env.example`, dan port binding pada `docker-compose.dev.yml` tidak secara eksplisit dibatasi ke antarmuka loopback `127.0.0.1`.
+- **Fix**: Memperbaiki regex pemaketan menjadi `(?i)(?:^|[\\/])\.env(?:\.(?!example$)[^\\/]+)?$` sehingga `.env.example` tetap disertakan, serta mengikat seluruh port service dev ke `127.0.0.1:3306`, `127.0.0.1:4000`, dan `127.0.0.1:3000`.
+- **Regression Test**: Verifikasi arsip rilis membuktikan `.env.example` ada di dalam ZIP tanpa file rahasia asli, dan `docker compose -f docker-compose.dev.yml config` terikat ketat ke loopback.
+- **Status**: Fixed & Verified

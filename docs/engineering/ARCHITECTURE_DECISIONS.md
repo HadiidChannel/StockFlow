@@ -233,3 +233,58 @@ Pada audit v1.6 ditemukan dua titik kerentanan arsitektural:
 ### Konsekuensi
 - Positif: Database lokal terlindungi 100% dari mutasi pengujian, unit test bootstrap berjalan secepat kilat (sub-detik), eksekusi E2E bebas dari konflik nama kontainer, dan konfigurasi Docker compose bersih tanpa kebocoran password.
 - Negatif: Pengujian integrasi bootstrap nyata membutuhkan database uji terpisah yang harus dikonfigurasi secara eksplisit.
+
+---
+
+## ADR-012: Real Disposable MySQL 8.4 Container Architecture and Fail-Closed Guard for Bootstrap Integration Testing
+
+### Status
+Accepted & Implemented (v1.6.2)
+
+### Konteks
+Pada audit v1.6.1, pengujian integrasi bootstrap belum menyertakan harness database nyata sekali pakai yang terotomatisasi secara penuh. Selain itu, diperlukan mekanisme fail-closed yang memverifikasi database URL, run ID, protokol, dan hostname sebelum eksekusi bootstrap diperbolehkan, guna memastikan tidak ada mutasi yang menyentuh database operasional.
+
+### Keputusan
+1. **Containerized Disposable Database Harness (`docker-compose.bootstrap-test.yml`)**:
+   - Menyediakan instance MySQL 8.4 terisolasi pada port loopback `127.0.0.1:3307:3306`.
+   - Menggunakan volume sementara `mysql_bootstrap_test_data` dan network terisolasi `stockflow_bootstrap_test_net`.
+   - Menyediakan service `migrator` di dalam Compose untuk menjalankan migrasi Prisma tanpa ketergantungan pada environment host.
+2. **Fail-Closed Bootstrap Guard (`backend/src/utils/bootstrap-guard.ts`)**:
+   - Memvalidasi skema koneksi `DATABASE_URL`:
+     - Wajib protokol `mysql:`
+     - Hostname terbatas pada `127.0.0.1`, `localhost`, atau `db`
+     - Nama database wajib memuat run ID yang cocok (`stockflow_test_<runId>` atau `stockflow_bootstrap_<runId>`)
+     - Larangan mutlak terhadap database operasional (`stockflow_db`, `stockflow_dev_db`, `stockflow_prod`, `stockflow_e2e_db`)
+   - Melempar exception fail-closed dan menghentikan proses jika ada ketidaksesuaian.
+3. **Automated Test Orchestrator (`scripts/run-bootstrap-test.ps1`)**:
+   - Menghasilkan Run ID kriptografis unik.
+   - Menjalankan kontainer, menunggu healthcheck, menerapkan migrasi Prisma, mengeksekusi pengujian integrasi Vitest, dan menghapus kontainer beserta volume secara bersih (`down -v`).
+
+### Konsekuensi
+- Positif: Pengujian integrasi bootstrap dilakukan terhadap database MySQL 8.4 murni yang identik dengan produksi, membuktikan pembuatan admin baru, hash bcrypt cost 12, dan idempotensi penolakan kedua run tanpa sedikit pun risiko mutasi terhadap database utama atau development.
+- Negatif: Memerlukan alokasi port loopback 3307 selama masa pengujian integrasi.
+
+---
+
+## ADR-013: Deterministic Docker Resource Ownership Labels, Tag Fallbacks, and Comprehensive Secret Scanner
+
+### Status
+Accepted & Implemented (v1.6.2)
+
+### Konteks
+Audit independen menemukan bahwa resource Docker pengujian (container, volume, network) belum memiliki pelabelan kepemilikan eksplisit yang membedakannya dari resource lain. Selain itu, ketergantungan build saat eksekusi E2E offline dapat menyebabkan kegagalan jika image registry tidak dapat dijangkau. Scanner rahasia juga memerlukan penyempurnaan deteksi regex dan modul pengujian mandiri.
+
+### Keputusan
+1. **Docker Resource Ownership Labels**:
+   - Menambahkan label standar `stockflow.e2e.run_id` dan `stockflow.e2e.owner` pada seluruh resource E2E.
+   - Menambahkan label serupa `stockflow.test.run_id` pada bootstrap test harness.
+   - Memastikan proses teardown memverifikasi label sebelum menghapus resource.
+2. **Deterministic Pre-Built Image Fallbacks**:
+   - Menambahkan tag fallback `${E2E_*_IMAGE:-stockflow-e2e-test-*:latest}` pada `docker-compose.e2e.yml` agar Compose langsung memanfaatkan image lokal yang telah di-build sebelumnya dan tidak memicu build ulang offline.
+3. **Multi-Vector Secret Scanner with Self-Test (`scripts/scan-secrets.ps1`)**:
+   - Menggunakan 6 pola regex deteksi mendalam (CLI arguments, connection strings, assignment secrets, bearer tokens, private keys, legacy test passwords).
+   - Menyediakan fitur `-SelfTest` yang mengevaluasi fixture positif dan negatif secara deterministik.
+
+### Konsekuensi
+- Positif: Resource Docker terlacak secara transparan dan aman dari benturan nama, eksekusi E2E handal secara offline, dan pemindaian keamanan repositori dapat diverifikasi secara mandiri.
+- Negatif: Skrip pemindaian memerlukan sedikit waktu tambahan untuk membaca konten file teks secara teliti.

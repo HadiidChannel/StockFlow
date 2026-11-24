@@ -1,0 +1,27 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mD:/Les Web Programming/Project Belajar/StokFlow[39m
+
+[90mstdout[2m | backend/tests/bootstrap.integration.test.ts[2m > [22m[2mBootstrap Real Integration Tests (Disposable MySQL 8.4)[2m > [22m[2mLangkah 2: Menjalankan fresh bootstrap aktual dan memverifikasi pembuatan organisasi & admin
+[22m[39mMemulai proses inisialisasi (bootstrap) satu kali StockFlow...
+
+[90mstdout[2m | backend/tests/bootstrap.integration.test.ts[2m > [22m[2mBootstrap Real Integration Tests (Disposable MySQL 8.4)[2m > [22m[2mLangkah 2: Menjalankan fresh bootstrap aktual dan memverifikasi pembuatan organisasi & admin
+[22m[39mOrganisasi diinisialisasi: PT StockFlow Bootstrap Verification
+
+[90mstdout[2m | backend/tests/bootstrap.integration.test.ts[2m > [22m[2mBootstrap Real Integration Tests (Disposable MySQL 8.4)[2m > [22m[2mLangkah 2: Menjalankan fresh bootstrap aktual dan memverifikasi pembuatan organisasi & admin
+[22m[39mAdministrator awal berhasil dibuat: Disposable Bootstrap Admin (admin.disposable@stockflow.com)
+Status: must_change_password diaktifkan secara wajib demi keamanan akun awal.
+
+[90mstdout[2m | backend/tests/bootstrap.integration.test.ts[2m > [22m[2mBootstrap Real Integration Tests (Disposable MySQL 8.4)[2m > [22m[2mLangkah 3: Menjalankan bootstrap kedua untuk membuktikan idempotency dan one-time guard
+[22m[39mMemulai proses inisialisasi (bootstrap) satu kali StockFlow...
+
+[90mstdout[2m | backend/tests/bootstrap.integration.test.ts[2m > [22m[2mBootstrap Real Integration Tests (Disposable MySQL 8.4)[2m > [22m[2mLangkah 3: Menjalankan bootstrap kedua untuk membuktikan idempotency dan one-time guard
+[22m[39mBootstrap dibatalkan: Akun Administrator sudah ada pada sistem.
+
+ [32m✓[39m backend/tests/bootstrap.integration.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 819[2mms[22m[39m
+     [33m[2m✓[22m[39m Langkah 2: Menjalankan fresh bootstrap aktual dan memverifikasi pembuatan organisasi & admin [33m 782[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 02:01:03
+[2m   Duration [22m 1.17s[2m (transform 52ms, setup 0ms, import 122ms, tests 819ms, environment 0ms)[22m
+

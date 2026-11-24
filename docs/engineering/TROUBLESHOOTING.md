@@ -118,3 +118,48 @@ Dokumen ini memuat panduan identifikasi dan pemecahan masalah teknis yang sering
   - Pastikan folder proyek terletak pada drive partisi NTFS standar.
   - Jalankan terminal PowerShell dengan hak akses pengguna lokal yang memiliki wewenang penuh atas folder proyek.
   - Skrip secara otomatis melakukan rollback terhadap file sementara jika penetapan ACL gagal.
+
+---
+
+## 8. Masalah Pengujian Integrasi Bootstrap (scripts/run-bootstrap-test.ps1)
+
+### Gejala: Port 3307 terdeteksi sedang digunakan
+- **Penyebab**:
+  - Sisa kontainer pengujian bootstrap sebelumnya belum dibersihkan atau ada aplikasi lain yang mendengarkan pada port 3307.
+- **Solusi**:
+  - Hentikan kontainer bootstrap test sisa dengan perintah:
+    ```bash
+    docker compose -f docker-compose.bootstrap-test.yml down -v
+    ```
+  - Periksa listener port menggunakan `Get-NetTCPConnection -LocalPort 3307 -State Listen` dan hentikan proses yang menempati port tersebut.
+
+### Gejala: `BootstrapGuardError: Target database is an operational database`
+- **Penyebab**:
+  - `DATABASE_URL` yang disediakan mengarah ke database operasional (`stockflow_db`, `stockflow_dev_db`, `stockflow_prod`, atau `stockflow_e2e_db`).
+- **Solusi**:
+  - Fail-closed guard secara sengaja menolak mengeksekusi bootstrap terhadap database non-test.
+  - Pastikan target database diawali dengan nama `stockflow_test_` atau `stockflow_bootstrap_` yang sesuai dengan `BOOTSTRAP_TEST_RUN_ID`.
+
+---
+
+## 9. Masalah Eksekusi E2E Offline dan Pemindaian Rahasia
+
+### Gejala: Docker Compose mencoba build ulang image saat mesin offline
+- **Penyebab**:
+  - Layanan Compose E2E tidak menemukan tag image statis lokal sehingga Docker mencoba mengunduh dependensi dari internet (misalnya binary Prisma Alpine).
+- **Solusi**:
+  - Konfigurasi `docker-compose.e2e.yml` telah dilengkapi tag fallback `${E2E_*_IMAGE:-stockflow-e2e-test-*:latest}`.
+  - Pastikan image pengujian telah di-build terlebih dahulu saat koneksi internet aktif dengan perintah:
+    ```bash
+    docker compose -f docker-compose.e2e.yml build
+    ```
+
+### Gejala: Scanner rahasia melaporkan temuan pada file baru
+- **Penyebab**:
+  - File baru memuat kata kunci seperti `password=`, `secret=`, atau flag CLI `-p` dengan nilai alfanumerik mentah.
+- **Solusi**:
+  - Gunakan placeholder aman seperti `dev_password_placeholder` atau variabel lingkungan yang disanitasi.
+  - Jalankan pemindai mandiri untuk memverifikasi pola:
+    ```bash
+    powershell -ExecutionPolicy Bypass -File scripts/scan-secrets.ps1 -SelfTest
+    ```
