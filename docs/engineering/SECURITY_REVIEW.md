@@ -162,3 +162,33 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
 - Seluruh file bukti verifikasi pada folder `evidence/v1.6/` dan `audit/evidence/v1.6/` diperiksa melalui pemindai otomatis `secret_scan.txt`.
 - Nilai secret, hash, dan password disanitasi menjadi `[REDACTED_SECRET]` pada konfigurasi compose dan log audit.
 - Terbukti 0 kredensial atau password mentah yang terekspos pada seluruh artefak verifikasi.
+
+---
+
+## 8. Hardening Rilis Portofolio Lokal v1.6.1 (Release Blocker Remediation)
+
+### A. Pencegahan Kebocoran Password pada Evaluasi Healthcheck Compose
+- Mengubah deklarasi healthcheck MySQL pada `docker-compose.yml` dan `docker-compose.e2e.yml` dari bentuk CMD array ke `CMD-SHELL` dengan sintaks double dollar `$$MYSQL_ROOT_PASSWORD`.
+- Docker compose tidak lagi mengevaluasi atau mengekspansi nilai rahasia saat perintah `docker compose config` dieksekusi, sehingga konfigurasi yang dicetak tetap berupa nama variabel dan tidak membocorkan password mentah.
+
+### B. Standardisasi Windows ACL Berbasis SID dan StrictMode Rollback Safety
+- Memperbarui fungsi `Set-SecureAcl` pada `scripts/init-local.ps1` agar menggunakan Security Identifier (SID) Windows resmi:
+  - Current User SID: `[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value`
+  - Local SYSTEM SID: `S-1-5-18`
+  - Built-in Administrators SID: `S-1-5-32-544`
+- Memastikan pengecekan array aman di bawah `Set-StrictMode -Version Latest` dengan membungkus enumerasi direktori ke dalam `@(...)` sebelum mengakses `.Length`, mencegah terjadinya `PropertyNotFoundStrict`.
+- Memperluas cakupan pengujian otomatis `tests/test-init-local.ps1` dari 3 menjadi 15 skenario terverifikasi (100% green).
+
+### C. Pemisahan Total Bootstrap Unit Test & Penerapan Fail-Closed Guard
+- Mengisolasi pengujian bootstrap murni ke dalam `backend/tests/bootstrap.unit.test.ts` menggunakan mock Prisma in-memory, menguji 10 skenario validasi tanpa memerlukan koneksi database riil.
+- Menghapus sepenuhnya penggunaan dummy role `TEMP_TEST_ROLE` yang sebelumnya memanipulasi database aktif.
+- Menempatkan Fail-Closed Database Guard pada `backend/tests/bootstrap.integration.test.ts` yang menolak eksekusi jika `DATABASE_URL` mengarah pada database utama (`stockflow_db`) atau database development (`stockflow_dev_db`).
+
+### D. Dynamic Run ID Namespace pada Siklus Hidup E2E
+- Mengimplementasikan pembangkitan Run ID kriptografis 8 karakter hex pada `scripts/run-e2e.ps1` sehingga setiap sesi pengujian menggunakan nama project dinamis `stockflow-e2e-<runId>`.
+- Menghilangkan nama kontainer statis pada `docker-compose.e2e.yml` untuk mencegah tubrukan kontainer antar-run.
+- Menambahkan Ownership Guard pada blok `finally` yang memvalidasi pola regex nama project sebelum menjalankan perintah `down -v`.
+
+### E. Scanner Rahasia Otomatis Multi-Vektor
+- Mengembangkan skrip scanner `scripts/scan-secrets.ps1` yang memindai argumen CLI (`-p<pass>`), connection strings, variabel environment, kunci privat, dan token rahasia.
+- Menghasilkan 0 temuan (100% clean) pada seluruh direktori bukti `evidence/v1.6.1/` dan paket rilis.

@@ -1,0 +1,5 @@
+NAMES                     STATUS                    PORTS
+stockflow_db_dev          Up 13 minutes (healthy)   127.0.0.1:3306->3306/tcp
+stockflow_frontend_prod   Up 45 minutes             127.0.0.1:3000->3000/tcp
+stockflow_backend_prod    Up 45 minutes             4000/tcp
+stockflow_db_prod         Up 45 minutes (healthy)   3306/tcp, 33060/tcp

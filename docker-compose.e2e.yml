@@ -1,4 +1,4 @@
-name: stockflow-e2e-test
+name: ${COMPOSE_PROJECT_NAME:-stockflow-e2e-test}
 
 secrets:
   initial_admin_password:
@@ -7,7 +7,6 @@ secrets:
 services:
   db:
     image: mysql:8.4
-    container_name: stockflow_e2e_db
     restart: "no"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD wajib diisi}
@@ -19,7 +18,7 @@ services:
     networks:
       - stockflow_e2e_net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD wajib diisi}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
       interval: 3s
       timeout: 3s
       retries: 25
@@ -28,7 +27,6 @@ services:
     build:
       context: ./backend
       target: migrator
-    container_name: stockflow_e2e_migrator
     restart: "no"
     environment:
       DATABASE_URL: mysql://${DB_USER:-stockflow_e2e_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_e2e_db
@@ -42,7 +40,6 @@ services:
     build:
       context: ./backend
       target: runner
-    container_name: stockflow_e2e_bootstrap
     profiles:
       - bootstrap
     restart: "no"
@@ -69,7 +66,6 @@ services:
     build:
       context: ./backend
       target: runner
-    container_name: stockflow_e2e_backend
     restart: "no"
     environment:
       NODE_ENV: production
@@ -97,7 +93,6 @@ services:
       target: runner
       args:
         INTERNAL_BACKEND_URL: http://backend:4000
-    container_name: stockflow_e2e_frontend
     restart: "no"
     environment:
       NODE_ENV: production

@@ -82,7 +82,11 @@ Dokumen ini memuat panduan identifikasi dan pemecahan masalah teknis yang sering
   - Periksa koneksi aktif menggunakan `Get-NetTCPConnection -LocalPort 3100 -State Listen`.
   - Bersihkan sisa kontainer stack E2E menggunakan perintah:
     ```bash
-    docker compose -p stockflow-e2e-test -f docker-compose.e2e.yml down -v
+    docker compose -p stockflow-e2e-<runId> -f docker-compose.e2e.yml down -v
+    ```
+  - Atau gunakan docker ps untuk mencari nama container yang mendengarkan pada port 3100:
+    ```bash
+    docker ps --filter "publish=3100"
     ```
   - Pastikan flag `-KeepStack` tidak diaktifkan jika pengujian dijalankan dalam mode otomatis.
 

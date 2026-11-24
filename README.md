@@ -268,7 +268,7 @@ Data demo siap pakai development (`backend/prisma/seed.ts`):
 Proyek ini dilengkapi dengan pengujian otomatis menyeluruh:
 
 ```bash
-# Menjalankan pengujian backend (Unit, Integration API, Security, & Bootstrap - 95 tests)
+# Menjalankan pengujian backend (Unit, Integration API, Security, & Bootstrap - 98 tests)
 cd backend
 npm test
 
@@ -276,19 +276,22 @@ npm test
 cd frontend
 npm test
 
-# Menjalankan pengujian lingkungan lokal terisolasi otomatis (Init script test - 3 tests)
+# Menjalankan pengujian lingkungan lokal terisolasi otomatis (Init script test - 15 scenarios)
 powershell -ExecutionPolicy Bypass -File tests/test-init-local.ps1
 
 # Menjalankan pengujian browser End-to-End terisolasi (Playwright Chromium pada port 3100 - 3 tests, 13 stages)
 powershell -ExecutionPolicy Bypass -File scripts/run-e2e.ps1
+
+# Menjalankan pemindaian rahasia dan kredensial komprehensif
+powershell -ExecutionPolicy Bypass -File scripts/scan-secrets.ps1
 ```
 
-### Ringkasan Hasil Pengujian v1.6:
-- **Backend Tests**: 95 tests passed across 11 test files (AppError, Zod Validation, RBAC Permissions, CSRF Token Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Concurrency Locking, Multi-Table Atomic Rollbacks, Environment Validation, and Docker Secrets Bootstrap with fresh creation and one-time execution guard).
+### Ringkasan Hasil Pengujian v1.6.1:
+- **Backend Tests**: 98 tests passed across 12 test files (AppError, Zod Validation, RBAC Permissions, CSRF Token Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Concurrency Locking, Multi-Table Atomic Rollbacks, Environment Validation, Bootstrap In-Memory Unit Tests, and Bootstrap Fail-Closed Database Guard Integration Test).
 - **Frontend Tests**: 9 tests passed across 2 test files (Utils formatters, Concurrency calculation, Audit ledger reconciliation, Reversal logic).
-- **Playwright Browser E2E**: 3 tests / 13-stage comprehensive inventory lifecycle workflow passed in 8.8s against isolated E2E Docker stack on port 3100 (fresh disposable database initialization, bootstrap admin login, forced password change, real REST API, and zero static/hardcoded credentials).
-- **Setup Automation Tests**: 3 tests passed in `tests/test-init-local.ps1` (fresh generation, overwrite guard, Windows ACL verification).
-- **Total**: 107 automated tests passing hijau 100% dengan exit code 0.
+- **Setup Automation Tests**: 15 scenarios passed in `tests/test-init-local.ps1` (fresh generation, overwrite guards, password complexity, entropy checks, console hygiene, Windows ACL with well-known SIDs, Set-StrictMode Latest compatibility, and atomic rollback).
+- **Playwright Browser E2E**: 3 tests / 13-stage comprehensive inventory lifecycle workflow passed in ~10s against isolated E2E Docker stack on port 3100 (fresh disposable database initialization, bootstrap admin login, forced password change, real REST API, and zero static/hardcoded credentials).
+- **Total**: 125 automated tests and verification scenarios passing 100% green dengan exit code 0.
 
 ---
 
@@ -305,9 +308,11 @@ StockFlow/
 ├── README.md                    # Dokumentasi utama proyek portofolio
 ├── scripts/
 │   ├── init-local.ps1           # Generator kredensial kriptografis .NET dengan Windows ACL & rollback
-│   └── run-e2e.ps1              # Orkestrator pengujian Playwright E2E pada stack terisolasi port 3100
+│   ├── run-e2e.ps1              # Orkestrator pengujian Playwright E2E pada stack terisolasi port 3100
+│   ├── scan-secrets.ps1         # Scanner pendeteksi kebocoran kredensial, CLI args, dan token
+│   └── package-release.ps1      # Pemaket release resmi dengan eksklusi ketat artefak debug
 ├── tests/
-│   └── test-init-local.ps1      # Pengujian otomatis untuk skrip inisialisasi lingkungan lokal
+│   └── test-init-local.ps1      # 15 skenario pengujian otomatis untuk skrip inisialisasi lingkungan lokal
 ├── tasks/
 │   ├── plan.md                  # Rencana arsitektur dan milestone bertahap
 │   └── todo.md                  # Checklist eksekusi tugas
@@ -321,7 +326,7 @@ StockFlow/
 │   │   ├── DEPLOYMENT_GUIDE.md        # Panduan deployment production & isolasi E2E
 │   │   ├── DATABASE_MAINTENANCE.md    # Backup, restore, dan migrasi database
 │   │   ├── E2E_REPORT.md              # Laporan pengujian browser Playwright E2E 13 tahap
-│   │   ├── FINAL_RELEASE_REPORT_V1_6.md # Laporan komprehensif rilis final v1.6
+│   │   ├── FINAL_RELEASE_REPORT_V1_6_1.md # Laporan komprehensif rilis final v1.6.1
 │   │   └── TROUBLESHOOTING.md         # Solusi masalah teknis umum
 │   └── learning/                # Dokumentasi materi fundamental
 │       ├── LEARNING_ROADMAP.md        # Peta jalan pembelajaran teknologi

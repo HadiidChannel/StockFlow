@@ -1,14 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { bootstrapSystem } from '../src/scripts/bootstrap';
-import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 
-const prisma = new PrismaClient();
-
-describe('P0-03: Production Administrator Bootstrap Security & Docker Compose Secrets', () => {
+describe('Bootstrap Unit Tests (In-Memory Prisma Mock)', () => {
   const originalEnv = { ...process.env };
-  const tempSecretFile = path.join(__dirname, 'temp_admin_secret.txt');
+  const tempSecretFile = path.join(__dirname, 'temp_unit_admin_secret.txt');
 
   beforeEach(() => {
     process.env = { ...originalEnv };
@@ -107,113 +104,130 @@ describe('P0-03: Production Administrator Bootstrap Security & Docker Compose Se
     );
   });
 
-  it('harus berhasil mengeksekusi bootstrap pada database kosong, membuat admin dengan bcrypt hash dan mustChangePassword, serta menolak duplikasi pada pemanggilan kedua', async () => {
+  it('harus menolak bootstrap pada production jika variabel organisasi atau admin belum ditentukan', async () => {
     const securePass = 'Str0ngP@ssw0rd!2026Secure';
     fs.writeFileSync(tempSecretFile, securePass, 'utf8');
 
     process.env.NODE_ENV = 'production';
-    process.env.INITIAL_ORG_NAME = 'PT StockFlow Fresh Test';
-    process.env.INITIAL_ADMIN_NAME = 'Admin Fresh Test';
-    process.env.INITIAL_ADMIN_EMAIL = 'admin.fresh@stockflow.com';
+    process.env.INITIAL_ADMIN_PASSWORD_FILE = tempSecretFile;
+    delete process.env.INITIAL_ORG_NAME;
+    delete process.env.INITIAL_ADMIN_NAME;
+    delete process.env.INITIAL_ADMIN_EMAIL;
+
+    await expect(bootstrapSystem()).rejects.toThrow('INITIAL_ORG_NAME wajib diisi pada environment production.');
+  });
+
+  it('harus berhasil mengeksekusi bootstrap pada database kosong dengan mock Prisma', async () => {
+    const securePass = 'Str0ngP@ssw0rd!2026Secure';
+    fs.writeFileSync(tempSecretFile, securePass, 'utf8');
+
+    process.env.NODE_ENV = 'production';
+    process.env.INITIAL_ORG_NAME = 'PT StockFlow Unit Test';
+    process.env.INITIAL_ADMIN_NAME = 'Admin Unit Test';
+    process.env.INITIAL_ADMIN_EMAIL = 'admin.unit@stockflow.com';
     process.env.INITIAL_ADMIN_PASSWORD_FILE = tempSecretFile;
 
-    // Cleanup lingering test admin if any
-    await prisma.session.deleteMany({ where: { user: { email: 'admin.fresh@stockflow.com' } } });
-    await prisma.user.deleteMany({ where: { email: 'admin.fresh@stockflow.com' } });
+    const mockAdminRole = {
+      id: '00000000-0000-4000-8000-000000000001',
+      code: 'ADMIN',
+      name: 'Administrator',
+    };
+    const mockStaffRole = {
+      id: '00000000-0000-4000-8000-000000000002',
+      code: 'WAREHOUSE_STAFF',
+      name: 'Warehouse Staff',
+    };
+    const mockOrg = {
+      id: 'org-uuid-1234',
+      name: 'PT StockFlow Unit Test',
+      code: 'ORG-MAIN',
+      timezone: 'Asia/Makassar',
+      currency: 'IDR',
+    };
+    let createdUserData: any = null;
 
-    // Pastikan ADMIN role ada
-    const adminRole = await prisma.role.upsert({
-      where: { code: 'ADMIN' },
-      update: {},
-      create: {
-        id: '00000000-0000-4000-8000-000000000001',
-        code: 'ADMIN',
-        name: 'Administrator',
+    const mockTx = {
+      user: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation(async ({ data }) => {
+          createdUserData = { id: 'user-uuid-5678', ...data };
+          return createdUserData;
+        }),
       },
-    });
-
-    // Kembalikan user yang mungkin sempat tertinggal di TEMP_TEST_ROLE dari kegagalan sebelumnya
-    await prisma.user.updateMany({
-      where: { role: { code: 'TEMP_TEST_ROLE' } },
-      data: { roleId: adminRole.id },
-    });
-
-    // 1. Simpan backup user admin yang sudah ada agar database dapat dikembalikan utuh
-    const existingAdmins = await prisma.user.findMany({
-      where: { role: { code: 'ADMIN' } },
-      select: { id: true, roleId: true },
-    });
-
-    // Buat temporary dummy role agar user lama sementara bukan ADMIN selama pengujian fresh bootstrap
-    const dummyRole = await prisma.role.upsert({
-      where: { code: 'TEMP_TEST_ROLE' },
-      update: {},
-      create: {
-        id: '00000000-0000-4000-8000-000000000099',
-        code: 'TEMP_TEST_ROLE',
-        name: 'Temporary Test Role',
+      role: {
+        findUnique: vi.fn().mockImplementation(async ({ where }) => {
+          if (where.code === 'ADMIN') return mockAdminRole;
+          if (where.code === 'WAREHOUSE_STAFF') return mockStaffRole;
+          return null;
+        }),
+        create: vi.fn().mockImplementation(async ({ data }) => data),
       },
-    });
+      organization: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue(mockOrg),
+      },
+    };
 
-    // Pindahkan sementara admin lama ke dummy role
-    if (existingAdmins.length > 0) {
-      await prisma.user.updateMany({
-        where: { id: { in: existingAdmins.map((a) => a.id) } },
-        data: { roleId: dummyRole.id },
-      });
-    }
+    const mockPrisma = {
+      $transaction: vi.fn().mockImplementation(async (callback) => {
+        return await callback(mockTx);
+      }),
+    };
 
-    try {
-      // 2. Eksekusi bootstrap pertama kali saat tidak ada ADMIN di database
-      const res1 = await bootstrapSystem();
+    const result = await bootstrapSystem(undefined, mockPrisma);
 
-      // Assertions untuk eksekusi pertama (fresh database condition)
-      expect(res1.skipped).toBe(false);
-      expect(res1.user).toBeDefined();
-      expect(res1.user?.email).toBe('admin.fresh@stockflow.com');
-      expect(res1.user?.mustChangePassword).toBe(true);
-      expect(res1.organization).toBeDefined();
-      expect(res1.organization?.id).toBeDefined();
-      expect(res1.user?.organizationId).toBe(res1.organization?.id);
+    expect(result.skipped).toBe(false);
+    expect(result.organization).toEqual(mockOrg);
+    expect(result.user).toBeDefined();
+    expect(result.user?.email).toBe('admin.unit@stockflow.com');
+    expect(result.user?.mustChangePassword).toBe(true);
+    expect(createdUserData).toBeDefined();
+    expect(createdUserData.passwordHash).not.toBe(securePass);
+    expect(createdUserData.passwordHash.startsWith('$2')).toBe(true);
+  });
 
-      // Verifikasi di database: password tersimpan dalam bentuk bcrypt hash, bukan plaintext
-      const dbUser = await prisma.user.findUnique({
-        where: { id: res1.user!.id },
-      });
+  it('harus mengaktifkan one-time execution guard jika akun Administrator sudah ada di database', async () => {
+    const securePass = 'Str0ngP@ssw0rd!2026Secure';
+    fs.writeFileSync(tempSecretFile, securePass, 'utf8');
 
-      expect(dbUser).toBeDefined();
-      expect(dbUser?.passwordHash).not.toBe(securePass);
-      expect(dbUser?.passwordHash.startsWith('$2')).toBe(true);
+    process.env.NODE_ENV = 'production';
+    process.env.INITIAL_ORG_NAME = 'PT StockFlow Unit Test';
+    process.env.INITIAL_ADMIN_NAME = 'Admin Unit Test';
+    process.env.INITIAL_ADMIN_EMAIL = 'admin.unit@stockflow.com';
+    process.env.INITIAL_ADMIN_PASSWORD_FILE = tempSecretFile;
 
-      // 3. Eksekusi bootstrap kedua kali (membuktikan one-time execution guard aktif dan tidak membuat duplikat)
-      const res2 = await bootstrapSystem();
-      expect(res2.skipped).toBe(true);
-      expect(res2.existingAdminId).toBe(res1.user!.id);
+    const existingAdmin = {
+      id: 'existing-admin-uuid-9999',
+      email: 'admin.existing@stockflow.com',
+      role: { code: 'ADMIN' },
+    };
 
-      // Verifikasi jumlah admin tetap 1
-      const currentAdminCount = await prisma.user.count({
-        where: { role: { code: 'ADMIN' } },
-      });
-      expect(currentAdminCount).toBe(1);
+    const mockTx = {
+      user: {
+        findFirst: vi.fn().mockResolvedValue(existingAdmin),
+        create: vi.fn(),
+      },
+      role: {
+        findUnique: vi.fn(),
+        create: vi.fn(),
+      },
+      organization: {
+        findFirst: vi.fn(),
+        create: vi.fn(),
+      },
+    };
 
-    } finally {
-      // 4. Cleanup: Hapus admin pengujian dan kembalikan role admin sebelumnya
-      await prisma.session.deleteMany({ where: { user: { email: 'admin.fresh@stockflow.com' } } });
-      await prisma.user.deleteMany({ where: { email: 'admin.fresh@stockflow.com' } });
+    const mockPrisma = {
+      $transaction: vi.fn().mockImplementation(async (callback) => {
+        return await callback(mockTx);
+      }),
+    };
 
-      if (existingAdmins.length > 0) {
-        await prisma.user.updateMany({
-          where: { id: { in: existingAdmins.map((a) => a.id) } },
-          data: { roleId: adminRole.id },
-        });
-      } else {
-        await prisma.user.updateMany({
-          where: { role: { code: 'TEMP_TEST_ROLE' } },
-          data: { roleId: adminRole.id },
-        });
-      }
+    const result = await bootstrapSystem(undefined, mockPrisma);
 
-      await prisma.role.deleteMany({ where: { code: 'TEMP_TEST_ROLE' } });
-    }
+    expect(result.skipped).toBe(true);
+    expect(result.existingAdminId).toBe('existing-admin-uuid-9999');
+    expect(mockTx.user.create).not.toHaveBeenCalled();
+    expect(mockTx.organization.create).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,24 @@
+=== E2E AND MAIN STACK RESOURCE ISOLATION PROOF ===
+
+--- Docker Containers (Active) ---
+NAMES                               STATUS                    PORTS
+stockflow-e2e-e8968293-frontend-1   Up 2 seconds              127.0.0.1:3100->3000/tcp
+stockflow-e2e-e8968293-backend-1    Up 2 seconds              4000/tcp
+stockflow-e2e-e8968293-db-1         Up 2 minutes (healthy)    3306/tcp, 33060/tcp
+stockflow_db_dev                    Up 15 minutes (healthy)   127.0.0.1:3306->3306/tcp
+stockflow_frontend_prod             Up 47 minutes             127.0.0.1:3000->3000/tcp
+stockflow_backend_prod              Up 47 minutes             4000/tcp
+stockflow_db_prod                   Up 47 minutes (healthy)   3306/tcp, 33060/tcp
+
+--- Docker Networks ---
+NETWORK ID     NAME                                       DRIVER    SCOPE
+74215ce720db   stockflow-dev_stockflow_dev_net            bridge    local
+9f3432401bdd   stockflow-e2e-e8968293_stockflow_e2e_net   bridge    local
+9257b344d816   stockflow-prod_stockflow_net               bridge    local
+
+--- Docker Volumes ---
+DRIVER    VOLUME NAME
+local     stockflow-dev_mysql_dev_data
+local     stockflow-e2e-e8968293_mysql_e2e_data
+local     stockflow-prod_mysql_prod_data
+

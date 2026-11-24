@@ -39,11 +39,11 @@ Keuntungan arsitektur ini:
 ### Variabel Lingkungan Produksi (Production .env)
 
 ```env
-# Database Configuration
-DB_ROOT_PASSWORD=ganti_dengan_root_password_berentropi_tinggi_32karakter
+# Database Configuration (Dihasilkan secara otomatis oleh scripts/init-local.ps1)
+DB_ROOT_PASSWORD=[REDACTED_GENERATED_PASSWORD]
 DB_USER=stockflow_user
-DB_PASSWORD=ganti_dengan_app_password_berentropi_tinggi_32karakter
-DATABASE_URL="mysql://stockflow_user:ganti_dengan_app_password_berentropi_tinggi_32karakter@db:3306/stockflow_db"
+DB_PASSWORD=[REDACTED_GENERATED_PASSWORD]
+DATABASE_URL="mysql://stockflow_user:[REDACTED_GENERATED_PASSWORD]@localhost:3306/stockflow_db"
 
 # Backend Configuration
 NODE_ENV=production
@@ -53,8 +53,8 @@ FRONTEND_URL="http://localhost:3000"
 COOKIE_DOMAIN=""
 COOKIE_SECURE="false"
 COOKIE_SAME_SITE="lax"
-SESSION_SECRET="ganti_dengan_session_secret_acak_minimal_32_karakter"
-CSRF_SECRET="ganti_dengan_csrf_secret_acak_minimal_32_karakter"
+SESSION_SECRET="[REDACTED_GENERATED_HEX]"
+CSRF_SECRET="[REDACTED_GENERATED_HEX]"
 LOG_LEVEL="info"
 
 # Initial Bootstrap (Menggunakan Docker Compose Secrets)

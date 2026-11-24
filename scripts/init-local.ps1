@@ -106,11 +106,15 @@ function Set-SecureAcl([string]$targetPath, [bool]$isDirectory = $false) {
     if (-not (Test-Path -LiteralPath $targetPath)) {
         throw "Target path '$targetPath' tidak ditemukan saat konfigurasi ACL."
     }
-    $userName = $env:USERNAME
+    $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $userSid = $currentUser.User.Value
+    $systemSid = "S-1-5-18"
+    $adminSid = "S-1-5-32-544"
+
     if ($isDirectory) {
-        & icacls.exe "$targetPath" /inheritance:r /grant:r "${userName}:(OI)(CI)(R,W)" /grant:r "*S-1-5-32-544:(OI)(CI)(R,W)" | Out-Null
+        & icacls.exe "$targetPath" /inheritance:r /grant:r "*${userSid}:(OI)(CI)(M)" /grant:r "*${systemSid}:(OI)(CI)(M)" /grant:r "*${adminSid}:(OI)(CI)(M)" | Out-Null
     } else {
-        & icacls.exe "$targetPath" /inheritance:r /grant:r "${userName}:(R,W)" /grant:r "*S-1-5-32-544:(R,W)" | Out-Null
+        & icacls.exe "$targetPath" /inheritance:r /grant:r "*${userSid}:(R,W)" /grant:r "*${systemSid}:(R,W)" /grant:r "*${adminSid}:(R,W)" | Out-Null
     }
     if ($LASTEXITCODE -ne 0) {
         throw "Gagal menerapkan Windows ACL pada '$targetPath'. Exit code: $LASTEXITCODE"
@@ -178,13 +182,19 @@ INITIAL_ORG_NAME="PT StockFlow Logistik Nusantara"
     $createdTempEnv = $true
     Set-SecureAcl -targetPath $tempEnvPath -isDirectory $false
 
-    # 5d. Atomic replacement to final destinations
-    Move-Item -LiteralPath $tempSecretPath -Destination $secretPasswordFilePath -Force
+    # 5d. Atomic replacement to final destinations (guarding against race conditions)
+    if (Test-Path -LiteralPath $secretPasswordFilePath) {
+        throw "Target secret file '$secretPasswordFilePath' sudah dibuat oleh proses lain."
+    }
+    Move-Item -LiteralPath $tempSecretPath -Destination $secretPasswordFilePath
     $createdSecretFile = $true
     $createdTempSecret = $false
     Set-SecureAcl -targetPath $secretPasswordFilePath -isDirectory $false
 
-    Move-Item -LiteralPath $tempEnvPath -Destination $envFilePath -Force
+    if (Test-Path -LiteralPath $envFilePath) {
+        throw "Target env file '$envFilePath' sudah dibuat oleh proses lain."
+    }
+    Move-Item -LiteralPath $tempEnvPath -Destination $envFilePath
     $createdEnvFile = $true
     $createdTempEnv = $false
     Set-SecureAcl -targetPath $envFilePath -isDirectory $false
@@ -207,8 +217,8 @@ INITIAL_ORG_NAME="PT StockFlow Logistik Nusantara"
         Remove-Item -LiteralPath $envFilePath -Force -ErrorAction SilentlyContinue
     }
     if ($createdSecretsDir -and (Test-Path -LiteralPath $secretsDirPath)) {
-        $remaining = Get-ChildItem -LiteralPath $secretsDirPath -Force -ErrorAction SilentlyContinue
-        if ($null -eq $remaining -or $remaining.Count -eq 0) {
+        $remaining = @(Get-ChildItem -LiteralPath $secretsDirPath -Force -ErrorAction SilentlyContinue)
+        if ($null -eq $remaining -or $remaining.Length -eq 0) {
             Remove-Item -LiteralPath $secretsDirPath -Force -ErrorAction SilentlyContinue
         }
     }

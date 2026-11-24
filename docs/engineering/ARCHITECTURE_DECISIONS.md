@@ -204,3 +204,32 @@ Sebelumnya, pengujian Playwright E2E dijalankan langsung terhadap aplikasi utama
 ### Konsekuensi
 - Positif: Isolasi 100% antara database utama dan database pengujian, zero data pollution, pengujian dapat dijalankan berulang kali secara deterministik tanpa merusak data aplikasi utama, kredensial dinamis menghilangkan risiko paparan secret.
 - Negatif: Eksekusi pengujian E2E memerlukan waktu beberapa puluh detik untuk proses inisialisasi kontainer database dan migrasi skema sekali pakai.
+
+---
+
+## ADR-011: Decoupled Bootstrap Testing with Fail-Closed Guard and Dynamic E2E Container Namespaces
+
+### Status
+Accepted & Implemented (v1.6.1)
+
+### Konteks
+Pada audit v1.6 ditemukan dua titik kerentanan arsitektural:
+1. `backend/tests/bootstrap.test.ts` memanipulasi role pengguna pada database aktif menggunakan role dummy `TEMP_TEST_ROLE` demi menguji jalur fresh database. Jika terjadi interupsi, database pengembangan lokal dapat tertinggal dalam keadaan tidak konsisten.
+2. Pengujian E2E pada `docker-compose.e2e.yml` menggunakan nama project statis `stockflow-e2e-test` dan container name tetap, menimbulkan risiko tubrukan resource dan kegagalan isolasi saat dijalankan berulang atau paralel.
+3. Deklarasi healthcheck database pada Docker Compose mengekspansi nilai rahasia saat perintah `compose config` dijalankan.
+
+### Keputusan
+1. **Pemisahan Unit vs Integration Test Bootstrap**:
+   - Memindahkan pengujian logika bootstrap ke `backend/tests/bootstrap.unit.test.ts` dengan mock Prisma in-memory, menguji 10 skenario bisnis tanpa koneksi database.
+   - Menghapus sepenuhnya penggunaan dummy role `TEMP_TEST_ROLE`.
+   - Mengimplementasikan `backend/tests/bootstrap.integration.test.ts` dengan Fail-Closed Guard yang secara eksplisit menolak berjalan jika target bukan database terisolasi `stockflow_bootstrap_test`.
+2. **Dynamic Project Namespace untuk Disposable E2E Stack**:
+   - Mengubah `docker-compose.e2e.yml` agar menggunakan nama project dinamis: `name: ${COMPOSE_PROJECT_NAME:-stockflow-e2e-test}` dan menghapus seluruh `container_name:` statis.
+   - Menggenerasikan Run ID acak 8 karakter hex pada `scripts/run-e2e.ps1` (`stockflow-e2e-<runId>`).
+   - Menambahkan Ownership Guard sebelum eksekusi `down -v`.
+3. **Double-Dollar Healthcheck Security**:
+   - Menggunakan format `test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]` untuk menunda evaluasi password hingga runtime container, mencegah kebocoran password pada `docker compose config`.
+
+### Konsekuensi
+- Positif: Database lokal terlindungi 100% dari mutasi pengujian, unit test bootstrap berjalan secepat kilat (sub-detik), eksekusi E2E bebas dari konflik nama kontainer, dan konfigurasi Docker compose bersih tanpa kebocoran password.
+- Negatif: Pengujian integrasi bootstrap nyata membutuhkan database uji terpisah yang harus dikonfigurasi secara eksplisit.

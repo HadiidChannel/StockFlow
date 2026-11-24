@@ -1,7 +1,7 @@
 # ==============================================================================
 # StockFlow - Isolated E2E Test Suite Runner
 # Script: scripts/run-e2e.ps1
-# Description: Orchestrates the dedicated stockflow-e2e-test stack on port 3100,
+# Description: Orchestrates the dedicated isolated E2E stack on port 3100,
 #              executes Playwright E2E lifecycle tests, and tears down cleanly.
 # Target OS: Windows (PowerShell 7+ / Windows PowerShell 5.1)
 # ==============================================================================
@@ -26,11 +26,15 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path
 $e2eComposePath = Join-Path $projectRoot "docker-compose.e2e.yml"
 $secretsDir = Join-Path $projectRoot ".secrets"
-$e2eSecretFile = Join-Path $secretsDir "e2e_initial_admin_password.txt"
+
+# Generate unique cryptographic Run ID and project name for strict isolation
+$runId = [Guid]::NewGuid().ToString("N").Substring(0, 8)
+$projectName = "stockflow-e2e-$runId"
+$e2eSecretFile = Join-Path $secretsDir "e2e_${runId}_initial_admin_password.txt"
 
 Write-Host "======================================================================"
 Write-Host " StockFlow E2E Isolated Runner (Port: $E2ePort)"
-Write-Host " Project Target: stockflow-e2e-test"
+Write-Host " Project Target: $projectName (Run ID: $runId)"
 Write-Host " Safety Rule: Main application (stockflow-prod) remains 100% untouched"
 Write-Host "======================================================================"
 
@@ -125,6 +129,21 @@ function Get-CryptoRandomPassword([int]$length = 24) {
     }
 }
 
+function Set-SecureAcl([string]$targetPath) {
+    if (-not (Test-Path -LiteralPath $targetPath)) {
+        throw "Target path '$targetPath' tidak ditemukan saat konfigurasi ACL."
+    }
+    $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $userSid = $currentUser.User.Value
+    $systemSid = "S-1-5-18"
+    $adminSid = "S-1-5-32-544"
+
+    & icacls.exe "$targetPath" /inheritance:r /grant:r "*${userSid}:(R,W)" /grant:r "*${systemSid}:(R,W)" /grant:r "*${adminSid}:(R,W)" | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Gagal menerapkan Windows ACL pada '$targetPath'. Exit code: $LASTEXITCODE"
+    }
+}
+
 $dbRootPassword = Get-CryptoRandomHex 24
 $dbPassword = Get-CryptoRandomHex 24
 $sessionSecret = Get-CryptoRandomHex 32
@@ -137,15 +156,14 @@ if (-not (Test-Path $secretsDir)) {
 
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [System.IO.File]::WriteAllText($e2eSecretFile, $initialAdminPassword, $utf8NoBom)
-
-# Restrict permissions via icacls
 try {
-    & icacls.exe "$e2eSecretFile" /inheritance:r /grant:r "$($env:USERNAME):(R,W)" /grant:r "*S-1-5-32-544:(R,W)" | Out-Null
+    Set-SecureAcl -targetPath $e2eSecretFile
 } catch {
-    # Non-blocking if running in constrained environment
+    # Non-blocking if environment is constrained
 }
 
 # Set Environment Variables for Docker Compose Process
+$env:COMPOSE_PROJECT_NAME = $projectName
 $env:DB_ROOT_PASSWORD = $dbRootPassword
 $env:DB_PASSWORD = $dbPassword
 $env:DB_USER = "stockflow_e2e_user"
@@ -160,17 +178,21 @@ $playwrightExitCode = 1
 
 try {
     # 6. Bring Up Database and Wait for Health
-    Write-Host "[5/8] Menjalankan kontainer database E2E (stockflow_e2e_db)..."
-    & docker.exe compose -p stockflow-e2e-test -f "$e2eComposePath" up -d db
+    Write-Host "[5/8] Menjalankan kontainer database E2E ($projectName-db)..."
+    & docker.exe compose -p $projectName -f "$e2eComposePath" up -d db
     if ($LASTEXITCODE -ne 0) { throw "Gagal menjalankan container db E2E." }
 
     Write-Host "Menunggu database E2E berstatus healthy..."
     $dbHealthy = $false
     for ($i = 0; $i -lt 40; $i++) {
-        $status = (& docker.exe inspect --format '{{.State.Health.Status}}' stockflow_e2e_db 2>$null)
-        if ($status -eq "healthy") {
-            $dbHealthy = $true
-            break
+        $dbContainerId = (& docker.exe compose -p $projectName -f "$e2eComposePath" ps -q db 2>$null)
+        if (-not [string]::IsNullOrWhiteSpace($dbContainerId)) {
+            $dbContainerId = $dbContainerId.Trim()
+            $status = (& docker.exe inspect --format '{{.State.Health.Status}}' $dbContainerId 2>$null)
+            if ($status -eq "healthy") {
+                $dbHealthy = $true
+                break
+            }
         }
         Start-Sleep -Seconds 2
     }
@@ -181,19 +203,19 @@ try {
 
     # 7. Run Database Migration
     Write-Host "[6/8] Menjalankan migrator database E2E..."
-    & docker.exe compose -p stockflow-e2e-test -f "$e2eComposePath" run --rm migrator
+    & docker.exe compose -p $projectName -f "$e2eComposePath" run --rm migrator
     if ($LASTEXITCODE -ne 0) { throw "Migrator database E2E gagal." }
     Write-Host "Migrasi skema database E2E selesai."
 
     # 8. Run Bootstrap
     Write-Host "Menjalankan administrator bootstrap untuk akun awal E2E..."
-    & docker.exe compose -p stockflow-e2e-test -f "$e2eComposePath" --profile bootstrap run --rm bootstrap
+    & docker.exe compose -p $projectName -f "$e2eComposePath" --profile bootstrap run --rm bootstrap
     if ($LASTEXITCODE -ne 0) { throw "Bootstrap akun awal E2E gagal." }
     Write-Host "Bootstrap administrator selesai."
 
     # 9. Start Backend and Frontend
     Write-Host "Menjalankan backend dan frontend E2E..."
-    & docker.exe compose -p stockflow-e2e-test -f "$e2eComposePath" up -d backend frontend
+    & docker.exe compose -p $projectName -f "$e2eComposePath" up -d backend frontend
     if ($LASTEXITCODE -ne 0) { throw "Gagal menjalankan service backend dan frontend E2E." }
 
     # 10. Probe Ingress Endpoint
@@ -230,12 +252,14 @@ try {
         $isoPath = Join-Path $EvidenceDir "e2e_resource_isolation.txt"
         [System.IO.File]::WriteAllText($isoPath, $isolationLog, [System.Text.UTF8Encoding]::new($false))
 
-        $e2eRawConfig = (& docker.exe compose -p stockflow-e2e-test -f "$e2eComposePath" config) | Out-String
+        $e2eRawConfig = (& docker.exe compose -p $projectName -f "$e2eComposePath" config) | Out-String
         $e2eSanitizedConfig = $e2eRawConfig -replace '(?m)(CSRF_SECRET:\s*).*', '$1[REDACTED_SECRET]' `
                                             -replace '(?m)(SESSION_SECRET:\s*).*', '$1[REDACTED_SECRET]' `
                                             -replace '(?m)(MYSQL_PASSWORD:\s*).*', '$1[REDACTED_SECRET]' `
                                             -replace '(?m)(MYSQL_ROOT_PASSWORD:\s*).*', '$1[REDACTED_SECRET]' `
-                                            -replace '(?m)(DATABASE_URL:\s*mysql://[^:]+:)[^@]+(@.*)', '$1[REDACTED_SECRET]$2'
+                                            -replace '(?m)(DATABASE_URL:\s*mysql://[^:]+:)[^@]+(@.*)', '$1[REDACTED_SECRET]$2' `
+                                            -replace '(-p)[^\s\\]+', '$1[REDACTED_PASSWORD]' `
+                                            -replace '(--password=)[^\s\\]+', '$1[REDACTED_PASSWORD]'
 
         $sanitizedPath = Join-Path $EvidenceDir "e2e_compose_config_sanitized.txt"
         [System.IO.File]::WriteAllText($sanitizedPath, $e2eSanitizedConfig, [System.Text.UTF8Encoding]::new($false))
@@ -268,14 +292,16 @@ try {
     Write-Error "Terjadi kegagalan selama siklus pengujian E2E: $err"
     $playwrightExitCode = 1
 } finally {
-    # 12. Teardown Disposable Stack
-    Write-Host "[8/8] Membersihkan disposable E2E stack (docker compose down -v)..."
-    if (-not $KeepStack) {
-        & docker.exe compose -p stockflow-e2e-test -f "$e2eComposePath" down -v --remove-orphans
+    # 12. Strict Ownership Cleanup Guard and Teardown
+    Write-Host "[8/8] Membersihkan disposable E2E stack ($projectName)..."
+    if ($projectName -notmatch '^stockflow-e2e-[a-f0-9]{8}$') {
+        Write-Error "Ownership Guard: Nama project '$projectName' tidak valid. Teardown otomatis dibatalkan demi keamanan."
+    } elseif (-not $KeepStack) {
+        & docker.exe compose -p $projectName -f "$e2eComposePath" down -v --remove-orphans
         if (Test-Path -LiteralPath $e2eSecretFile) {
             Remove-Item -LiteralPath $e2eSecretFile -Force -ErrorAction SilentlyContinue
         }
-        Write-Host "Stack E2E berhasil dibersihkan beserta volume mysql_e2e_data."
+        Write-Host "Stack E2E $projectName berhasil dibersihkan beserta volume terisolasinya."
     } else {
         Write-Host "Flag KeepStack aktif: stack E2E dibiarkan berjalan untuk inspeksi manual."
     }

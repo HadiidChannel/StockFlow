@@ -72,7 +72,8 @@ function validatePasswordPolicy(password: string): void {
   }
 }
 
-export async function bootstrapSystem(args?: BootstrapArgs) {
+export async function bootstrapSystem(args?: BootstrapArgs, customPrisma?: PrismaClient | any) {
+  const client = customPrisma || prisma;
   const isProduction = process.env.NODE_ENV === 'production';
 
   const orgName = args?.orgName || process.env.INITIAL_ORG_NAME || (isProduction ? undefined : 'PT StockFlow Logistik Nusantara');
@@ -103,7 +104,7 @@ export async function bootstrapSystem(args?: BootstrapArgs) {
 
   console.log('Memulai proses inisialisasi (bootstrap) satu kali StockFlow...');
 
-  return await prisma.$transaction(async (tx) => {
+  return await client.$transaction(async (tx: any) => {
     // 1. One-time execution guard: Cek apakah sudah ada role ADMIN dan user ADMIN aktif
     const existingAdmin = await tx.user.findFirst({
       where: {

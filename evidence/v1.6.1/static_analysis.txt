@@ -1,0 +1,27 @@
+=== STOCKFLOW STATIC ANALYSIS (TYPECHECK & LINT) ===
+Generated at: 2026-11-25 00:18:55 +08:00
+
+--- Backend TypeScript Typecheck (tsc --noEmit) ---
+
+> stockflow-backend@1.0.0 typecheck
+> tsc --noEmit
+
+
+--- Frontend TypeScript Typecheck (tsc --noEmit) ---
+
+> stockflow-frontend@1.0.0 typecheck
+> tsc --noEmit
+
+
+--- Backend ESLint Check ---
+
+> stockflow-backend@1.0.0 lint
+> eslint src/
+
+
+--- Frontend ESLint Check ---
+
+> stockflow-frontend@1.0.0 lint
+> eslint src/
+
+

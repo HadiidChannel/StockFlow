@@ -20,6 +20,8 @@ prisma/*.db-journal
 *.tsbuildinfo
 test-results
 playwright-report
+results.json
+*.zip
 audit/
 .secrets/
 *.secret

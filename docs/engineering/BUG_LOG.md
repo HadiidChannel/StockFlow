@@ -119,7 +119,7 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 
 ### BUG-012: Keberadaan Kredensial Statis dan Hardcoded pada Test Suite E2E
 - **Severity**: Medium
-- **Deskripsi**: File `frontend/tests/e2e/stockflow-lifecycle.spec.ts` sebelumnya memuat password statis seperti `AdminPermanentPassword2026!` dan `StaffPassword2026!` serta branch login alternatif yang mengasumsikan password statis.
+- **Deskripsi**: File `frontend/tests/e2e/stockflow-lifecycle.spec.ts` sebelumnya memuat password statis pada skenario pengujian serta branch login alternatif yang mengasumsikan password statis.
 - **Steps to Reproduce**: Memeriksa variabel password pada `stockflow-lifecycle.spec.ts`.
 - **Root Cause**: Pola pengujian masa lalu yang belum mengadopsi pembangkitan kredensial acak kriptografis secara menyeluruh.
 - **Fix**: Mengimplementasikan fungsi pembantu `generateSecureRandomPassword(length)` berbasis `crypto.randomInt` untuk menghasilkan seluruh password sementara dan permanen secara acak pada runtime, serta menghapus branch login fallback statis.
@@ -151,4 +151,22 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 - **Root Cause**: Artefak pengembangan awal yang belum dibersihkan saat arsitektur beralih ke Docker compose dan Playwright native runner.
 - **Fix**: Menghapus file `scripts/e2e-setup.js` secara tuntas dan memverifikasi tidak ada referensi yang terputus.
 - **Regression Test**: Seluruh test backend, frontend, dan E2E tetap berjalan normal tanpa error dependensi.
+- **Status**: Fixed & Verified
+
+### BUG-016: Historical Test Account Exposure di Main Database & Audit Artifact Leakage
+- **Severity**: High
+- **Deskripsi**: Ditemukan akun staf pengujian sisa siklus v1.5 pada database utama `stockflow_db` serta password staf permanen pada file dokumentasi historis `audit/evidence/e2e/E2E_REPORT.md`.
+- **Steps to Reproduce**: Memeriksa tabel `users` pada `stockflow_db` dan memindai teks pada `audit/evidence/e2e/E2E_REPORT.md`.
+- **Root Cause**: Siklus pengujian historis yang sempat mengeksekusi terhadap database bersama sebelum isolasi port 3100 diterapkan, serta pencatatan raw credential pada laporan markdown.
+- **Fix**: Menetralisir akun staf pengujian pada database utama (status INACTIVE, rotasi hash bcrypt, revocasi seluruh sesi aktif), mengganti dokumen laporan dengan versi tersanitasi, serta membersihkan seluruh artefak debug frontend (`debug.log`, `tsconfig.tsbuildinfo`, `test-results`).
+- **Regression Test**: Pemindaian secret scanner `scripts/scan-secrets.ps1` menghasilkan 0 temuan, dan query database membuktikan akun telah berstatus INACTIVE dengan sesi tercabut.
+- **Status**: Fixed & Verified
+
+### BUG-017: Healthcheck Password Expansion pada Docker Compose Config & Coupling Bootstrap Test
+- **Severity**: High
+- **Deskripsi**: Sintaks `test: ["CMD", "mysqladmin", "-p${DB_ROOT_PASSWORD}"]` menyebabkan `docker compose config` mengekspansi password root database ke dalam output teks. Selain itu, `bootstrap.test.ts` memanipulasi role admin pada database aktif menggunakan `TEMP_TEST_ROLE`.
+- **Steps to Reproduce**: Menjalankan `docker compose config` dan memeriksa output baris healthcheck.
+- **Root Cause**: Penggunaan ekspansi variabel shell compose tingkat pertama alih-alih ekspansi runtime container, serta pengujian logika bootstrap yang tidak memisahkan unit test dari database nyata.
+- **Fix**: Mengubah healthcheck menjadi `CMD-SHELL` dengan sintaks double dollar `$$MYSQL_ROOT_PASSWORD` sehingga tidak dievaluasi oleh compose config. Memisahkan unit test bootstrap dengan mock Prisma (`bootstrap.unit.test.ts`) dan mengisolasi integration test dengan Fail-Closed Guard (`bootstrap.integration.test.ts`).
+- **Regression Test**: Output `evidence/v1.6.1/e2e_compose_config_sanitized.txt` bersih 100% tanpa password root, 10 unit test bootstrap lolos dengan cepat tanpa DB, dan Fail-Closed Guard menolak eksekusi terhadap database non-test.
 - **Status**: Fixed & Verified

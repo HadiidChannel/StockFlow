@@ -1,0 +1,56 @@
+﻿======================================================================
+ Running Automated Verification Tests for scripts/init-local.ps1
+ Target Script: D:\Les Web Programming\Project Belajar\StokFlow\scripts\init-local.ps1
+ Strict Mode: Enabled (Latest)
+======================================================================
+[Scenario 1/15] Menjalankan inisialisasi pada direktori kosong...
+[Scenario 1 PASSED] Fresh initialization berhasil membuat .env dan .secrets/initial_admin_password.txt.
+[Scenario 2/15] Menguji penolakan overwrite jika .env sudah ada...
+[Scenario 2 PASSED] Safety guard berhasil mencegah penimpaan file .env (Exit Code: 1).
+[Scenario 3/15] Menguji penolakan overwrite jika file secret sudah ada...
+[Scenario 3 PASSED] Safety guard berhasil mencegah penimpaan file secret (Exit Code: 1).
+[Scenario 4/15] Memeriksa panjang password administrator...
+[Scenario 4 PASSED] Panjang password memenuhi syarat (24 karakter >= 24).
+[Scenario 5/15] Memeriksa kompleksitas karakter password administrator...
+[Scenario 5 PASSED] Password memenuhi seluruh kriteria kompleksitas karakter.
+[Scenario 6/15] Memeriksa entropi DB_ROOT_PASSWORD...
+[Scenario 6 PASSED] DB_ROOT_PASSWORD memiliki format hex 24+ byte yang valid.
+[Scenario 7/15] Memeriksa entropi DB_PASSWORD...
+[Scenario 7 PASSED] DB_PASSWORD memiliki format hex 24+ byte yang valid.
+[Scenario 8/15] Memeriksa entropi SESSION_SECRET...
+[Scenario 8 PASSED] SESSION_SECRET memiliki format hex 32+ byte yang valid.
+[Scenario 9/15] Memeriksa entropi CSRF_SECRET...
+[Scenario 9 PASSED] CSRF_SECRET memiliki format hex 32+ byte yang valid.
+[Scenario 10/15] Memeriksa higienitas console output terhadap kebocoran rahasia...
+[Scenario 10 PASSED] Zero credential exposure terverifikasi pada console output.
+[Scenario 11/15] Memeriksa Windows ACL pada file .env...
+[Scenario 11 PASSED] File .env terproteksi ACL dengan hak akses user dan administrator.
+[Scenario 12/15] Memeriksa Windows ACL pada file initial_admin_password.txt...
+[Scenario 12 PASSED] File initial_admin_password.txt terproteksi ACL dengan benar.
+[Scenario 13/15] Memeriksa Windows ACL pada direktori .secrets...
+[Scenario 13 PASSED] Direktori .secrets terproteksi ACL secara ketat.
+[Scenario 14/15] Memeriksa kompatibilitas Set-StrictMode -Version Latest...
+
+StockFlow local environment initialization completed.
+
+Generated files:
+- .env
+- .secrets/initial_admin_password.txt
+
+Secret values: REDACTED.
+
+Next step:
+Run the documented Docker initialization procedure.
+
+[Scenario 14 PASSED] Skrip 100% kompatibel dengan Set-StrictMode -Version Latest.
+[Scenario 15/15] Menguji mekanisme rollback otomatis saat terjadi kegagalan...
+[Scenario 15 PASSED] Rollback berhasil membersihkan artefak sementara tanpa meninggalkan sisa .tmp.
+
+======================================================================
+ Hasil Pengujian Otomatis scripts/init-local.ps1:
+ Total Skenario: 15
+ Lulus (Passed): 15
+ Gagal (Failed): 0
+ Status: 100% SUKSES
+======================================================================
+

@@ -1,0 +1,9 @@
+=== STOCKFLOW NPM DEPENDENCY SECURITY AUDIT ===
+Generated at: 2026-11-25 00:26:15 +08:00
+
+--- Backend npm audit ---
+found 0 vulnerabilities
+
+--- Frontend npm audit ---
+found 0 vulnerabilities
+
