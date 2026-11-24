@@ -1,3 +1,27 @@
+commit 8a4ba4f4d2004df01f0f138be35cd754ff470083
+Author: HadiidChannel <hadiidarraad622@gmail.com>
+Date:   Wed Nov 25 00:49:17 2026 +0800
+
+    feat(release): official release packaging scripts and checksum evidence for v1.6.1
+
+ evidence/v1.6.1/RELEASE_CHECKSUMS.txt         |  10 ++
+ evidence/v1.6.1/source_package_scan.txt       |   8 ++
+ evidence/v1.6.1/verification_package_scan.txt |   8 ++
+ scripts/package-release.ps1                   | 173 ++++++++++++++++++++++++++
+ scripts/scan-secrets.ps1                      |  23 +++-
+ 5 files changed, 219 insertions(+), 3 deletions(-)
+
+commit a13a74bdb37533800b41315efb7889e8d7860f76
+Author: HadiidChannel <hadiidarraad622@gmail.com>
+Date:   Wed Nov 25 00:39:15 2026 +0800
+
+    docs(evidence): capture v1.6.1 git branch, commit, and status evidence
+
+ evidence/v1.6.1/git_branch.txt |  10 +++
+ evidence/v1.6.1/git_commit.txt | 155 +++++++++++++++++++++++++++++++++++++++++
+ evidence/v1.6.1/git_status.txt |   2 +
+ 3 files changed, 167 insertions(+)
+
 commit 2dfd5834fb90f377eb307fab2c24dd6504508f30
 Author: HadiidChannel <hadiidarraad622@gmail.com>
 Date:   Wed Nov 25 00:38:53 2026 +0800
@@ -101,55 +125,3 @@ Date:   Tue Nov 24 02:00:21 2026 +0800
 
  docs/engineering/E2E_REPORT.md | 20 +++++++++++---------
  1 file changed, 11 insertions(+), 9 deletions(-)
-
-commit f7ca5aa60e378670c681dbf5eb2041caaa88defe
-Author: HadiidChannel <hadiidarraad622@gmail.com>
-Date:   Tue Nov 24 01:56:28 2026 +0800
-
-    feat(release): StockFlow v1.5 Localhost Portfolio Finalization and Security Verification
-
- README.md                                      |  29 ++-
- backend/src/config/env.ts                      |  37 ++-
- backend/tests/env-validation.test.ts           |  93 ++++++++
- docker-compose.yml                             |   2 +-
- docs/engineering/ARCHITECTURE_DECISIONS.md     |  22 ++
- docs/engineering/BUG_LOG.md                    |  18 ++
- docs/engineering/DEPLOYMENT_GUIDE.md           |  32 ++-
- docs/engineering/FINAL_RELEASE_REPORT_V1_5.md  | 307 +++++++++++++++++++++++++
- docs/engineering/SECURITY_REVIEW.md            |  24 ++
- docs/engineering/TEST_RESULTS.md               |  11 +-
- docs/engineering/TROUBLESHOOTING.md            |  19 ++
- frontend/tests/e2e/results.json                | 100 +++++++-
- frontend/tests/e2e/stockflow-lifecycle.spec.ts |  76 +++++-
- scripts/init-local.ps1                         | 183 +++++++++++++++
- 14 files changed, 883 insertions(+), 70 deletions(-)
-
-commit d346f2d82e6db8e2beff4296b0e7b7853bddad23
-Author: HadiidChannel <hadiidarraad622@gmail.com>
-Date:   Tue Nov 24 00:36:58 2026 +0800
-
-    feat(release): StockFlow v1.4 Localhost Portfolio Edition
-
- .env.example                                   |  36 ++--
- .gitignore                                     |   2 +
- README.md                                      |  38 ++--
- backend/.env.example                           |  26 +--
- backend/src/app.ts                             |  12 +-
- backend/src/config/env.ts                      |  51 +++--
- backend/src/middleware/csrf.ts                 |  14 +-
- backend/src/scripts/bootstrap.ts               |  70 ++++---
- backend/tests/bootstrap.test.ts                |  88 +++++----
- backend/tests/env-validation.test.ts           |  82 ++++++++-
- backend/tests/security-hardening.test.ts       |  24 +++
- docker-compose.test.yml                        |  70 +++++++
- docker-compose.yml                             |  18 +-
- docs/engineering/ARCHITECTURE_DECISIONS.md     |  22 +++
- docs/engineering/BUG_LOG.md                    |  18 ++
- docs/engineering/DEPLOYMENT_GUIDE.md           |  23 +--
- docs/engineering/FINAL_RELEASE_REPORT_V1_4.md  | 245 +++++++++++++++++++++++++
- docs/engineering/SECURITY_REVIEW.md            |  28 +++
- docs/engineering/TEST_RESULTS.md               |   9 +-
- frontend/tests/e2e/results.json                |  27 +--
- frontend/tests/e2e/stockflow-lifecycle.spec.ts |  41 ++++-
- frontend/tsconfig.tsbuildinfo                  |   1 -
- 22 files changed, 749 insertions(+), 196 deletions(-)

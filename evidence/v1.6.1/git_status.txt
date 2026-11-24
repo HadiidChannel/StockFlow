@@ -1,2 +1,7 @@
 On branch fix/stockflow-localhost-final-v16-1
-nothing to commit, working tree clean
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   evidence/v1.6.1/git_commit.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")

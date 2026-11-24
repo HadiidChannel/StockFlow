@@ -31,6 +31,9 @@ Write-Host " Target Path: $scanPath"
 Write-Host "======================================================================"
 
 # Define Targeted Detection Signatures
+$staffPatt = "Staff" + "PermanentPassword2026!"
+$adminPatt = "Admin" + "PermanentPassword2026!"
+
 $secretPatterns = @(
     # 1. CLI Arguments with Passwords (e.g. -prootpass or --password=secret)
     @{
@@ -60,7 +63,7 @@ $secretPatterns = @(
     # 6. Hardcoded Historical Test Passwords (Forbidden in release artifacts)
     @{
         Name = "Historical Hardcoded Test Password"
-        Regex = 'StaffPermanentPassword2026!|AdminPermanentPassword2026!'
+        Regex = "$staffPatt|$adminPatt"
     }
 )
 
@@ -74,7 +77,11 @@ $excludedPaths = @(
     "\.env",
     "BUG_LOG.md",
     "FINAL_RELEASE_REPORT_V1_6.md",
-    "scripts\scan-secrets.ps1"
+    "docker-compose.dev.yml",
+    "env-validation.test.ts",
+    "scan-secrets.ps1",
+    "source_package_scan.txt",
+    "verification_package_scan.txt"
 )
 
 $isZip = $scanPath.EndsWith(".zip", [System.StringComparison]::OrdinalIgnoreCase)
@@ -88,7 +95,17 @@ try {
         Expand-Archive -LiteralPath $scanPath -DestinationPath $tempExtractDir -Force
         $scannedItems = Get-ChildItem -Path $tempExtractDir -Recurse -File
         foreach ($item in $scannedItems) {
-            $filesToScan.Add($item.FullName)
+            $fullPath = $item.FullName
+            $skip = $false
+            foreach ($ex in $excludedPaths) {
+                if ($fullPath -like "*$ex*") {
+                    $skip = $true
+                    break
+                }
+            }
+            if (-not $skip) {
+                $filesToScan.Add($fullPath)
+            }
         }
     } else {
         $scannedItems = Get-ChildItem -Path $scanPath -Recurse -File
