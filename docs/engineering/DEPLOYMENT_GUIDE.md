@@ -200,26 +200,28 @@ Skrip runner akan melakukan secara otomatis:
 
 ---
 
-## 7. Prosedur Verifikasi Rilis dan Pemaketan v1.6.2
+## 7. Prosedur Verifikasi Rilis dan Pemaketan v1.6.3
 
 Untuk menjamin integritas paket rilis sebelum diserahkan, repositori StockFlow menyediakan skrip verifikasi otomatis dan pipeline pemaketan resmi.
 
-### A. Verifikasi 8 Gerbang Kualitas Rilis (scripts/verify-release.ps1)
+### A. Verifikasi 10 Gerbang Kualitas Rilis (scripts/verify-release.ps1)
 
 Jalankan gerbang verifikasi rilis melalui terminal PowerShell:
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/verify-release.ps1
 ```
 
-Skrip ini memverifikasi 8 kriteria penentu:
-1. **Archive Presence**: Memastikan kedua arsip utama (`StockFlow_Final_v8_2.zip` dan `StockFlow_Final_Verification_v8_2.zip`) serta checksum manifest eksternal (`StockFlow_Release_Checksums_v8_2.txt`) tersedia dan tidak kosong.
-2. **Checksum Integrity**: Menghitung hash SHA-256 riil dari setiap file arsip dan memverifikasinya terhadap isi manifest.
-3. **Archive Content Completeness**: Memeriksa kelengkapan file sumber daya dan dokumen kunci di dalam arsip ZIP tanpa mengekstraksi ke disk.
-4. **Clean Sensitive Data**: Memastikan file konfigurasi sensitif (`.env`, `.env.local`, `.secrets/initial_admin_password.txt`) tidak disertakan di dalam paket rilis sumber daya, sementara template `.env.example` tetap ada.
-5. **Loopback Binding Verification**: Memvalidasi bahwa seluruh konfigurasi compose (`docker-compose.yml`, `docker-compose.dev.yml`, `docker-compose.e2e.yml`) hanya mempublikasikan port ke antarmuka loopback `127.0.0.1`.
-6. **Secret Scanning Verification**: Memvalidasi integritas hasil pemindaian scanner rahasia (`evidence/v1.6.2/secret_scan.txt`) dengan status 100% clean dan 0 temuan bocor.
-7. **Test Gate Reconciliation**: Memvalidasi bahwa seluruh 147 test gate tercatat passed hijau tanpa ada test yang gagal atau di-skip.
-8. **Writing Constraint Verification**: Memindai seluruh dokumen laporan rilis untuk memastikan tidak ada karakter terlarang seperti en dash atau em dash.
+Skrip ini memverifikasi 10 kriteria penentu:
+1. **Git Repository and Branch Validation**: Memastikan branch aktif adalah `fix/stockflow-v16-3-release-integrity`.
+2. **Commit Hash Consistency**: Memverifikasi konsistensi commit hash 40 karakter antara `git rev-parse HEAD` dan manifest.
+3. **Artifact Presence**: Memastikan ketiga arsip (`StockFlow_Final_v8_3.zip`, `StockFlow_Final_Verification_v8_3.zip`, `StockFlow_Audit_Handover_v8_3.zip`) dan manifest external (`StockFlow_Release_Checksums_v8_3.txt`) tersedia dan tidak kosong.
+4. **Checksum & Size Verification**: Menghitung hash SHA-256 dan ukuran byte riil dari setiap file arsip dan memverifikasinya terhadap isi manifest.
+5. **Archive Extraction Integrity**: Menguji pembukaan dan ekstraksi seluruh arsip ZIP untuk membuktikan arsip valid dan tidak corrupt.
+6. **Required Template Presence**: Memastikan `.env.example` terkonfirmasi ada di dalam source package ZIP.
+7. **Clean Sensitive Data**: Memastikan file rahasia aktif (`.env`, `.env.local`, `.secrets/`) tidak ada di dalam source package.
+8. **Loopback Binding Verification**: Memvalidasi bahwa seluruh konfigurasi compose hanya mempublikasikan port ke antarmuka loopback `127.0.0.1`.
+9. **Deep Secret Scanning**: Memindai seluruh isi ketiga arsip ZIP yang diekstrak untuk menjamin zero credential leakage (0 findings).
+10. **Writing Constraint Verification**: Memindai seluruh dokumen laporan rilis untuk memastikan tidak ada karakter terlarang seperti en dash atau em dash.
 
 ### B. Prosedur Pembuatan Paket Rilis Resmi (scripts/package-release.ps1)
 
@@ -228,10 +230,10 @@ Untuk menghasilkan arsip rilis bersih secara otomatis:
 powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
 ```
 
-Skrip akan menghasilkan tiga artefak rilis utama:
-- `StockFlow_Final_v8_2.zip`: Berisi source code lengkap, konfigurasi Docker, dokumen arsitektur, dan skrip runner bersih.
-- `StockFlow_Final_Verification_v8_2.zip`: Berisi seluruh rekaman bukti uji verifikasi (`evidence/v1.6.2/`).
-- `StockFlow_Release_Checksums_v8_2.txt`: Berisi tanda tangan digital SHA-256 untuk memvalidasi integritas kedua arsip.
+Skrip akan menghasilkan empat artefak rilis utama:
+- `StockFlow_Final_v8_3.zip`: Berisi source code lengkap, konfigurasi Docker, dokumen arsitektur, dan skrip runner bersih dengan `.env.example`.
+- `StockFlow_Final_Verification_v8_3.zip`: Berisi seluruh rekaman bukti uji verifikasi (`evidence/v1.6.3/`) dan laporan engineering.
+- `StockFlow_Audit_Handover_v8_3.zip`: Berisi direktori `audit-handover/v1.6.3/` yang memuat pemetaan manifest file, berkas sumber daya terkait, dan file bukti mentah independen.
+- `StockFlow_Release_Checksums_v8_3.txt`: Berisi tanda tangan digital SHA-256 dan ukuran byte untuk memvalidasi integritas ketiga arsip.
 
-Selain itu, skrip juga membuat arsip handover audit:
-- `StockFlow_Audit_Handover_v8_2.zip`: Berisi direktori `audit-handover/v1.6.2/` yang memuat pemetaan manifest file, berkas sumber daya terkait, dan file bukti mentah independen.
+Seluruh artefak secara otomatis ditempatkan pada `release-output/v1.6.3/`, diduplikasi ke `audit/v8_3/`, dan disalin ke project root.

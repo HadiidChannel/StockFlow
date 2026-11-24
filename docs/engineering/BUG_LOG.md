@@ -215,3 +215,57 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 - **Fix**: Memperbaiki regex pemaketan menjadi `(?i)(?:^|[\\/])\.env(?:\.(?!example$)[^\\/]+)?$` sehingga `.env.example` tetap disertakan, serta mengikat seluruh port service dev ke `127.0.0.1:3306`, `127.0.0.1:4000`, dan `127.0.0.1:3000`.
 - **Regression Test**: Verifikasi arsip rilis membuktikan `.env.example` ada di dalam ZIP tanpa file rahasia asli, dan `docker compose -f docker-compose.dev.yml config` terikat ketat ke loopback.
 - **Status**: Fixed & Verified
+
+### BUG-023: Windows NTFS ACL Izin Hapus (Delete Permission) Hilang pada Konfigurasi (R,W)
+- **Severity**: High
+- **Deskripsi**: Pemberian hak akses `(R,W)` melalui `icacls.exe` pada file rahasia hanya memberikan izin Read dan Write tanpa izin Delete `(D)`. Pada filesystem NTFS Windows, operasi penghapusan file melalui PowerShell (`Remove-Item`) memicu `UnauthorizedAccessException: Access to the path ... is denied`.
+- **Steps to Reproduce**: Menerapkan izin `icacls $file /grant:r "*${userSid}:(R,W)"` lalu mencoba `Remove-Item -Force $file`.
+- **Root Cause**: Windows NTFS membedakan izin Write dan Delete. Hak akses Modify `(M)` diperlukan agar pemilik file memiliki izin baca, tulis, dan hapus tanpa memberikan Full Control kepada pihak ketiga.
+- **Fix**: Memperbarui `scripts/init-local.ps1` dan `scripts/run-e2e.ps1` untuk memberikan hak akses Modify `(M)` kepada pengguna pemilik (`*${userSid}:(M)`), serta menambahkan fungsi `Remove-SafeRollbackFile` yang memberikan izin `(M)` sebelum penghapusan file sementara pada blok catch rollback.
+- **Regression Test**: Test suite `tests/test-init-local.ps1` (skenario 11-18) lolos 100%, file staging dan moved berhasil dibersihkan tanpa exception.
+- **Status**: Fixed & Verified
+
+### BUG-024: E2E Runner Membungkam Kegagalan Penghapusan Secret File Sementara
+- **Severity**: High
+- **Deskripsi**: Skrip `run-e2e.ps1` pada v1.6.2 membungkam kegagalan penghapusan file password admin sementara menggunakan `-ErrorAction SilentlyContinue`, sehingga file secret tertinggal di folder `.secrets/` dan tercatat `Temporary Secret Removed: NO`.
+- **Steps to Reproduce**: Menjalankan pengujian E2E dan memeriksa log teardown pada `evidence/v1.6.2/e2e_cleanup_verification.txt`.
+- **Root Cause**: File secret dibuat dengan izin `(R,W)` yang tidak mengizinkan penghapusan, dan exception penghapusan disembunyikan oleh `SilentlyContinue`.
+- **Fix**: Menerapkan izin Modify `(M)` sebelum penghapusan, mengubah penghapusan menjadi `Remove-Item -LiteralPath $e2eSecretFile -Force -ErrorAction Stop`, memvalidasi keberadaan file setelah penghapusan, dan menetapkan status `CLEANUP_FAILED` serta exit code 1 jika file masih tersisa (fail-closed).
+- **Regression Test**: Pengujian E2E v1.6.3 membuktikan `Temporary Secret Removed: YES`, `Cleanup Status: 100% VERIFIED_CLEAN`, dan file di `.secrets/` terhapus total.
+- **Status**: Fixed & Verified
+
+### BUG-025: Inkonsistensi Label Kepemilikan Resource stockflow.e2e.owner pada Docker Compose E2E
+- **Severity**: Medium
+- **Deskripsi**: Label kepemilikan resource `stockflow.e2e.owner` pada file `docker-compose.e2e.yml` memiliki nilai yang tidak konsisten di antara layanan db, migrator, bootstrap, backend, frontend, volume, dan network.
+- **Steps to Reproduce**: Memeriksa seluruh label pada `docker-compose.e2e.yml`.
+- **Root Cause**: Perbedaan penamaan label saat penggabungan file komposisi E2E.
+- **Fix**: Menyeragamkan seluruh 7 definisi label kepemilikan menjadi `stockflow.e2e.owner: stockflow-e2e-runner` di seluruh kontainer, volume, dan network E2E.
+- **Regression Test**: Inspeksi konfigurasi `docker-compose.e2e.yml` membuktikan seluruh 7 label konsisten 100%.
+- **Status**: Fixed & Verified
+
+### BUG-026: False Positive Pemindai Rahasia pada Default Value Variabel Docker Compose
+- **Severity**: Medium
+- **Deskripsi**: Skrip `scan-secrets.ps1` menandai ekspresi `${DEV_MYSQL_ROOT_PASSWORD:-dev_root_pass_2026}` pada `docker-compose.dev.yml` sebagai kebocoran rahasia tingkat tinggi.
+- **Steps to Reproduce**: Menjalankan `scan-secrets.ps1` terhadap file konfigurasi Compose yang menggunakan sintaks substitusi default bash `:-`.
+- **Root Cause**: Regex Kategori 3 tidak memiliki batas kata (word boundary) atau negative lookbehind, sehingga kata `MYSQL_ROOT_PASSWORD` cocok di dalam nama variabel `DEV_MYSQL_ROOT_PASSWORD`, dan karakter `:` cocok dengan `[:=]`, menyisakan `-dev_root_pass_2026` yang tidak cocok dengan filter `"dev_`.
+- **Fix**: Menambahkan negative lookbehind `(?<![A-Za-z0-9_])` pada nama variabel secret dan word boundary `\b`, sehingga variabel berawalan `DEV_`, `TEST_`, atau `PROD_` tidak memicu deteksi palsu.
+- **Regression Test**: Eksekusi `scan-secrets.ps1` pada repositori menghasilkan 0 temuan (100% CLEAN).
+- **Status**: Fixed & Verified
+
+### BUG-027: Pemindai Rahasia Mendeteksi Identifier Variabel TypeScript Sebagai String Password
+- **Severity**: Medium
+- **Deskripsi**: Skrip `scan-secrets.ps1` menandai nama variabel TypeScript seperti `const secureTestPassword` dan referensinya dalam test assertion sebagai hardcoded credential.
+- **Steps to Reproduce**: Mendefinisikan variabel bernama `secureTestPassword` tanpa tanda petik dalam file test.
+- **Root Cause**: Regex Kategori 4 menggunakan tanda petik opsional `["']?` sehingga mencocokkan identifier kode biasa. Selain itu, password pengujian integrasi bootstrap masih menggunakan string statis.
+- **Fix**: Mewajibkan tanda petik pembuka dan penutup `["']` pada pola password statis Kategori 4, mengganti string statis pada `backend/tests/bootstrap.integration.test.ts` menjadi password dinamis yang dibuat secara kriptografis saat runtime (`crypto.randomBytes`), dan mengganti password mock unit test menjadi placeholder.
+- **Regression Test**: Self-test scanner mendeteksi seluruh 6 kategori positif tanpa false positive, dan pemindaian repositori bersih 100%.
+- **Status**: Fixed & Verified
+
+### BUG-028: Ketergantungan Siklus Manifest Rilis Terhadap Commit Git (Circular Commit Dependency)
+- **Severity**: Medium
+- **Deskripsi**: Pembuatan arsip rilis yang menyertakan manifest dengan commit Git hash mengalami masalah integritas jika file rilis atau manifest dibuat di dalam working tree git yang sedang dilacak, menyebabkan status git dirty.
+- **Steps to Reproduce**: Membuat file manifest atau zip di dalam repositori sebelum commit git final dilakukan.
+- **Root Cause**: Manifest mencatat commit hash git, namun jika manifest atau arsip dilacak oleh git, pembuatan file tersebut mengubah status git menjadi tidak bersih.
+- **Fix**: Menambahkan `release-output/`, `audit/`, `*.zip`, dan `StockFlow_Release_Checksums_*.txt` ke `.gitignore`. Mengarahkan skrip pemaketan rilis untuk menghasilkan output ke direktori `release-output/v1.6.3/` dan `audit/v8_3/` yang diabaikan git, sehingga commit git bersih dapat dilakukan terlebih dahulu sebelum artefak rilis final dieksekusi.
+- **Regression Test**: Skrip verifikasi release gate memvalidasi status git clean dan mencocokkan commit hash 40 karakter secara presisi.
+- **Status**: Fixed & Verified

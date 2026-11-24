@@ -1,0 +1,1 @@
+{"data":{"status":"UP","database":"CONNECTED","timestamp":"2026-11-24T19:23:59.575Z","service":"StockFlow Backend API"}}

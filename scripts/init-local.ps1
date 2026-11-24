@@ -118,7 +118,7 @@ function Set-SecureAcl([string]$targetPath, [bool]$isDirectory = $false) {
     if ($isDirectory) {
         & icacls.exe "$targetPath" /inheritance:r /grant:r "*${userSid}:(OI)(CI)(M)" /grant:r "*${systemSid}:(OI)(CI)(M)" /grant:r "*${adminSid}:(OI)(CI)(M)" | Out-Null
     } else {
-        & icacls.exe "$targetPath" /inheritance:r /grant:r "*${userSid}:(R,W)" /grant:r "*${systemSid}:(R,W)" /grant:r "*${adminSid}:(R,W)" | Out-Null
+        & icacls.exe "$targetPath" /inheritance:r /grant:r "*${userSid}:(M)" /grant:r "*${systemSid}:(M)" /grant:r "*${adminSid}:(M)" | Out-Null
     }
     if ($LASTEXITCODE -ne 0) {
         throw "Gagal menerapkan Windows ACL pada '$targetPath'. Exit code: $LASTEXITCODE"
@@ -224,17 +224,27 @@ INITIAL_ORG_NAME="PT StockFlow Logistik Nusantara"
     $errorMessage = $_.Exception.Message
     Write-Warning "Terjadi kegagalan saat inisialisasi lingkungan lokal: $errorMessage. Memulai rollback..."
 
+    $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $userSid = $currentUser.User.Value
+
+    function Remove-SafeRollbackFile([string]$targetFile) {
+        if (Test-Path -LiteralPath $targetFile) {
+            & icacls.exe "$targetFile" /grant:r "*${userSid}:(M)" 2>$null | Out-Null
+            Remove-Item -LiteralPath $targetFile -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     if ($createdTempSecret -or (Test-Path -LiteralPath $tempSecretPath)) {
-        Remove-Item -LiteralPath $tempSecretPath -Force -ErrorAction SilentlyContinue
+        Remove-SafeRollbackFile $tempSecretPath
     }
     if ($createdSecretFile -and (Test-Path -LiteralPath $secretPasswordFilePath)) {
-        Remove-Item -LiteralPath $secretPasswordFilePath -Force -ErrorAction SilentlyContinue
+        Remove-SafeRollbackFile $secretPasswordFilePath
     }
     if ($createdTempEnv -or (Test-Path -LiteralPath $tempEnvPath)) {
-        Remove-Item -LiteralPath $tempEnvPath -Force -ErrorAction SilentlyContinue
+        Remove-SafeRollbackFile $tempEnvPath
     }
     if ($createdEnvFile -and (Test-Path -LiteralPath $envFilePath)) {
-        Remove-Item -LiteralPath $envFilePath -Force -ErrorAction SilentlyContinue
+        Remove-SafeRollbackFile $envFilePath
     }
     if ($createdSecretsDir -and (Test-Path -LiteralPath $secretsDirPath)) {
         $remaining = @(Get-ChildItem -LiteralPath $secretsDirPath -Force -ErrorAction SilentlyContinue)

@@ -25,7 +25,7 @@ describe('Bootstrap Unit Tests (In-Memory Prisma Mock)', () => {
     process.env.INITIAL_ORG_NAME = 'PT StockFlow Testing';
     process.env.INITIAL_ADMIN_NAME = 'Admin Prod';
     process.env.INITIAL_ADMIN_EMAIL = 'admin.prod@stockflow.com';
-    process.env.INITIAL_ADMIN_PASSWORD = 'Str0ngP@ssw0rd!2026';
+    process.env.INITIAL_ADMIN_PASSWORD = 'your_test_admin_password_123';
 
     await expect(bootstrapSystem()).rejects.toThrow(
       'INITIAL_ADMIN_PASSWORD tidak diizinkan melalui environment variable biasa. Gunakan secret file melalui INITIAL_ADMIN_PASSWORD_FILE'

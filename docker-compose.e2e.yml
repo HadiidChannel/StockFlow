@@ -21,7 +21,7 @@ services:
       com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
       com.docker.compose.service: db
       stockflow.e2e.run_id: ${RUN_ID}
-      stockflow.e2e.owner: isolated-test
+      stockflow.e2e.owner: stockflow-e2e-runner
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
       interval: 3s
@@ -45,7 +45,7 @@ services:
       com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
       com.docker.compose.service: migrator
       stockflow.e2e.run_id: ${RUN_ID}
-      stockflow.e2e.owner: isolated-test
+      stockflow.e2e.owner: stockflow-e2e-runner
 
   bootstrap:
     image: ${E2E_BOOTSTRAP_IMAGE:-stockflow-e2e-test-bootstrap:latest}
@@ -77,7 +77,7 @@ services:
       com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
       com.docker.compose.service: bootstrap
       stockflow.e2e.run_id: ${RUN_ID}
-      stockflow.e2e.owner: isolated-test
+      stockflow.e2e.owner: stockflow-e2e-runner
 
   backend:
     image: ${E2E_BACKEND_IMAGE:-stockflow-e2e-test-backend:latest}
@@ -108,7 +108,7 @@ services:
       com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
       com.docker.compose.service: backend
       stockflow.e2e.run_id: ${RUN_ID}
-      stockflow.e2e.owner: isolated-test
+      stockflow.e2e.owner: stockflow-e2e-runner
 
   frontend:
     image: ${E2E_FRONTEND_IMAGE:-stockflow-e2e-test-frontend:latest}
@@ -133,7 +133,7 @@ services:
       com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
       com.docker.compose.service: frontend
       stockflow.e2e.run_id: ${RUN_ID}
-      stockflow.e2e.owner: isolated-test
+      stockflow.e2e.owner: stockflow-e2e-runner
 
 volumes:
   mysql_e2e_data:
@@ -141,7 +141,7 @@ volumes:
     labels:
       com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
       stockflow.e2e.run_id: ${RUN_ID}
-      stockflow.e2e.owner: isolated-test
+      stockflow.e2e.owner: stockflow-e2e-runner
 
 networks:
   stockflow_e2e_net:
@@ -149,4 +149,4 @@ networks:
     labels:
       com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
       stockflow.e2e.run_id: ${RUN_ID}
-      stockflow.e2e.owner: isolated-test
+      stockflow.e2e.owner: stockflow-e2e-runner

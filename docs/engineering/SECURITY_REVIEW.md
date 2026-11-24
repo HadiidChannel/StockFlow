@@ -246,3 +246,15 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
 ### F. Verifikasi Integritas Rilis dan Proteksi Database Utama (127.0.0.1:3000)
 - Memastikan stack produksi utama pada port `3000` dan volume `mysql_prod_data` tetap aktif, sehat, dan tidak pernah terganggu selama pengujian integrasi maupun E2E berlangsung.
 - Menyediakan skrip verifikasi pelepasan rilis otomatis `scripts/verify-release.ps1` yang memvalidasi 8 gerbang kualitas secara ketat.
+
+### G. Remediasi Keamanan v1.6.3: Windows Modify ACL, Pembersihan Fail-Closed E2E, dan Standarisasi Scanner
+1. **Penegakan Hak Akses Modify (M) pada Windows NTFS ACL**:
+   Mengganti izin `(R,W)` menjadi `(M)` pada `scripts/init-local.ps1` dan `scripts/run-e2e.ps1`. Hal ini memberikan hak Delete secara eksplisit kepada pengguna pemilik sehingga operasi transaksional rollback dan pembersihan secret sementara tidak memicu `UnauthorizedAccessException`.
+2. **Pembersihan Fail-Closed Secret E2E Tanpa Kebocoran**:
+   Mengeliminasi `-ErrorAction SilentlyContinue` pada `scripts/run-e2e.ps1`, menerapkan pemberian izin `(M)` sebelum penghapusan, dan memvalidasi `Temporary Secret Removed: YES` serta memastikan 0 kontainer, 0 volume, dan 0 network tersisa sebelum menandai status `100% VERIFIED_CLEAN`.
+3. **Standarisasi Label Kepemilikan Resource Docker E2E**:
+   Menyeragamkan seluruh 7 definisi label kepemilikan menjadi `stockflow.e2e.owner: stockflow-e2e-runner` di seluruh kontainer, volume, dan network pada `docker-compose.e2e.yml`.
+4. **Penyempurnaan Regex Pemindai Rahasia Multi-Vektor**:
+   Menambahkan negative lookbehind `(?<![A-Za-z0-9_])` pada nama variabel rahasia agar tidak terjadi false positive pada variabel berawalan `DEV_`, `TEST_`, atau `PROD_`. Mewajibkan tanda petik pembuka dan penutup `["']` pada pola password statis Kategori 4 dan mengganti password pengujian integrasi bootstrap menjadi string acak kriptografis dinamis (`crypto.randomBytes`).
+5. **Penegakan 10 Gerbang Kualitas Rilis Resmi**:
+   Memperluas `scripts/verify-release.ps1` menjadi 10 gerbang kualitas rilis fail-closed: status branch git, konsistensi 40-karakter commit hash manifest, keberadaan 3 paket rilis ZIP dan manifest external, verifikasi ukuran byte dan SHA-256, integritas ekstraksi arsip, kehadiran `.env.example`, ketiadaan berkas rahasia aktif, validasi loopback compose 127.0.0.1, pemindaian menyeluruh bebas rahasia, serta kepatuhan mutlak writing constraint (0 en dash, 0 em dash).

@@ -163,3 +163,24 @@ Dokumen ini memuat panduan identifikasi dan pemecahan masalah teknis yang sering
     ```bash
     powershell -ExecutionPolicy Bypass -File scripts/scan-secrets.ps1 -SelfTest
     ```
+
+---
+
+## 10. Masalah Izin Windows NTFS ACL dan Pembersihan Secret E2E
+
+### Gejala: `UnauthorizedAccessException: Access to the path ... is denied` saat Rollback atau Penghapusan File
+- **Penyebab**:
+  - File rahasia diatur dengan izin `(R,W)` melalui `icacls.exe`. Pada sistem file Windows NTFS, izin Write tidak mencakup izin Delete `(D)`.
+- **Solusi**:
+  - Gunakan izin Modify `(M)` melalui `scripts/init-local.ps1` atau `scripts/run-e2e.ps1`.
+  - Berikan izin Modify kepada pengguna pemilik sebelum penghapusan file:
+    ```powershell
+    icacls $filePath /grant:r "*${userSid}:(M)"
+    Remove-Item -LiteralPath $filePath -Force
+    ```
+
+### Gejala: Temporary Secret E2E Tertinggal di Folder `.secrets/`
+- **Penyebab**:
+  - Versi sebelumnya membungkam kegagalan penghapusan secret dengan `-ErrorAction SilentlyContinue`.
+- **Solusi**:
+  - Gunakan skrip `scripts/run-e2e.ps1` v1.6.3 yang menerapkan pembersihan fail-closed dengan verifikasi post-kondisi dan melempar error jika secret tidak terhapus.

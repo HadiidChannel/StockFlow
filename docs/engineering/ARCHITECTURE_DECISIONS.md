@@ -288,3 +288,32 @@ Audit independen menemukan bahwa resource Docker pengujian (container, volume, n
 ### Konsekuensi
 - Positif: Resource Docker terlacak secara transparan dan aman dari benturan nama, eksekusi E2E handal secara offline, dan pemindaian keamanan repositori dapat diverifikasi secara mandiri.
 - Negatif: Skrip pemindaian memerlukan sedikit waktu tambahan untuk membaca konten file teks secara teliti.
+
+---
+
+## ADR-014: Windows NTFS Modify Permission Model, Fail-Closed E2E Teardown, and Staged Release Packaging Integrity
+
+### Status
+Accepted & Implemented (v1.6.3)
+
+### Konteks
+Pada audit v1.6.2, tiga temuan teknis utama masih terbuka:
+1. Skrip inisialisasi lokal `scripts/init-local.ps1` memberikan hak akses `(R,W)` pada file rahasia Windows NTFS. Hak akses ini tidak menyertakan izin Delete `(D)`, sehingga operasi pembersihan file staging saat fault rollback atau penghapusan secret E2E memicu `UnauthorizedAccessException`.
+2. Skrip pengujian E2E `scripts/run-e2e.ps1` menyembunyikan kegagalan penghapusan file secret sementara dengan `-ErrorAction SilentlyContinue`, membiarkan secret tertinggal di folder `.secrets/`.
+3. Pembuatan manifest rilis yang mencatat commit hash git rentan memicu status git dirty jika file rilis atau manifest dibuat di dalam direktori kerja yang sedang dilacak.
+
+### Keputusan
+1. **Penerapan Model Izin Windows NTFS Modify (M)**:
+   - Memperbarui `scripts/init-local.ps1` dan `scripts/run-e2e.ps1` untuk memberikan izin Modify `(M)` kepada pengguna pemilik (`*${userSid}:(M)`). Hak akses Modify memberikan izin Read, Write, dan Delete kepada pemilik tanpa memberikan Full Control kepada entitas lain.
+   - Menambahkan fungsi `Remove-SafeRollbackFile` yang memberikan izin Modify sebelum menghapus file sementara pada blok catch rollback transaksional.
+2. **Pembersihan Fail-Closed Secret E2E**:
+   - Menghilangkan `-ErrorAction SilentlyContinue` pada `scripts/run-e2e.ps1`.
+   - Mengaplikasikan izin `(M)` sebelum penghapusan, mengeksekusi `Remove-Item -Force -ErrorAction Stop`, memvalidasi ketiadaan file rahasia, dan memverifikasi 0 kontainer, 0 volume, dan 0 network tersisa sebelum menandai status `100% VERIFIED_CLEAN`.
+3. **Rekayasa Staged Packaging Bebas Circular Dependency**:
+   - Menambahkan `release-output/`, `audit/`, `*.zip`, dan `StockFlow_Release_Checksums_*.txt` ke `.gitignore`.
+   - Mengarahkan `scripts/package-release.ps1` untuk menempatkan artefak rilis ke direktori terisolasi `release-output/v1.6.3/` dan `audit/v8_3/`.
+   - Menegakkan 10 Gerbang Kualitas Rilis pada `scripts/verify-release.ps1` yang mengevaluasi status branch git, 40-karakter commit hash manifest, 3 paket ZIP, checksum SHA-256 dan ukuran byte, integritas ekstraksi arsip, kehadiran `.env.example`, isolasi rahasia aktif, loopback binding 127.0.0.1, pemindaian menyeluruh bebas rahasia, dan writing constraint 0 en/em dash.
+
+### Konsekuensi
+- Positif: Operasi rollback transaksional dan pembersihan secret E2E berjalan 100% andal tanpa permission error, ketiadaan silent failure menjamin zero secret residue, dan siklus commit git bersih sebelum pemaketan rilis deterministik.
+- Negatif: Memerlukan tahapan komit git terlebih dahulu sebelum menjalankan skrip pemaketan rilis final.

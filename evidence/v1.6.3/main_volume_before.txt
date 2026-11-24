@@ -1,0 +1,16 @@
+﻿[
+    {
+        "CreatedAt": "2026-11-23T17:38:37Z",
+        "Driver": "local",
+        "Labels": {
+            "com.docker.compose.config-hash": "ae91a2aa1eb999f604d326c0b2b3174cefa074629ffd39b9ad4e17d1f0c384f9",
+            "com.docker.compose.project": "stockflow-prod",
+            "com.docker.compose.version": "5.7.0",
+            "com.docker.compose.volume": "mysql_prod_data"
+        },
+        "Mountpoint": "/var/lib/docker/volumes/stockflow-prod_mysql_prod_data/_data",
+        "Name": "stockflow-prod_mysql_prod_data",
+        "Options": null,
+        "Scope": "local"
+    }
+]

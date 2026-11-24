@@ -1,0 +1,152 @@
+name: ${COMPOSE_PROJECT_NAME:-stockflow-e2e-test}
+
+secrets:
+  initial_admin_password:
+    file: ${INITIAL_ADMIN_PASSWORD_FILE:-./.secrets/e2e_initial_admin_password.txt}
+
+services:
+  db:
+    image: mysql:8.4
+    restart: "no"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD wajib diisi}
+      MYSQL_DATABASE: stockflow_e2e_db
+      MYSQL_USER: ${DB_USER:-stockflow_e2e_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi}
+    volumes:
+      - mysql_e2e_data:/var/lib/mysql
+    networks:
+      - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: db
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: stockflow-e2e-runner
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 25
+
+  migrator:
+    image: ${E2E_MIGRATOR_IMAGE:-stockflow-e2e-test-migrator:latest}
+    build:
+      context: ./backend
+      target: migrator
+    restart: "no"
+    environment:
+      DATABASE_URL: mysql://${DB_USER:-stockflow_e2e_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_e2e_db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: migrator
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: stockflow-e2e-runner
+
+  bootstrap:
+    image: ${E2E_BOOTSTRAP_IMAGE:-stockflow-e2e-test-bootstrap:latest}
+    build:
+      context: ./backend
+      target: runner
+    profiles:
+      - bootstrap
+    restart: "no"
+    secrets:
+      - initial_admin_password
+    environment:
+      NODE_ENV: production
+      APP_DEPLOYMENT_MODE: local
+      DATABASE_URL: mysql://${DB_USER:-stockflow_e2e_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_e2e_db
+      INITIAL_ORG_NAME: ${INITIAL_ORG_NAME:-PT StockFlow Logistik Nusantara (E2E Test)}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-E2E System Administrator}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@stockflow.com}
+      INITIAL_ADMIN_PASSWORD_FILE: /run/secrets/initial_admin_password
+    command: ["node", "dist/scripts/bootstrap.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    networks:
+      - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: bootstrap
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: stockflow-e2e-runner
+
+  backend:
+    image: ${E2E_BACKEND_IMAGE:-stockflow-e2e-test-backend:latest}
+    build:
+      context: ./backend
+      target: runner
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      APP_DEPLOYMENT_MODE: local
+      PORT: 4000
+      DATABASE_URL: mysql://${DB_USER:-stockflow_e2e_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_e2e_db
+      FRONTEND_URL: ${E2E_FRONTEND_URL:-http://127.0.0.1:3100}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      COOKIE_SECURE: "false"
+      COOKIE_SAME_SITE: "lax"
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET wajib diisi minimal 32 karakter}
+      CSRF_SECRET: ${CSRF_SECRET:?CSRF_SECRET wajib diisi minimal 32 karakter}
+      LOG_LEVEL: info
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    networks:
+      - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: backend
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: stockflow-e2e-runner
+
+  frontend:
+    image: ${E2E_FRONTEND_IMAGE:-stockflow-e2e-test-frontend:latest}
+    build:
+      context: ./frontend
+      target: runner
+      args:
+        INTERNAL_BACKEND_URL: http://backend:4000
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      INTERNAL_BACKEND_URL: http://backend:4000
+    ports:
+      - "${E2E_HOST_IP:-127.0.0.1}:${E2E_PORT:-3100}:3000"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - stockflow_e2e_net
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      com.docker.compose.service: frontend
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: stockflow-e2e-runner
+
+volumes:
+  mysql_e2e_data:
+    driver: local
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: stockflow-e2e-runner
+
+networks:
+  stockflow_e2e_net:
+    driver: bridge
+    labels:
+      com.docker.compose.project: ${COMPOSE_PROJECT_NAME}
+      stockflow.e2e.run_id: ${RUN_ID}
+      stockflow.e2e.owner: stockflow-e2e-runner

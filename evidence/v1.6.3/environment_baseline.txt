@@ -1,0 +1,23 @@
+﻿======================================================================
+ StockFlow v1.6.3 Environment Baseline
+ Capture Time: 2026-11-25 02:57:39 +08:00
+ Host OS: Windows (Microsoft Windows NT 10.0.26300.0)
+ PowerShell Version: 5.1.26100.10068
+ Git Branch (Pre-remediation): fix/stockflow-localhost-final-v16-2
+ Git Commit (Pre-remediation): 307939065353e6e4578ea898b071e0be9bcdfa1b
+ Ingress Port: 3000 (Loopback: 127.0.0.1:3000)
+ E2E Target Port: 3100
+ Bootstrap Test Target Port: 3307
+ Main Volume: stockflow-prod_mysql_prod_data (compose name: mysql_prod_data)
+ Active Docker Containers:
+CONTAINER ID   NAMES                     STATUS                 PORTS 87bda1a7225a   stockflow_db_dev          Up 3 hours (healthy)   127.0.0.1:3306->3306/tcp ba9375aa792e   stockflow_frontend_prod   Up 4 hours             127.0.0.1:3000->3000/tcp 652dd96a2118   stockflow_backend_prod    Up 4 hours             4000/tcp 94f7ab1d2a17   stockflow_db_prod         Up 4 hours (healthy)   3306/tcp, 33060/tcp
+ Healthcheck Status:
+{
+    "data":  {
+                 "status":  "UP",
+                 "database":  "CONNECTED",
+                 "timestamp":  "2026-11-24T18:57:40.136Z",
+                 "service":  "StockFlow Backend API"
+             }
+}
+======================================================================

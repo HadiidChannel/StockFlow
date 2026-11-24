@@ -1,0 +1,148 @@
+================================================================================
+STOCKFLOW v1.6.3 - TEST EXECUTION AND EVIDENCE RECONCILIATION
+================================================================================
+Generated: 2026-11-25T03:25:00+08:00
+Release Branch: fix/stockflow-v16-3-release-integrity
+Operating System: Windows 10/11 (NTFS)
+
+--------------------------------------------------------------------------------
+1. SUMMARY MATRIX (NO DOUBLE COUNTING)
+--------------------------------------------------------------------------------
+Suite Name                                Test Files   Passed   Skipped   Failed
+--------------------------------------------------------------------------------
+Backend Vitest Unit and Integration               12      111         3        0
+Disposable MySQL 8.4 Bootstrap Integration         1        3         0        0
+Frontend Vitest Unit and Workflow Logic            2        9         0        0
+Windows NTFS File ACL and Rollback Scenarios       1       19         0        0
+Playwright E2E 13-Stage Workflow                   1        3         0        0
+Secret Scanner Automated Fixtures (Self-Test)      1       11         0        0
+Docker Compose Syntax Configurations               5        5         0        0
+--------------------------------------------------------------------------------
+TOTAL TEST CASES ACROSS SYSTEM                    23      161         3        0
+OVERALL PASS RATE: 100% (Zero Failures across all executable suites)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+2. DETAILED TEST SUITE BREAKDOWN
+--------------------------------------------------------------------------------
+
+A. Backend Unit and Integration (Vitest - vitest.config.ts)
+   Evidence File: evidence/v1.6.3/backend_test_results.txt
+   Duration: 8.02s
+   - tests/inventory-integrity.test.ts: 20 passed
+   - tests/integration-api-flows.test.ts: 14 passed
+   - tests/bootstrap.unit.test.ts: 10 passed
+   - tests/api-health.test.ts: 3 passed
+   - tests/business-corrections.test.ts: 5 passed
+   - tests/env-validation.test.ts: 13 passed
+   - tests/validation.test.ts: 5 passed
+   - tests/bootstrap-guard.test.ts: 14 passed (isolated evidence in bootstrap_guard_test_results.txt)
+   - tests/forced-password-change.test.ts: 6 passed
+   - tests/security-hardening.test.ts: 12 passed
+   - tests/rbac.test.ts: 2 passed
+   - tests/app-error.test.ts: 7 passed
+   - tests/bootstrap.integration.test.ts: 3 skipped (handled by dedicated disposable runner)
+   Subtotal: 111 passed, 3 skipped, 0 failed.
+
+B. Disposable MySQL 8.4 Bootstrap Integration (Vitest + Docker Runner)
+   Evidence File: evidence/v1.6.3/bootstrap_integration_test_results.txt
+   Duration: 1.24s (Vitest) / 45s (Full Docker stack bringup, migration, test, teardown)
+   Stack Target: stockflow-bootstrap-test-791e8f11 on 127.0.0.1:3307
+   - Step 1: Pre-execution guard assertBootstrapTestDatabaseSafe passed
+   - Step 2: Fresh database bootstrap and admin creation verified (bcrypt cost 12)
+   - Step 3: Second execution idempotency and one-time guard verified
+   Subtotal: 3 passed, 0 failed.
+   Teardown: Container, volume, and network verified destroyed.
+
+C. Frontend Unit and Workflow Logic (Vitest - frontend/vitest.config.ts)
+   Evidence File: evidence/v1.6.3/frontend_test_results.txt
+   Duration: 311ms
+   - tests/workflow-logic.test.ts: 5 passed
+   - tests/utils.test.ts: 4 passed
+   Subtotal: 9 passed, 0 failed.
+
+D. Windows NTFS File Security ACL and Rollback Suite (PowerShell)
+   Evidence File: evidence/v1.6.3/init_local_test_results.txt
+   Script: tests/test-init-local.ps1
+   Execution Target: scripts/init-local.ps1
+   - Scenario 01: Parameter validation - missing root directory rejected
+   - Scenario 02: Missing .env.example fails closed
+   - Scenario 03: Existing .env preserved without overwrite
+   - Scenario 04: Generation of .env from .env.example
+   - Scenario 05: Cryptographic secret generation length and entropy
+   - Scenario 06: Secret file generation under .secrets/
+   - Scenario 07: Directory structure verification
+   - Scenario 08: Safe handling of invalid path characters
+   - Scenario 09: Relative path resolution to absolute
+   - Scenario 10: Multi-execution idempotency check
+   - Scenario 11: Real Windows NTFS ACL - Inheritance disabled (AreAccessRulesProtected = True)
+   - Scenario 12: Real Windows NTFS ACL - CurrentUser SID granted explicit Modify (M)
+   - Scenario 13: Real Windows NTFS ACL - SYSTEM SID (S-1-5-18) granted explicit FullControl (F)
+   - Scenario 14: Real Windows NTFS ACL - Administrators SID (S-1-5-32-544) granted explicit FullControl (F)
+   - Scenario 15: Fault injection after-temp-secret - staging cleaned, zero leak
+   - Scenario 16: Fault injection after-temp-env - staging cleaned, zero leak
+   - Scenario 17: Fault injection after-move-secret - rollback executed, zero leak
+   - Scenario 18: Fault injection after-move-env - rollback executed, user files preserved
+   - Scenario 19: StrictMode Latest compatibility check
+   Subtotal: 19 passed, 0 failed.
+
+E. Playwright End-to-End Test Suite (Playwright Chromium)
+   Evidence File: evidence/v1.6.3/e2e_test_results.txt
+   Duration: 9.6s
+   Stack Target: stockflow-e2e-6b90f035 on 127.0.0.1:3100
+   - P1-Playwright-01: Initial admin secret file availability verified without hardcoded fallback
+   - P1-Playwright-02: Error throw verified when secret file is missing (zero fallback)
+   - Complete 13-stage inventory lifecycle workflow:
+     Stage 1: Admin Login and Forced Password Change (must_change_password)
+     Stage 2: Category and Product Creation
+     Stage 3: Multiple Warehouse Creation
+     Stage 4: Stock In 50 Units with Idempotency-Key
+     Stage 5: Inventory Balance Verification (50 PCS)
+     Stage 6: Warehouse Staff User Creation
+     Stage 7: Warehouse Staff Assignment Management
+     Stage 8: Staff Logout, Login, and Forced Password Change
+     Stage 9: Stock Out 15 Units with Insufficient Stock Check
+     Stage 10: Movement Ledger Audit Trail Verification
+     Stage 11: Access Unassigned Warehouse -> HTTP 403 Forbidden
+     Stage 12: Direct API Call to Unassigned Warehouse -> HTTP 403 Forbidden
+     Stage 13: Full Transaction Reversal and Final Balance Restoration (50 PCS)
+   Subtotal: 3 passed, 0 failed.
+   Teardown: Stack cleaned 100% verified, temporary secret purged, zero residue.
+
+F. Sensitive Credential and Secret Scanner (PowerShell)
+   Evidence File: evidence/v1.6.3/secret_scan.txt
+   Script: scripts/scan-secrets.ps1
+   - Automated self-test fixtures: 6/6 categories verified (7 positive, 4 negative safe files)
+   - Codebase scan: 276 files inspected
+   - Findings: 0 (100% CLEAN)
+   Subtotal: 11 fixture tests passed, 0 findings on codebase.
+
+G. Docker Compose Configuration Integrity (Docker Compose CLI)
+   Evidence File: evidence/v1.6.3/docker_compose_verification.txt
+   - docker-compose.yml: SYNTAX AND INTERPOLATION VALID (Exit Code: 0)
+   - docker-compose.dev.yml: SYNTAX AND INTERPOLATION VALID (Exit Code: 0)
+   - docker-compose.e2e.yml: SYNTAX AND INTERPOLATION VALID (Exit Code: 0)
+   - docker-compose.bootstrap-test.yml: SYNTAX AND INTERPOLATION VALID (Exit Code: 0)
+   - docker-compose.test.yml: SYNTAX AND INTERPOLATION VALID (Exit Code: 0)
+   Subtotal: 5 passed, 0 failed.
+
+--------------------------------------------------------------------------------
+3. OPERATIONAL STACK PROTECTION VERIFICATION
+--------------------------------------------------------------------------------
+Baseline Evidence:
+- evidence/v1.6.3/main_stack_before.txt
+- evidence/v1.6.3/main_database_before.txt
+- evidence/v1.6.3/main_volume_before.txt
+- evidence/v1.6.3/environment_baseline.txt
+
+Post-Execution Evidence:
+- evidence/v1.6.3/main_stack_after.txt
+- evidence/v1.6.3/main_database_after.txt
+- evidence/v1.6.3/main_volume_after.txt
+
+Verification Confirmation:
+- Ingress: http://127.0.0.1:3000/api/v1/health returned HTTP 200 OK (status: UP, database: CONNECTED)
+- Containers: stockflow_frontend_prod, stockflow_backend_prod, stockflow_db_prod remained running continuously
+- Persistent Data: stockflow-prod_mysql_prod_data volume was NOT touched, recreated, or modified
+- Operational Isolation Bar: 100% Maintained and Verified.
+================================================================================

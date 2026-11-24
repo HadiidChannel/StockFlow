@@ -23,5 +23,7 @@ playwright-report
 results.json
 *.zip
 audit/
+release-output/
+StockFlow_Release_Checksums_*.txt
 .secrets/
 *.secret

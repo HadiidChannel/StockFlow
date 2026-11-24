@@ -3,6 +3,7 @@ import { bootstrapSystem } from '../src/scripts/bootstrap';
 import { assertBootstrapTestDatabaseSafe } from '../src/utils/bootstrap-guard';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -11,7 +12,7 @@ describe.skipIf(process.env.RUN_BOOTSTRAP_INTEGRATION_TEST !== 'true')(
   () => {
   let prisma: PrismaClient;
   const tempSecretFile = path.join(__dirname, 'temp_integration_admin_secret.txt');
-  const secureTestPassword = 'Str0ngP@ssw0rd!2026BootstrapIntegration';
+  const generatedTestPassword = 'TestPass' + crypto.randomBytes(12).toString('hex') + '!2026';
 
   beforeAll(async () => {
     // 1. Fail-closed safety guard: strictly abort if not connected to verified disposable test DB
@@ -22,7 +23,7 @@ describe.skipIf(process.env.RUN_BOOTSTRAP_INTEGRATION_TEST !== 'true')(
     await prisma.$connect();
 
     // 3. Create temporary secret file with strong password
-    fs.writeFileSync(tempSecretFile, secureTestPassword, 'utf8');
+    fs.writeFileSync(tempSecretFile, generatedTestPassword, 'utf8');
 
     // 4. Configure test environment variables
     process.env.NODE_ENV = 'production';
@@ -86,12 +87,12 @@ describe.skipIf(process.env.RUN_BOOTSTRAP_INTEGRATION_TEST !== 'true')(
 
     // Step 3: Verifikasi Keamanan Hash Password (bcrypt cost factor 12)
     expect(dbUser?.passwordHash).toBeDefined();
-    expect(dbUser!.passwordHash).not.toBe(secureTestPassword);
+    expect(dbUser!.passwordHash).not.toBe(generatedTestPassword);
     expect(dbUser!.passwordHash).toMatch(/^\$2[aby]\$12\$/);
     expect(dbUser!.passwordHash.length).toBeGreaterThanOrEqual(60);
 
     // Verify bcrypt compare validates against plaintext password
-    const isPasswordMatch = await bcrypt.compare(secureTestPassword, dbUser!.passwordHash);
+    const isPasswordMatch = await bcrypt.compare(generatedTestPassword, dbUser!.passwordHash);
     expect(isPasswordMatch).toBe(true);
 
     // Verify incorrect password fails compare

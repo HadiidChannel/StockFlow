@@ -1,0 +1,341 @@
+// StockFlow Prisma Schema v1.0
+// Source: ERD_Database_Specification_StockFlow_v1.0.md & StockFlow_MySQL_Schema_v1.0.sql
+// Target: MySQL 8.4 LTS (InnoDB, utf8mb4, UTC)
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ThemePreference {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum TransactionType {
+  IN
+  OUT
+}
+
+enum TransactionStatus {
+  POSTED
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Char(36)
+  name      String   @db.VarChar(160)
+  code      String?  @unique(map: "uq_organizations_code") @db.VarChar(40)
+  address   String?  @db.VarChar(500)
+  phone     String?  @db.VarChar(40)
+  email     String?  @db.VarChar(160)
+  timezone  String   @default("Asia/Makassar") @db.VarChar(64)
+  currency  String   @default("IDR") @db.Char(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+
+  users             User[]
+  categories        Category[]
+  products          Product[]
+  warehouses        Warehouse[]
+  stockTransactions StockTransaction[]
+
+  @@map("organizations")
+}
+
+model Role {
+  id        String   @id @default(uuid()) @db.Char(36)
+  code      String   @unique(map: "uq_roles_code") @db.VarChar(40)
+  name      String   @db.VarChar(80)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  users User[]
+
+  @@map("roles")
+}
+
+model User {
+  id                 String          @id @default(uuid()) @db.Char(36)
+  organizationId     String          @map("organization_id") @db.Char(36)
+  roleId             String          @map("role_id") @db.Char(36)
+  name               String          @db.VarChar(120)
+  email              String          @unique(map: "uq_users_email") @db.VarChar(160)
+  passwordHash       String          @map("password_hash") @db.VarChar(255)
+  status             UserStatus      @default(ACTIVE)
+  mustChangePassword Boolean         @default(false) @map("must_change_password")
+  themePreference    ThemePreference @default(SYSTEM) @map("theme_preference")
+  lastLoginAt        DateTime?       @map("last_login_at") @db.DateTime(3)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy          String?         @map("created_by") @db.Char(36)
+  updatedBy          String?         @map("updated_by") @db.Char(36)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_users_organization")
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_users_role")
+
+  creator User?  @relation("UserCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_users_created_by")
+  updater User?  @relation("UserUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_users_updated_by")
+
+  createdUsers      User[]                      @relation("UserCreatedBy")
+  updatedUsers      User[]                      @relation("UserUpdatedBy")
+  sessions          Session[]
+  warehouseStaff    UserWarehouseAssignment[]   @relation("AssignedStaff")
+  givenAssignments  UserWarehouseAssignment[]   @relation("AssignedBy")
+  createdCategories Category[]                  @relation("CategoryCreatedBy")
+  updatedCategories Category[]                  @relation("CategoryUpdatedBy")
+  createdProducts   Product[]                   @relation("ProductCreatedBy")
+  updatedProducts   Product[]                   @relation("ProductUpdatedBy")
+  createdWarehouses Warehouse[]                 @relation("WarehouseCreatedBy")
+  updatedWarehouses Warehouse[]                 @relation("WarehouseUpdatedBy")
+  stockTransactions StockTransaction[]
+  idempotencyRecords IdempotencyRecord[]
+
+  @@index([organizationId, status], map: "idx_users_org_status")
+  @@index([roleId], map: "idx_users_role")
+  @@map("users")
+}
+
+model Session {
+  id            String    @id @default(uuid()) @db.Char(36)
+  userId        String    @map("user_id") @db.Char(36)
+  tokenHash     String    @unique(map: "uq_sessions_token_hash") @map("token_hash") @db.Char(64)
+  csrfTokenHash String    @map("csrf_token_hash") @db.Char(64)
+  expiresAt     DateTime  @map("expires_at") @db.DateTime(3)
+  revokedAt     DateTime? @map("revoked_at") @db.DateTime(3)
+  lastSeenAt    DateTime? @map("last_seen_at") @db.DateTime(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_sessions_user")
+
+  @@index([userId, expiresAt], map: "idx_sessions_user_expires")
+  @@map("sessions")
+}
+
+model Category {
+  id             String   @id @default(uuid()) @db.Char(36)
+  organizationId String   @map("organization_id") @db.Char(36)
+  name           String   @db.VarChar(100)
+  description    String?  @db.VarChar(500)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy      String   @map("created_by") @db.Char(36)
+  updatedBy      String   @map("updated_by") @db.Char(36)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_categories_organization")
+  creator      User         @relation("CategoryCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_categories_created_by")
+  updater      User         @relation("CategoryUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_categories_updated_by")
+  products     Product[]
+
+  @@unique([organizationId, name], map: "uq_categories_org_name")
+  @@index([organizationId, isActive], map: "idx_categories_org_active")
+  @@map("categories")
+}
+
+model Product {
+  id             String   @id @default(uuid()) @db.Char(36)
+  organizationId String   @map("organization_id") @db.Char(36)
+  categoryId     String   @map("category_id") @db.Char(36)
+  name           String   @db.VarChar(160)
+  sku            String   @db.VarChar(64)
+  unit           String   @db.VarChar(24)
+  minimumStock   Decimal  @default(0.000) @map("minimum_stock") @db.Decimal(18, 3)
+  costPrice      Decimal? @map("cost_price") @db.Decimal(18, 2)
+  description    String?  @db.VarChar(1000)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy      String   @map("created_by") @db.Char(36)
+  updatedBy      String   @map("updated_by") @db.Char(36)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_products_organization")
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_products_category")
+  creator      User         @relation("ProductCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_products_created_by")
+  updater      User         @relation("ProductUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_products_updated_by")
+
+  balances              InventoryBalance[]
+  stockTransactionItems StockTransactionItem[]
+  stockMovements        StockMovement[]
+
+  @@unique([organizationId, sku], map: "uq_products_org_sku")
+  @@index([organizationId, name], map: "idx_products_org_name")
+  @@index([categoryId, isActive], map: "idx_products_category_active")
+  @@map("products")
+}
+
+model Warehouse {
+  id             String   @id @default(uuid()) @db.Char(36)
+  organizationId String   @map("organization_id") @db.Char(36)
+  name           String   @db.VarChar(160)
+  code           String   @db.VarChar(32)
+  location       String?  @db.VarChar(255)
+  description    String?  @db.VarChar(500)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy      String   @map("created_by") @db.Char(36)
+  updatedBy      String   @map("updated_by") @db.Char(36)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_warehouses_organization")
+  creator      User         @relation("WarehouseCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_warehouses_created_by")
+  updater      User         @relation("WarehouseUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_warehouses_updated_by")
+
+  staffAssignments  UserWarehouseAssignment[]
+  balances          InventoryBalance[]
+  stockTransactions StockTransaction[]
+  stockMovements    StockMovement[]
+
+  @@unique([organizationId, code], map: "uq_warehouses_org_code")
+  @@index([organizationId, isActive], map: "idx_warehouses_org_active")
+  @@map("warehouses")
+}
+
+model UserWarehouseAssignment {
+  userId      String   @map("user_id") @db.Char(36)
+  warehouseId String   @map("warehouse_id") @db.Char(36)
+  assignedBy  String   @map("assigned_by") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  user      User      @relation("AssignedStaff", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_uwa_user")
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_uwa_warehouse")
+  assigner  User      @relation("AssignedBy", fields: [assignedBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_uwa_assigned_by")
+
+  @@id([userId, warehouseId])
+  @@index([warehouseId, userId], map: "idx_uwa_warehouse_user")
+  @@map("user_warehouse_assignments")
+}
+
+model InventoryBalance {
+  id          String   @id @default(uuid()) @db.Char(36)
+  productId   String   @map("product_id") @db.Char(36)
+  warehouseId String   @map("warehouse_id") @db.Char(36)
+  quantity    Decimal  @default(0.000) @db.Decimal(18, 3)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_balance_product")
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_balance_warehouse")
+
+  @@unique([productId, warehouseId], map: "uq_balance_product_warehouse")
+  @@index([warehouseId, productId], map: "idx_balance_warehouse_product")
+  @@map("inventory_balances")
+}
+
+model StockTransaction {
+  id                         String            @id @default(uuid()) @db.Char(36)
+  organizationId             String            @map("organization_id") @db.Char(36)
+  warehouseId                String            @map("warehouse_id") @db.Char(36)
+  createdBy                  String            @map("created_by") @db.Char(36)
+  createdByNameSnapshot      String            @map("created_by_name_snapshot") @db.VarChar(120)
+  type                       TransactionType
+  referenceNumber            String            @unique(map: "uq_transactions_reference") @map("reference_number") @db.VarChar(40)
+  status                     TransactionStatus @default(POSTED)
+  note                       String?           @db.VarChar(1000)
+  externalReference          String?           @map("external_reference") @db.VarChar(120)
+  correctionOfTransactionId   String?           @unique(map: "uq_transactions_correction_of") @map("correction_of_transaction_id") @db.Char(36)
+  warehouseNameSnapshot      String            @map("warehouse_name_snapshot") @db.VarChar(160)
+  warehouseCodeSnapshot      String            @map("warehouse_code_snapshot") @db.VarChar(32)
+  postedAt                   DateTime          @map("posted_at") @db.DateTime(3)
+  createdAt                  DateTime          @default(now()) @map("created_at") @db.DateTime(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_transactions_organization")
+  warehouse    Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_transactions_warehouse")
+  creator      User         @relation(fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_transactions_created_by")
+
+  originalTransaction   StockTransaction? @relation("TransactionCorrection", fields: [correctionOfTransactionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_transactions_correction_of")
+  correctionTransaction StockTransaction? @relation("TransactionCorrection")
+
+  items              StockTransactionItem[]
+  movements          StockMovement[]
+  idempotencyRecords IdempotencyRecord[]
+
+  @@unique([id, warehouseId], map: "uq_transactions_id_warehouse")
+  @@index([postedAt], map: "idx_transactions_posted")
+  @@index([type, postedAt], map: "idx_transactions_type_posted")
+  @@index([warehouseId, postedAt], map: "idx_transactions_warehouse_posted")
+  @@map("stock_transactions")
+}
+
+model StockTransactionItem {
+  id                  String   @id @default(uuid()) @db.Char(36)
+  transactionId       String   @map("transaction_id") @db.Char(36)
+  productId           String   @map("product_id") @db.Char(36)
+  productNameSnapshot String   @map("product_name_snapshot") @db.VarChar(160)
+  skuSnapshot         String   @map("sku_snapshot") @db.VarChar(64)
+  unitSnapshot        String   @map("unit_snapshot") @db.VarChar(24)
+  quantity            Decimal  @db.Decimal(18, 3)
+  balanceBefore       Decimal  @map("balance_before") @db.Decimal(18, 3)
+  balanceAfter        Decimal  @map("balance_after") @db.Decimal(18, 3)
+  createdAt           DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  transaction StockTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_items_transaction")
+  product     Product          @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_items_product")
+  movement    StockMovement?
+
+  @@unique([transactionId, productId], map: "uq_items_transaction_product")
+  @@unique([transactionId, id, productId], map: "uq_items_tx_id_product")
+  @@index([productId, transactionId], map: "idx_items_product_transaction")
+  @@map("stock_transaction_items")
+}
+
+model StockMovement {
+  id                String          @id @default(uuid()) @db.Char(36)
+  transactionId     String          @map("transaction_id") @db.Char(36)
+  transactionItemId String          @unique(map: "uq_movements_transaction_item") @map("transaction_item_id") @db.Char(36)
+  productId         String          @map("product_id") @db.Char(36)
+  warehouseId       String          @map("warehouse_id") @db.Char(36)
+  type              TransactionType
+  quantity          Decimal         @db.Decimal(18, 3)
+  balanceBefore     Decimal         @map("balance_before") @db.Decimal(18, 3)
+  balanceAfter      Decimal         @map("balance_after") @db.Decimal(18, 3)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.DateTime(3)
+
+  transaction     StockTransaction     @relation(fields: [transactionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_movements_transaction")
+  transactionItem StockTransactionItem @relation(fields: [transactionItemId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_movements_transaction_item")
+  product         Product              @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_movements_product")
+  warehouse       Warehouse            @relation(fields: [warehouseId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_movements_warehouse")
+
+  @@index([productId, createdAt], map: "idx_movements_product_created")
+  @@index([warehouseId, createdAt], map: "idx_movements_warehouse_created")
+  @@index([type, createdAt], map: "idx_movements_type_created")
+  @@map("stock_movements")
+}
+
+model StockTransactionSequence {
+  id              String          @id @default(uuid()) @db.Char(36)
+  transactionType TransactionType @map("transaction_type")
+  periodDate      DateTime        @map("period_date") @db.Date
+  lastNumber      Int             @default(0) @map("last_number") @db.UnsignedInt
+
+  @@unique([transactionType, periodDate], map: "uq_transaction_sequence_type_date")
+  @@map("stock_transaction_sequences")
+}
+
+model IdempotencyRecord {
+  id             String    @id @default(uuid()) @db.Char(36)
+  userId         String    @map("user_id") @db.Char(36)
+  idempotencyKey String    @map("idempotency_key") @db.VarChar(128)
+  requestHash    String    @map("request_hash") @db.Char(64)
+  transactionId  String?   @map("transaction_id") @db.Char(36)
+  responseStatus Int?      @map("response_status") @db.SmallInt
+  responseBody   Json?     @map("response_body")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  expiresAt      DateTime  @map("expires_at") @db.DateTime(3)
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_idempotency_user")
+  transaction StockTransaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_idempotency_transaction")
+
+  @@unique([userId, idempotencyKey], map: "uq_idempotency_user_key")
+  @@index([expiresAt], map: "idx_idempotency_expires")
+  @@index([transactionId], map: "idx_idempotency_transaction")
+  @@map("idempotency_records")
+}

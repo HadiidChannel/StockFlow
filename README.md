@@ -337,7 +337,7 @@ StockFlow/
 │   │   ├── DEPLOYMENT_GUIDE.md        # Panduan deployment production, isolasi E2E, & release
 │   │   ├── DATABASE_MAINTENANCE.md    # Backup, restore, dan migrasi database
 │   │   ├── E2E_REPORT.md              # Laporan pengujian browser Playwright E2E 13 tahap
-│   │   ├── FINAL_RELEASE_REPORT_V1_6_2.md # Laporan komprehensif rilis final v1.6.2
+│   │   ├── FINAL_RELEASE_REPORT_V1_6_3.md # Laporan komprehensif rilis final v1.6.3
 │   │   └── TROUBLESHOOTING.md         # Solusi masalah teknis umum
 │   └── learning/                # Dokumentasi materi fundamental
 │       ├── LEARNING_ROADMAP.md        # Peta jalan pembelajaran teknologi

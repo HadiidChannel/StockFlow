@@ -1,0 +1,34 @@
+
+Running 3 tests using 1 worker
+
+  ok 1 [chromium] › frontend\tests\e2e\stockflow-lifecycle.spec.ts:72:3 › StockFlow Administrator Secret File Verification › P1-Playwright-01: Memastikan secret file initial admin tersedia dan terbaca tanpa fallback hardcoded (7ms)
+  ok 2 [chromium] › frontend\tests\e2e\stockflow-lifecycle.spec.ts:80:3 › StockFlow Administrator Secret File Verification › P1-Playwright-02: Memastikan fungsi melempar error jika secret file tidak ditemukan (zero fallback) (2ms)
+[E2E Stage 1] Admin Login (Fresh Bootstrap Account)
+[E2E Stage 1] Administrator Forced Password Change terpicu demi keamanan
+[E2E Stage 2] Create Category and Product
+Created Product UUID: 4b07cf03-331e-48b3-937e-7cc75739684a
+[E2E Stage 3] Create Warehouses
+Unassigned Warehouse UUID for RBAC Test: 639bc357-cc75-4f82-a5e9-c6764523b752
+[E2E Stage 4] Stock In 50 Units
+Stock In - Warehouse UUID: 37a97d07-5a64-40fe-aa38-189b4cc7636d
+Stock In - Product UUID: 4b07cf03-331e-48b3-937e-7cc75739684a
+[E2E Stage 5] Verify Inventory Balance
+[E2E Stage 6] Create Warehouse Staff
+[E2E Stage 7] Verify and Manage Warehouse Assignment
+[E2E Stage 8] Staff Logout and Login (with Forced Password Change)
+[E2E Stage 8] Forced password change security guard verified
+[E2E Stage 9] Stock Out 15 Units
+[E2E Stage 10] Verify Movement Ledger
+[E2E Stage 11 & 12] Access Unassigned Warehouse -> 403 Forbidden
+Forbidden response payload: {
+  error: {
+    code: 'FORBIDDEN',
+    message: 'Akses ditolak: Anda tidak memiliki penugasan aktif pada gudang ini atau gudang berstatus tidak aktif.',
+    requestId: 'req_1795548148021_9mytyal'
+  }
+}
+[E2E Stage 13] Full Reversal and Final Balance Check
+[E2E Stage 13] Saldo akhir berhasil dikembalikan ke 50 PCS setelah Full Reversal
+  ok 3 [chromium] › frontend\tests\e2e\stockflow-lifecycle.spec.ts:113:3 › StockFlow Full Lifecycle End-to-End Testing (Real Database & API) › Complete 13-stage inventory lifecycle workflow (8.8s)
+
+  3 passed (9.6s)

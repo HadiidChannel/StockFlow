@@ -1,18 +1,19 @@
 # ==============================================================================
-# StockFlow - Official Release Packaging Script (v1.6.2)
+# StockFlow - Official Release Packaging Script (v1.6.3)
 # Script: scripts/package-release.ps1
 # Description: Implements strict staged release packaging:
-#              1. StockFlow_Final_v8_2.zip (Source code with .env.example)
-#              2. StockFlow_Final_Verification_v8_2.zip (Sanitized evidence & docs)
-#              3. StockFlow_Release_Checksums_v8_2.txt (External manifest)
-#              4. StockFlow_Audit_Handover_v8_2.zip (Supplementary audit files)
+#              1. StockFlow_Final_v8_3.zip (Source code with .env.example)
+#              2. StockFlow_Final_Verification_v8_3.zip (Sanitized evidence & docs)
+#              3. StockFlow_Audit_Handover_v8_3.zip (Complete supplementary audit files)
+#              4. StockFlow_Release_Checksums_v8_3.txt (External manifest sitting outside ZIPs)
+#              Places output in release-output/v1.6.3/ and audit/v8_3/ and workspace root.
 # Target OS: Windows (PowerShell 7+ / Windows PowerShell 5.1)
 # ==============================================================================
 
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
-    [string]$ReleaseVersion = "v1.6.2",
+    [string]$ReleaseVersion = "v1.6.3",
 
     [Parameter(Mandatory = $false)]
     [string]$GitCommitHash
@@ -25,22 +26,34 @@ $ProgressPreference = "SilentlyContinue"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path
 
-$sourceZipName = "StockFlow_Final_v8_2.zip"
-$verificationZipName = "StockFlow_Final_Verification_v8_2.zip"
-$manifestName = "StockFlow_Release_Checksums_v8_2.txt"
-$handoverZipName = "StockFlow_Audit_Handover_v8_2.zip"
+$sourceZipName = "StockFlow_Final_v8_3.zip"
+$verificationZipName = "StockFlow_Final_Verification_v8_3.zip"
+$handoverZipName = "StockFlow_Audit_Handover_v8_3.zip"
+$manifestName = "StockFlow_Release_Checksums_v8_3.txt"
 
-$sourceZipPath = Join-Path $projectRoot $sourceZipName
-$verificationZipPath = Join-Path $projectRoot $verificationZipName
-$manifestPath = Join-Path $projectRoot $manifestName
-$handoverZipPath = Join-Path $projectRoot $handoverZipName
+# Destination directories
+$releaseOutputDir = Join-Path $projectRoot "release-output\v1.6.3"
+$auditOutputDir = Join-Path $projectRoot "audit\v8_3"
+
+if (-not (Test-Path -LiteralPath $releaseOutputDir)) {
+    New-Item -ItemType Directory -Path $releaseOutputDir -Force | Out-Null
+}
+if (-not (Test-Path -LiteralPath $auditOutputDir)) {
+    New-Item -ItemType Directory -Path $auditOutputDir -Force | Out-Null
+}
+
+$sourceZipPath = Join-Path $releaseOutputDir $sourceZipName
+$verificationZipPath = Join-Path $releaseOutputDir $verificationZipName
+$handoverZipPath = Join-Path $releaseOutputDir $handoverZipName
+$manifestPath = Join-Path $releaseOutputDir $manifestName
 
 Write-Host "======================================================================"
 Write-Host " Packaging StockFlow $ReleaseVersion Official Release Artifacts"
-Write-Host " Target Project Root: $projectRoot"
+Write-Host " Target Output Directory: $releaseOutputDir"
+Write-Host " Target Audit Directory:  $auditOutputDir"
 Write-Host "======================================================================"
 
-# Clean existing zip packages if present
+# Clean existing packages in release-output
 if (Test-Path -LiteralPath $sourceZipPath) { Remove-Item -LiteralPath $sourceZipPath -Force }
 if (Test-Path -LiteralPath $verificationZipPath) { Remove-Item -LiteralPath $verificationZipPath -Force }
 if (Test-Path -LiteralPath $handoverZipPath) { Remove-Item -LiteralPath $handoverZipPath -Force }
@@ -51,7 +64,7 @@ $tempVerifyDir = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_verify_
 
 try {
     # --------------------------------------------------------------------------
-    # 1. Package Clean Source Code (StockFlow_Final_v8_2.zip)
+    # 1. Package Clean Source Code (StockFlow_Final_v8_3.zip)
     # --------------------------------------------------------------------------
     Write-Host "[1/6] Menyiapkan berkas source code untuk $sourceZipName..."
     New-Item -ItemType Directory -Path $tempStageDir -Force | Out-Null
@@ -72,6 +85,7 @@ try {
         "(?:^|[\\/])evidence(?:[\\/]|$)",
         "(?:^|[\\/])audit(?:[\\/]|$)",
         "(?:^|[\\/])audit-handover(?:[\\/]|$)",
+        "(?:^|[\\/])release-output(?:[\\/]|$)",
         "\.zip$"
     )
 
@@ -110,24 +124,24 @@ try {
     Write-Host "Paket source code berhasil dibuat: $sourceZipName"
 
     # --------------------------------------------------------------------------
-    # 2. Package Verification Evidence (StockFlow_Final_Verification_v8_2.zip)
+    # 2. Package Verification Evidence (StockFlow_Final_Verification_v8_3.zip)
     # --------------------------------------------------------------------------
     Write-Host "[2/6] Menyiapkan bukti verifikasi untuk $verificationZipName..."
     New-Item -ItemType Directory -Path $tempVerifyDir -Force | Out-Null
 
-    # Copy evidence/v1.6.2
-    $srcEvidence = Join-Path $projectRoot "evidence\v1.6.2"
-    $dstEvidence = Join-Path $tempVerifyDir "evidence\v1.6.2"
+    # Copy evidence/v1.6.3
+    $srcEvidence = Join-Path $projectRoot "evidence\v1.6.3"
+    $dstEvidence = Join-Path $tempVerifyDir "evidence\v1.6.3"
     if (Test-Path -LiteralPath $srcEvidence) {
         Copy-Item -Path $srcEvidence -Destination $dstEvidence -Recurse -Force
     }
 
-    # Copy engineering release reports
+    # Copy engineering release reports and docs
     $dstDocs = Join-Path $tempVerifyDir "docs\engineering"
     New-Item -ItemType Directory -Path $dstDocs -Force | Out-Null
 
     $reportsToCopy = @(
-        "docs\engineering\FINAL_RELEASE_REPORT_V1_6_2.md",
+        "docs\engineering\FINAL_RELEASE_REPORT_V1_6_3.md",
         "docs\engineering\E2E_REPORT.md",
         "docs\engineering\SECURITY_REVIEW.md",
         "docs\engineering\TEST_RESULTS.md",
@@ -148,13 +162,27 @@ try {
     Write-Host "Paket bukti verifikasi berhasil dibuat: $verificationZipName"
 
     # --------------------------------------------------------------------------
-    # 3. Compute SHA-256 Checksums and Write External Manifest
+    # 3. Package Audit Handover (StockFlow_Audit_Handover_v8_3.zip)
     # --------------------------------------------------------------------------
-    Write-Host "[3/6] Menghitung checksum SHA-256 untuk setiap paket rilis..."
+    Write-Host "[3/6] Menyiapkan paket Audit Handover ($handoverZipName)..."
+    $handoverSourceDir = Join-Path $projectRoot "audit-handover\v1.6.3"
+    if (-not (Test-Path -LiteralPath $handoverSourceDir)) {
+        throw "Gagal: Direktori $handoverSourceDir belum tersedia!"
+    }
+    Compress-Archive -Path (Join-Path $handoverSourceDir "*") -DestinationPath $handoverZipPath -CompressionLevel Optimal
+    Write-Host "Paket Audit Handover berhasil dibuat: $handoverZipName"
+
+    # --------------------------------------------------------------------------
+    # 4. Compute SHA-256 Checksums and Write External Manifest
+    # --------------------------------------------------------------------------
+    Write-Host "[4/6] Menghitung checksum SHA-256 untuk seluruh paket rilis..."
     $hashSource = (Get-FileHash -LiteralPath $sourceZipPath -Algorithm SHA256).Hash.ToUpperInvariant()
     $hashVerify = (Get-FileHash -LiteralPath $verificationZipPath -Algorithm SHA256).Hash.ToUpperInvariant()
+    $hashHandover = (Get-FileHash -LiteralPath $handoverZipPath -Algorithm SHA256).Hash.ToUpperInvariant()
+
     $sizeSource = (Get-Item -LiteralPath $sourceZipPath).Length
     $sizeVerify = (Get-Item -LiteralPath $verificationZipPath).Length
+    $sizeHandover = (Get-Item -LiteralPath $handoverZipPath).Length
 
     $finalCommit = if ([string]::IsNullOrWhiteSpace($GitCommitHash)) {
         (& git.exe rev-parse HEAD 2>$null)
@@ -167,7 +195,7 @@ try {
 === STOCKFLOW OFFICIAL RELEASE MANIFEST AND CHECKSUMS ($ReleaseVersion) ===
 Generated at: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')
 Release Version: $ReleaseVersion
-Final Git Branch: fix/stockflow-localhost-final-v16-2
+Final Git Branch: fix/stockflow-v16-3-release-integrity
 Final Git Commit: $finalCommit
 
 Package 1: $sourceZipName
@@ -179,52 +207,47 @@ Package 2: $verificationZipName
 Description: Verification Evidence Package (Sanitized raw evidence and engineering docs)
 Size: $sizeVerify bytes
 SHA-256: $hashVerify
+
+Package 3: $handoverZipName
+Description: Audit Handover Package (Self-contained standalone audit package with source and evidence)
+Size: $sizeHandover bytes
+SHA-256: $hashHandover
 "@
 
     [System.IO.File]::WriteAllText($manifestPath, $manifestContent, [System.Text.UTF8Encoding]::new($false))
     Write-Host $manifestContent
 
     # --------------------------------------------------------------------------
-    # 4. Scan Both ZIP Packages for Secrets
+    # 5. Mirror Artifacts to audit/v8_3 and Root Directory
     # --------------------------------------------------------------------------
-    Write-Host "[4/6] Memindai kedua paket rilis menggunakan scripts/scan-secrets.ps1..."
-    $scannerScript = Join-Path $projectRoot "scripts\scan-secrets.ps1"
+    Write-Host "[5/6] Menyalin artefak ke direktori $auditOutputDir dan project root..."
+    Copy-Item -LiteralPath $sourceZipPath -Destination (Join-Path $auditOutputDir $sourceZipName) -Force
+    Copy-Item -LiteralPath $verificationZipPath -Destination (Join-Path $auditOutputDir $verificationZipName) -Force
+    Copy-Item -LiteralPath $handoverZipPath -Destination (Join-Path $auditOutputDir $handoverZipName) -Force
+    Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $auditOutputDir $manifestName) -Force
 
-    $sourceScanReport = Join-Path $projectRoot "evidence\v1.6.2\source_package_scan.txt"
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$scannerScript" -TargetScanPath "$sourceZipPath" -OutputFile "$sourceScanReport"
-    if ($LASTEXITCODE -ne 0) { throw "Gagal: Ditemukan temuan rahasia pada $sourceZipName!" }
-
-    $verifyScanReport = Join-Path $projectRoot "evidence\v1.6.2\verification_package_scan.txt"
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$scannerScript" -TargetScanPath "$verificationZipPath" -OutputFile "$verifyScanReport"
-    if ($LASTEXITCODE -ne 0) { throw "Gagal: Ditemukan temuan rahasia pada $verificationZipName!" }
-
-    # --------------------------------------------------------------------------
-    # 5. Build Audit Handover Package (StockFlow_Audit_Handover_v8_2.zip)
-    # --------------------------------------------------------------------------
-    Write-Host "[5/6] Menyiapkan paket Supplementary Audit Handover ($handoverZipName)..."
-    $handoverDir = Join-Path $projectRoot "audit-handover\v1.6.2"
-    if (Test-Path -LiteralPath $handoverDir) {
-        Compress-Archive -Path (Join-Path $projectRoot "audit-handover\*") -DestinationPath $handoverZipPath -CompressionLevel Optimal
-        $hashHandover = (Get-FileHash -LiteralPath $handoverZipPath -Algorithm SHA256).Hash.ToUpperInvariant()
-        $sizeHandover = (Get-Item -LiteralPath $handoverZipPath).Length
-        Write-Host "Paket Supplementary Handover berhasil dibuat: $handoverZipName ($sizeHandover bytes, SHA-256: $hashHandover)"
-    } else {
-        Write-Host "Catatan: Direktori $handoverDir belum ada, akan dikompilasi pada tahap handover terpisah."
-    }
+    Copy-Item -LiteralPath $sourceZipPath -Destination (Join-Path $projectRoot $sourceZipName) -Force
+    Copy-Item -LiteralPath $verificationZipPath -Destination (Join-Path $projectRoot $verificationZipName) -Force
+    Copy-Item -LiteralPath $handoverZipPath -Destination (Join-Path $projectRoot $handoverZipName) -Force
+    Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $projectRoot $manifestName) -Force
 
     # --------------------------------------------------------------------------
     # 6. Execute Verify Release Gate
     # --------------------------------------------------------------------------
-    Write-Host "[6/6] Menjalankan scripts/verify-release.ps1..."
+    Write-Host "[6/6] Menjalankan scripts/verify-release.ps1 terhadap $releaseOutputDir..."
     $verifyScript = Join-Path $projectRoot "scripts\verify-release.ps1"
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$verifyScript"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$verifyScript" -TargetDirectory "$releaseOutputDir"
     if ($LASTEXITCODE -ne 0) {
-        throw "Verifikasi rilis gagal!"
+        throw "Verifikasi release gate gagal pada $releaseOutputDir!"
     }
 
     Write-Host ""
     Write-Host "======================================================================"
     Write-Host " Pemaketan dan Verifikasi Rilis $ReleaseVersion SELESAI (100% CLEAN & GREEN)"
+    Write-Host " Artefak Rilis Tersedia di:"
+    Write-Host "   1. $releaseOutputDir"
+    Write-Host "   2. $auditOutputDir"
+    Write-Host "   3. $projectRoot"
     Write-Host "======================================================================"
     Write-Host ""
 

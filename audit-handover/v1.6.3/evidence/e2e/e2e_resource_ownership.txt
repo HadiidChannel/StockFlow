@@ -1,0 +1,23 @@
+=== E2E RESOURCE OWNERSHIP AND LABEL VERIFICATION ===
+Execution Run ID: 6b90f035
+Compose Project Name: stockflow-e2e-6b90f035
+Port Mapping: 127.0.0.1:3100 -> 3000
+
+--- Containers Owned by Run ID 6b90f035 ---
+CONTAINER ID   NAMES                               STATUS                    PORTS
+2a57758a706d   stockflow-e2e-6b90f035-frontend-1   Up 2 seconds              127.0.0.1:3100->3000/tcp
+36686b2454bf   stockflow-e2e-6b90f035-backend-1    Up 2 seconds              4000/tcp
+fc2a99ce23ee   stockflow-e2e-6b90f035-db-1         Up 39 seconds (healthy)   3306/tcp, 33060/tcp
+
+--- Volumes Owned by Run ID 6b90f035 ---
+VOLUME NAME                             DRIVER
+stockflow-e2e-6b90f035_mysql_e2e_data   local
+
+--- Networks Owned by Run ID 6b90f035 ---
+NETWORK ID     NAME                                       DRIVER
+d3165d6a6cb6   stockflow-e2e-6b90f035_stockflow_e2e_net   bridge
+
+--- Verification Confirmation ---
+Operational containers (stockflow_frontend_prod, stockflow_backend_prod, stockflow_db_prod, stockflow_db_dev): EXCLUDED
+Operational volumes (mysql_prod_data, mysql_dev_data): EXCLUDED
+Resource ownership verified: 100% isolated to stockflow-e2e-6b90f035

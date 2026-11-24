@@ -147,12 +147,12 @@ Prosedur inisialisasi administrator awal pada lingkungan produksi dilaksanakan s
 
 1. **Menggunakan Environment Variable**:
    ```bash
-   docker compose run --rm -e INITIAL_ADMIN_PASSWORD="YourStrongProdAdminPassword2026!" bootstrap
+   docker compose run --rm -e INITIAL_ADMIN_PASSWORD="your_strong_admin_password_here" bootstrap
    ```
 
 2. **Menggunakan Docker Secret File (Direkomendasikan)**:
    ```bash
-   echo "YourStrongProdAdminPassword2026!" > /run/secrets/admin_password
+   echo "your_strong_admin_password_here" > /run/secrets/admin_password
    docker compose run --rm -e INITIAL_ADMIN_PASSWORD_FILE="/run/secrets/admin_password" bootstrap
    ```
 

@@ -1,0 +1,118 @@
+name: stockflow-prod
+
+secrets:
+  initial_admin_password:
+    file: ${INITIAL_ADMIN_PASSWORD_FILE:-./.secrets/initial_admin_password.txt}
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: stockflow_db_prod
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD wajib diisi}
+      MYSQL_DATABASE: stockflow_db
+      MYSQL_USER: ${DB_USER:-stockflow_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi}
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+    networks:
+      - stockflow_net
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrator:
+    build:
+      context: ./backend
+      target: migrator
+    container_name: stockflow_migrator_prod
+    restart: "no"
+    environment:
+      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - stockflow_net
+
+  bootstrap:
+    build:
+      context: ./backend
+      target: runner
+    container_name: stockflow_bootstrap_prod
+    profiles:
+      - bootstrap
+    restart: "no"
+    secrets:
+      - initial_admin_password
+    environment:
+      NODE_ENV: production
+      APP_DEPLOYMENT_MODE: ${APP_DEPLOYMENT_MODE:-local}
+      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
+      INITIAL_ORG_NAME: ${INITIAL_ORG_NAME:-PT StockFlow Logistik Nusantara}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-System Administrator}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@stockflow.com}
+      INITIAL_ADMIN_PASSWORD_FILE: /run/secrets/initial_admin_password
+    command: ["node", "dist/scripts/bootstrap.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    networks:
+      - stockflow_net
+
+  backend:
+    build:
+      context: ./backend
+      target: runner
+    container_name: stockflow_backend_prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      APP_DEPLOYMENT_MODE: ${APP_DEPLOYMENT_MODE:-local}
+      PORT: 4000
+      DATABASE_URL: mysql://${DB_USER:-stockflow_user}:${DB_PASSWORD:?DB_PASSWORD wajib diisi}@db:3306/stockflow_db
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET wajib diisi minimal 32 karakter}
+      CSRF_SECRET: ${CSRF_SECRET:?CSRF_SECRET wajib diisi minimal 32 karakter}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    networks:
+      - stockflow_net
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runner
+      args:
+        INTERNAL_BACKEND_URL: http://backend:4000
+    container_name: stockflow_frontend_prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      INTERNAL_BACKEND_URL: http://backend:4000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - stockflow_net
+
+volumes:
+  mysql_prod_data:
+    driver: local
+
+networks:
+  stockflow_net:
+    driver: bridge

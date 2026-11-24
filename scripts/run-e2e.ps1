@@ -143,7 +143,7 @@ function Set-SecureAcl([string]$targetPath) {
     $systemSid = "S-1-5-18"
     $adminSid = "S-1-5-32-544"
 
-    & icacls.exe "$targetPath" /inheritance:r /grant:r "*${userSid}:(R,W)" /grant:r "*${systemSid}:(R,W)" /grant:r "*${adminSid}:(R,W)" | Out-Null
+    & icacls.exe "$targetPath" /inheritance:r /grant:r "*${userSid}:(M)" /grant:r "*${systemSid}:(M)" /grant:r "*${adminSid}:(M)" | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "Gagal menerapkan Windows ACL pada '$targetPath'. Exit code: $LASTEXITCODE"
     }
@@ -328,8 +328,11 @@ Resource ownership verified: 100% isolated to $projectName
     Write-Host "[8/8] Membersihkan disposable E2E stack ($projectName)..."
     $cleanupStatus = "INCOMPLETE"
 
+    $cleanupFailed = $false
     if ($projectName -notmatch '^stockflow-e2e-[a-f0-9]{8}$') {
         Write-Error "Ownership Guard: Nama project '$projectName' tidak valid. Teardown otomatis dibatalkan demi keamanan."
+        $cleanupFailed = $true
+        $cleanupStatus = "OWNERSHIP_GUARD_FAILED"
     } elseif (-not $KeepStack) {
         # Check ownership labels before teardown
         $ownedContainers = & docker.exe ps -a --filter "label=stockflow.e2e.run_id=$runId" -q
@@ -339,22 +342,38 @@ Resource ownership verified: 100% isolated to $projectName
         $downExit = $LASTEXITCODE
         if ($downExit -ne 0) {
             Write-Warning "Peringatan: docker compose down keluar dengan kode $downExit."
+            $cleanupFailed = $true
         }
 
+        # Fail-closed secret removal
+        $secretRemoved = $true
         if (Test-Path -LiteralPath $e2eSecretFile) {
-            Remove-Item -LiteralPath $e2eSecretFile -Force -ErrorAction SilentlyContinue
+            $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+            $userSid = $currentUser.User.Value
+            & icacls.exe "$e2eSecretFile" /grant:r "*${userSid}:(M)" 2>$null | Out-Null
+            try {
+                Remove-Item -LiteralPath $e2eSecretFile -Force -ErrorAction Stop
+            } catch {
+                Write-Error "FAIL-CLOSED: Gagal menghapus file temporary secret: $($_.Exception.Message)"
+            }
+            if (Test-Path -LiteralPath $e2eSecretFile) {
+                $secretRemoved = $false
+                $cleanupFailed = $true
+            }
         }
 
-        # Verify removal
+        # Verify removal of containers, volumes, and networks
         $remContainers = & docker.exe ps -a --filter "label=stockflow.e2e.run_id=$runId" -q
         $remVolumes = & docker.exe volume ls --filter "label=stockflow.e2e.run_id=$runId" -q
+        $remNetworks = & docker.exe network ls --filter "label=stockflow.e2e.run_id=$runId" -q
 
-        if (-not $remContainers -and -not $remVolumes) {
+        if (-not $remContainers -and -not $remVolumes -and -not $remNetworks -and $secretRemoved -and ($downExit -eq 0)) {
             $cleanupStatus = "100% VERIFIED_CLEAN"
-            Write-Host "Stack E2E $projectName berhasil dibersihkan total beserta seluruh volume dan networknya."
+            Write-Host "Stack E2E $projectName berhasil dibersihkan total beserta seluruh volume, network, dan secretnya."
         } else {
-            $cleanupStatus = "WARNING_REMAINING_RESOURCES"
-            Write-Warning "Peringatan: Masih ada kontainer atau volume tersisa untuk run ID $runId."
+            $cleanupStatus = "CLEANUP_FAILED"
+            $cleanupFailed = $true
+            Write-Error "FAIL-CLOSED: Pembersihan E2E gagal! Sisa: Containers: $(if ($remContainers) { $remContainers.Count } else { 0 }), Volumes: $(if ($remVolumes) { $remVolumes.Count } else { 0 }), Networks: $(if ($remNetworks) { $remNetworks.Count } else { 0 }), SecretRemoved: $secretRemoved, DownExit: $downExit."
         }
     } else {
         $cleanupStatus = "SKIPPED_KEEP_STACK"
@@ -379,10 +398,15 @@ Cleanup Status: $cleanupStatus
 Temporary Secret Removed: $(if (-not (Test-Path -LiteralPath $e2eSecretFile)) { 'YES' } else { 'NO' })
 Remaining Containers (Run ID: $runId): $(if (-not $remContainers) { '0' } else { $remContainers })
 Remaining Volumes (Run ID: $runId): $(if (-not $remVolumes) { '0' } else { $remVolumes })
+Remaining Networks (Run ID: $runId): $(if (-not $remNetworks) { '0' } else { $remNetworks })
 Main Application Status: PROTECTED AND UNTOUCHED
 "@
         $cleanupPath = Join-Path $EvidenceDir "e2e_cleanup_verification.txt"
         [System.IO.File]::WriteAllText($cleanupPath, $cleanupLog, [System.Text.UTF8Encoding]::new($false))
+    }
+
+    if ($cleanupFailed) {
+        $playwrightExitCode = 1
     }
 }
 

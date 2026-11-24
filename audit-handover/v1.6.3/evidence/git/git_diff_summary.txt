@@ -1,0 +1,50 @@
+git.exe : warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+At D:\Les Web Programming\Project Belajar\StokFlow\scripts\assemble-handover.ps1:100 char:12
++ $gitDiff = & git.exe diff --stat 2>&1 | Out-String
++            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/bootstrap.integration.test.ts', LF will be replaced by CRLF the next 
+time Git touches it
+warning: in the working copy of 'backend/tests/bootstrap.unit.test.ts', LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 'docker-compose.e2e.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/engineering/ARCHITECTURE_DECISIONS.md', LF will be replaced by CRLF the next 
+time Git touches it
+warning: in the working copy of 'docs/engineering/DEPLOYMENT_GUIDE.md', LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 'docs/engineering/FINAL_RELEASE_REPORT_V1_3.md', LF will be replaced by CRLF the next 
+time Git touches it
+warning: in the working copy of 'docs/engineering/SECURITY_REVIEW.md', LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 'docs/engineering/TEST_RESULTS.md', LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 'docs/engineering/TROUBLESHOOTING.md', LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 'scripts/init-local.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/package-release.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/run-e2e.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/scan-secrets.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/verify-release.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test-init-local.ps1', LF will be replaced by CRLF the next time Git touches it
+ .gitignore                                    |   2 +
+ README.md                                     |   2 +-
+ backend/tests/bootstrap.integration.test.ts   |   9 +-
+ backend/tests/bootstrap.unit.test.ts          |   2 +-
+ docker-compose.e2e.yml                        |  14 +-
+ docs/engineering/ARCHITECTURE_DECISIONS.md    |  29 +++
+ docs/engineering/BUG_LOG.md                   |  54 ++++++
+ docs/engineering/DEPLOYMENT_GUIDE.md          |  36 ++--
+ docs/engineering/FINAL_RELEASE_REPORT_V1_3.md |   4 +-
+ docs/engineering/SECURITY_REVIEW.md           |  12 ++
+ docs/engineering/TEST_RESULTS.md              |  25 +--
+ docs/engineering/TROUBLESHOOTING.md           |  21 +++
+ scripts/init-local.ps1                        |  20 ++-
+ scripts/package-release.ps1                   | 129 ++++++++------
+ scripts/run-e2e.ps1                           |  38 +++-
+ scripts/scan-secrets.ps1                      |  52 +++---
+ scripts/verify-release.ps1                    | 235 ++++++++++++++++++-------
+ tests/test-init-local.ps1                     | 244 +++++++++++++++++---------
+ 18 files changed, 652 insertions(+), 276 deletions(-)

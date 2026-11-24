@@ -1,0 +1,22 @@
+ M .gitignore
+ M README.md
+ M backend/tests/bootstrap.integration.test.ts
+ M backend/tests/bootstrap.unit.test.ts
+ M docker-compose.e2e.yml
+ M docs/engineering/ARCHITECTURE_DECISIONS.md
+ M docs/engineering/BUG_LOG.md
+ M docs/engineering/DEPLOYMENT_GUIDE.md
+ M docs/engineering/FINAL_RELEASE_REPORT_V1_3.md
+ M docs/engineering/SECURITY_REVIEW.md
+ M docs/engineering/TEST_RESULTS.md
+ M docs/engineering/TROUBLESHOOTING.md
+ M scripts/init-local.ps1
+ M scripts/package-release.ps1
+ M scripts/run-e2e.ps1
+ M scripts/scan-secrets.ps1
+ M scripts/verify-release.ps1
+ M tests/test-init-local.ps1
+?? audit-handover/v1.6.3/
+?? docs/engineering/FINAL_RELEASE_REPORT_V1_6_3.md
+?? evidence/v1.6.3/
+?? scripts/assemble-handover.ps1

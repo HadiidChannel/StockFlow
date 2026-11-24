@@ -26,18 +26,21 @@ Dokumen ini mencatat ringkasan eksekusi pengujian pada setiap fase pengembangan.
 | 2026-11-24 | Release v1.6 | E2E Isolation, Security Hardening & Local Setup Reliability | 107 | 107 | 0 | PASS | Dedicated E2E stack (port 3100), dynamic crypto credentials, init-local rollback + ACL, bootstrap test fix, zero DB pollution |
 | 2026-11-25 | Release v1.6.1 | Release Blocker Remediation, Full Isolation & Secret Hygiene | 125 | 125 | 0 | PASS | Healthcheck $$MYSQL_ROOT_PASSWORD, SID ACLs, strict mode safe rollback, bootstrap mock unit tests + fail-closed guard, dynamic E2E project namespaces, comprehensive secret scanner |
 | 2026-11-25 | Release v1.6.2 | Verification Integrity & Security Gate Remediation | 147 | 147 | 0 | PASS | Real disposable MySQL 8.4 bootstrap test, 14 guard scenarios, 19 init-local tests with 4 fault rollbacks, Docker label ownership, rebuilt 6-pattern secret scanner, 8 release gates verified |
+| 2026-11-25 | Release v1.6.3 | Master Remediation, Verification Integrity & Release Packaging | 161 | 161 | 0 | PASS | Windows Modify (M) ACL permission, fail-closed E2E secret cleanup, standardized owner labels, word-bounded secret scanner, 10 release quality gates verified |
 
-### Ringkasan Eksekusi Pengujian Otomatis Final (v1.6.2 Verification Integrity & Security Gate Remediation)
-- **Backend Test Suite**: 111 Passed across 14 test files (100% green, exit code 0)
-- **Frontend Test Suite**: 9 Passed across 2 test files (100% green, exit code 0)
-- **Automated Setup Tests**: 19 Passed in tests/test-init-local.ps1 (fresh initialization, safety guard overwrite protection, password complexity, entropy checks, console hygiene, Windows ACL with well-known SIDs, Set-StrictMode Latest compatibility, 4 transactional fault injection rollbacks)
-- **Bootstrap Integration Test**: 3 Passed in backend/tests/bootstrap.integration.test.ts against real disposable MySQL 8.4 container on port 3307
-- **Bootstrap Fail-Closed Guard Tests**: 14 Passed in backend/tests/bootstrap-guard.test.ts (rejection of non-disposable DBs, protocol validation, run ID matching)
-- **Playwright Browser E2E**: 3 Passed (13-stage comprehensive inventory lifecycle workflow + secret file tests in ~8.4s against isolated E2E Docker stack on port 3100, exit code 0)
-- **Release Verification Gate**: 8/8 Passed in scripts/verify-release.ps1 (archive integrity, checksum manifest matching, file presence, test results, clean git status, loopback bind, zero secrets, zero en/em dashes)
+### Ringkasan Eksekusi Pengujian Otomatis Final (v1.6.3 Master Remediation, Verification Integrity & Release Packaging)
+- **Backend Test Suite (Vitest)**: 111 Passed, 3 Skipped (114 Total) across 13 test files (100% green, exit code 0)
+- **Disposable MySQL 8.4 Bootstrap Integration (Vitest + Docker)**: 3 Passed in backend/tests/bootstrap.integration.test.ts against dedicated disposable MySQL 8.4 container on port 3307 (100% clean teardown)
+- **Bootstrap Fail-Closed Guard Tests (Vitest)**: 14 Passed in backend/tests/bootstrap-guard.test.ts (rejection of non-disposable DBs, protocol validation, run ID matching)
+- **Frontend Test Suite (Vitest)**: 9 Passed across 2 test files (100% green, exit code 0)
+- **Windows File Security ACL & Rollback Suite (PowerShell)**: 19 Passed in tests/test-init-local.ps1 (fresh initialization, safety guard overwrite protection, password complexity, entropy checks, console hygiene, Windows ACL with well-known SIDs and Modify permission, Set-StrictMode Latest compatibility, 4 transactional fault injection rollbacks)
+- **Playwright Browser E2E**: 3 Passed (13-stage comprehensive inventory lifecycle workflow + secret file tests in 9.6s against isolated E2E Docker stack on port 3100, exit code 0, 100% VERIFIED_CLEAN teardown with zero secret residue)
+- **Secret Scanner Automated Fixtures (PowerShell)**: 11 Passed in scripts/scan-secrets.ps1 -SelfTest (6/6 categories verified across 7 positive tests, 4 negative safe files, 0 false positives)
+- **Docker Compose Configuration Validation**: 5/5 Passed in scripts/verify-release.ps1 across docker-compose.yml, docker-compose.dev.yml, docker-compose.e2e.yml, docker-compose.bootstrap-test.yml, and docker-compose.test.yml
+- **Release Verification Gate**: 10/10 Passed in scripts/verify-release.ps1 (Git branch validation, 40-character commit hash manifest consistency, 3 ZIP presence, checksum and byte size matching, archive integrity test, .env.example presence, sensitive secret exclusion, loopback binding 127.0.0.1, comprehensive secret scan across all 3 ZIPs, and writing constraint verification)
 - **TypeScript Typecheck**: 0 Type errors (Backend & Frontend)
 - **ESLint Analysis**: 0 Errors, 0 Warnings (Backend & Frontend)
-- **Next.js Production Build**: Standalone bundle generated, 17 routes clean compile, exit code 0
-- **Total Test Otomatis & Verification Gates**: 147 automated unit, integration, and E2E tests passing hijau 100% (0 failed, 0 skipped, 0 flaky)
+- **Total Test Otomatis & Verification Gates**: 161 automated unit, integration, and E2E tests passing hijau 100% (0 failed, 3 skipped disposable, 0 flaky)
 - **Vulnerabilities**: 0 Critical, 0 High, 0 Moderate, 0 Low (npm audit exit code 0)
-- **Secret Scan**: 100% Clean across all 309 project files (0 leaks found, 6/6 positive & negative self-tests passed)
+- **Secret Scan**: 100% Clean across all 276 project files (0 leaks found, 6/6 positive & negative self-tests passed)
+- **Operational Application Status**: Main stack (port 3000) and persistent volume (stockflow-prod_mysql_prod_data) remained 100% healthy, UP, and completely untouched throughout all tests.

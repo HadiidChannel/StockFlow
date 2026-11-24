@@ -1,0 +1,134 @@
+﻿
+> stockflow-backend@1.0.0 test
+> vitest run
+
+npm.cmd : [33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned 
+to become the default in a future major version of Vite:
+At line:1 char:1
++ & npm.cmd test --prefix backend 2>&1 | Out-File -FilePath evidence/v1 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33m(!) Your V...ersion of Vite::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` 
+in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mD:/Les Web Programming/Project Belajar/StokFlow/backend[39m
+
+[90mstdout[2m | tests/inventory-integrity.test.ts[2m > [22m[2mMilestone 2 & 3: Inventory Integrity and Concurrency Hardening[2m > [22m[2m4. Idempotency Key Semantics (P1-09)[2m > [22m[2mharus menangani concurrent execution dengan idempotency key yang sama tanpa duplikasi record
+[22m[39mprisma:error 
+Invalid `tx.idempotencyRecord.create()` invocation in
+D:/Les Web Programming/Project Belajar/StokFlow/backend/src/modules/inventory/inventory.service.ts:326:38
+
+  323 const expiresAt = new Date();
+  324 expiresAt.setHours(expiresAt.getHours() + 24);
+  325 
+→ 326 await tx.idempotencyRecord.create(
+Unique constraint failed on the constraint: `uq_idempotency_user_key`
+
+ [32m✓[39m tests/inventory-integrity.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 1248[2mms[22m[39m
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m1. Authentication Flow[2m > [22m[2mharus menolak login dengan credential yang 
+salah (401)
+[22m[39m[2026-11-24T19:19:24.505Z] [WARN] AppError [UNAUTHORIZED]: Email atau password tidak valid. 
+{"requestId":"req_1795547964433_d55s1wx"}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m2. CSRF Security Enforcement on State-Changing API Endpoints[2m > [22m[2mharus 
+menolak request POST kategori jika tidak menyertakan X-CSRF-Token header (403)
+[22m[39m[2026-11-24T19:19:24.645Z] [WARN] AppError [FORBIDDEN]: Token CSRF tidak ditemukan. 
+{"requestId":"req_1795547964633_dgrg1bt"}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m2. CSRF Security Enforcement on State-Changing API Endpoints[2m > [22m[2mharus 
+menolak request POST kategori jika X-CSRF-Token tidak cocok dengan cookie (403)
+[22m[39m[2026-11-24T19:19:24.666Z] [WARN] AppError [FORBIDDEN]: Token CSRF tidak cocok. 
+{"requestId":"req_1795547964650_mhj33ac"}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+menolak Stock In, Stock Out, dan Reversal tanpa Idempotency-Key header (400)
+[22m[39m[2026-11-24T19:19:25.032Z] [WARN] AppError [VALIDATION_ERROR]: Header Idempotency-Key wajib disertakan untuk 
+transaksi ini. {"requestId":"req_1795547965021_4p81wyz","details":[{"field":"Idempotency-Key","message":"Header 
+Idempotency-Key wajib disertakan untuk transaksi ini."}]}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+menolak Stock In, Stock Out, dan Reversal tanpa Idempotency-Key header (400)
+[22m[39m[2026-11-24T19:19:25.045Z] [WARN] AppError [VALIDATION_ERROR]: Header Idempotency-Key wajib disertakan untuk 
+transaksi ini. {"requestId":"req_1795547965035_1d8ru3i","details":[{"field":"Idempotency-Key","message":"Header 
+Idempotency-Key wajib disertakan untuk transaksi ini."}]}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+menolak Stock In, Stock Out, dan Reversal tanpa Idempotency-Key header (400)
+[22m[39m[2026-11-24T19:19:25.060Z] [WARN] AppError [VALIDATION_ERROR]: Header Idempotency-Key wajib disertakan untuk 
+transaksi ini. {"requestId":"req_1795547965049_gxlsxwe","details":[{"field":"Idempotency-Key","message":"Header 
+Idempotency-Key wajib disertakan untuk transaksi ini."}]}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+menolak Stock Out jika kuantitas melebihi sisa saldo (422 Insufficient Stock)
+[22m[39m[2026-11-24T19:19:25.086Z] [WARN] AppError [INSUFFICIENT_STOCK]: Stok untuk produk 'Produk Integrasi 4288' 
+tidak mencukupi di gudang Gudang Integrasi 4288. Tersedia: 70, Diminta: 9999. {"requestId":"req_1795547965064_95ur2b7",
+"details":[{"field":"items.b5e2106b-666d-4029-9845-3ed77472e072","message":"Stok tersedia (70) kurang dari kuantitas 
+diminta (9999)."}]}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m4. Inventory Stock Mutation and Balance Tracking via API[2m > [22m[2mharus 
+berhasil membalik (reversal) transaksi Stock In asal via API
+[22m[39m[2026-11-24T19:19:25.122Z] [WARN] AppError [INSUFFICIENT_STOCK]: Gagal membalik transaksi: Saldo produk 
+'Produk Integrasi 4288' tidak mencukupi untuk dibatalkan (Tersedia: 70, Diperlukan: 100). 
+{"requestId":"req_1795547965090_xb1ci2j"}
+
+[90mstderr[2m | tests/integration-api-flows.test.ts[2m > [22m[2mMilestone 6: Real Backend API Integration Flows 
+(Supertest + MySQL)[2m > [22m[2m5. Session Termination Flow[2m > [22m[2mharus berhasil logout dan mencabut sesi
+[22m[39m[2026-11-24T19:19:25.202Z] [WARN] AppError [UNAUTHORIZED]: Sesi telah dicabut. 
+{"requestId":"req_1795547965197_h19ubbw"}
+
+ [32m✓[39m tests/integration-api-flows.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 1032[2mms[22m[39m
+[90mstdout[2m | tests/bootstrap.unit.test.ts[2m > [22m[2mBootstrap Unit Tests (In-Memory Prisma Mock)[2m > [22m[2mharus berhasil mengeksekusi bootstrap pada database kosong dengan mock Prisma
+[22m[39mMemulai proses inisialisasi (bootstrap) satu kali StockFlow...
+
+[90mstdout[2m | tests/bootstrap.unit.test.ts[2m > [22m[2mBootstrap Unit Tests (In-Memory Prisma Mock)[2m > [22m[2mharus berhasil mengeksekusi bootstrap pada database kosong dengan mock Prisma
+[22m[39mOrganisasi diinisialisasi: PT StockFlow Unit Test
+
+[90mstdout[2m | tests/bootstrap.unit.test.ts[2m > [22m[2mBootstrap Unit Tests (In-Memory Prisma Mock)[2m > [22m[2mharus berhasil mengeksekusi bootstrap pada database kosong dengan mock Prisma
+[22m[39mAdministrator awal berhasil dibuat: Admin Unit Test (admin.unit@stockflow.com)
+Status: must_change_password diaktifkan secara wajib demi keamanan akun awal.
+
+[90mstdout[2m | tests/bootstrap.unit.test.ts[2m > [22m[2mBootstrap Unit Tests (In-Memory Prisma Mock)[2m > [22m[2mharus mengaktifkan one-time execution guard jika akun Administrator sudah ada di database
+[22m[39mMemulai proses inisialisasi (bootstrap) satu kali StockFlow...
+
+[90mstdout[2m | tests/bootstrap.unit.test.ts[2m > [22m[2mBootstrap Unit Tests (In-Memory Prisma Mock)[2m > [22m[2mharus mengaktifkan one-time execution guard jika akun Administrator sudah ada di database
+[22m[39mBootstrap dibatalkan: Akun Administrator sudah ada pada sistem.
+
+ [32m✓[39m tests/bootstrap.unit.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 277[2mms[22m[39m
+[90mstderr[2m | tests/api-health.test.ts[2m > [22m[2mAPI Integration Health and Security Headers[2m > 
+[22m[2mGET /api/v1/unknown-endpoint harus mengembalikan 404 standard envelope
+[22m[39m[2026-11-24T19:19:26.791Z] [WARN] AppError [NOT_FOUND]: Endpoint tidak ditemukan. 
+{"requestId":"req_1795547966790_4tpn21u"}
+
+[90mstderr[2m | tests/api-health.test.ts[2m > [22m[2mAPI Integration Health and Security Headers[2m > 
+[22m[2mPOST /api/v1/auth/login dengan body kosong harus mengembalikan 400 VALIDATION_ERROR
+[22m[39m[2026-11-24T19:19:26.816Z] [WARN] AppError [VALIDATION_ERROR]: Validasi input login gagal. 
+{"requestId":"req_1795547966813_lsxo7fj","details":[{"field":"email","message":"Invalid input: expected string, 
+received undefined"},{"field":"password","message":"Invalid input: expected string, received undefined"}]}
+
+ [32m✓[39m tests/api-health.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m tests/business-corrections.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m tests/env-validation.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m tests/validation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/bootstrap-guard.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/forced-password-change.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m tests/security-hardening.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m tests/rbac.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m tests/app-error.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/bootstrap.integration.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+
+[2m Test Files [22m [1m[32m12 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (13)[39m
+[2m      Tests [22m [1m[32m111 passed[39m[22m[2m | [22m[33m3 skipped[39m[90m (114)[39m
+[2m   Start at [22m 03:19:21
+[2m   Duration [22m 8.02s[2m (transform 423ms, setup 0ms, import 2.41s, tests 2.73s, environment 1ms)[22m
+
