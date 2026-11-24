@@ -1,15 +1,15 @@
 === STOCKFLOW OFFICIAL RELEASE MANIFEST AND CHECKSUMS (v1.6.2) ===
-Generated at: 2026-11-25 02:19:53 +08:00
+Generated at: 2026-11-25 02:21:27 +08:00
 Release Version: v1.6.2
 Final Git Branch: fix/stockflow-localhost-final-v16-2
-Final Git Commit: 0ec2ac36b70cddb98d3fb0cac8bafb3eb93b259d
+Final Git Commit: eb0b2232f0cf4eabe243401c59c779dda0d86eb2
 
 Package 1: StockFlow_Final_v8_2.zip
 Description: Source Code Package (Clean codebase with .env.example)
 Size: 4280701 bytes
-SHA-256: EE66B26CC361B0804AD335B2EFD5575F3817B1204AC4A87A11848725318E2173
+SHA-256: 9C06B672D4C9625855C3E8ED6CAE454A923F9CA62239241C3CBD76D687B9FA2C
 
 Package 2: StockFlow_Final_Verification_v8_2.zip
 Description: Verification Evidence Package (Sanitized raw evidence and engineering docs)
-Size: 58616 bytes
-SHA-256: 3B2F3C5D5CBD8E467B5F30AAA2B4FC101290459EAF132914CAA4BF0213A00143
+Size: 58934 bytes
+SHA-256: 224F4858A50E82525E24CA229251666815E64FA821E5C44B16ADF2E9D553988A
