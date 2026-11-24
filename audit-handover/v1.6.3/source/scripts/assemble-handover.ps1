@@ -73,22 +73,22 @@ foreach ($rf in $rootFiles) {
 Copy-Item -LiteralPath (Join-Path $projectRoot "backend\package.json") -Destination (Join-Path $sourceDir "backend\package.json") -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "backend\vitest.config.ts") -Destination (Join-Path $sourceDir "backend\vitest.config.ts") -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "backend\prisma\schema.prisma") -Destination (Join-Path $sourceDir "backend\prisma\schema.prisma") -Force
-Copy-Item -LiteralPath (Join-Path $projectRoot "backend\prisma\migrations") -Destination (Join-Path $sourceDir "backend\prisma\migrations") -Recurse -Force
+Copy-Item -Path (Join-Path $projectRoot "backend\prisma\migrations") -Destination (Join-Path $sourceDir "backend\prisma\migrations") -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "backend\src\scripts\bootstrap.ts") -Destination (Join-Path $sourceDir "backend\src\scripts\bootstrap.ts") -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "backend\src\utils\bootstrap-guard.ts") -Destination (Join-Path $sourceDir "backend\src\utils\bootstrap-guard.ts") -Force
-Copy-Item -LiteralPath (Join-Path $projectRoot "backend\tests") -Destination (Join-Path $sourceDir "backend\tests") -Recurse -Force
+Copy-Item -Path (Join-Path $projectRoot "backend\tests\*") -Destination (Join-Path $sourceDir "backend\tests") -Recurse -Force
 
 # 4. Copy Frontend Files
 Copy-Item -LiteralPath (Join-Path $projectRoot "frontend\package.json") -Destination (Join-Path $sourceDir "frontend\package.json") -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "frontend\vitest.config.ts") -Destination (Join-Path $sourceDir "frontend\vitest.config.ts") -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "frontend\playwright.config.ts") -Destination (Join-Path $sourceDir "frontend\playwright.config.ts") -Force
-Copy-Item -LiteralPath (Join-Path $projectRoot "frontend\tests") -Destination (Join-Path $sourceDir "frontend\tests") -Recurse -Force
+Copy-Item -Path (Join-Path $projectRoot "frontend\tests\*") -Destination (Join-Path $sourceDir "frontend\tests") -Recurse -Force
 
 # 5. Copy Scripts, Tests, and Documentation
-Copy-Item -LiteralPath (Join-Path $projectRoot "scripts") -Destination (Join-Path $sourceDir "scripts") -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $projectRoot "tests") -Destination (Join-Path $sourceDir "tests") -Recurse -Force
+Copy-Item -Path (Join-Path $projectRoot "scripts\*") -Destination (Join-Path $sourceDir "scripts") -Recurse -Force
+Copy-Item -Path (Join-Path $projectRoot "tests\*") -Destination (Join-Path $sourceDir "tests") -Recurse -Force
 $docDest = Join-Path $handoverDir "docs"
-Copy-Item -LiteralPath (Join-Path $projectRoot "docs") -Destination $docDest -Recurse -Force
+Copy-Item -Path (Join-Path $projectRoot "docs") -Destination $docDest -Recurse -Force
 
 # 6. Generate and Copy Git Evidence
 $gitDir = Join-Path $evidenceDir "git"

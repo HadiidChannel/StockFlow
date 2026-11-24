@@ -177,9 +177,9 @@ $excludedPatterns = @(
 )
 
 # Specific test fixture allow-list (documents/fixtures testing validation schemas)
-$allowListPaths = @(
-    "scripts\scan-secrets.ps1",
-    "backend\tests\env-validation.test.ts"
+$allowListPatterns = @(
+    "(?i)(?:^|[\\/])scan-secrets\.ps1$",
+    "(?i)(?:^|[\\/])env-validation\.test\.ts$"
 )
 
 $isZip = $scanPath.EndsWith(".zip", [System.StringComparison]::OrdinalIgnoreCase)
@@ -201,9 +201,13 @@ try {
         $rel = $fullPath.Substring($baseScanDir.Length).TrimStart('\', '/')
         $relNorm = $rel.Replace('/', '\')
         $skip = $false
-        if ($relNorm -in $allowListPaths) {
-            $skip = $true
-        } else {
+        foreach ($al in $allowListPatterns) {
+            if ($relNorm -match $al) {
+                $skip = $true
+                break
+            }
+        }
+        if (-not $skip) {
             foreach ($ex in $excludedPatterns) {
                 if ($relNorm -match $ex) {
                     $skip = $true

@@ -1,22 +1,85 @@
- M .gitignore
- M README.md
- M backend/tests/bootstrap.integration.test.ts
- M backend/tests/bootstrap.unit.test.ts
- M docker-compose.e2e.yml
- M docs/engineering/ARCHITECTURE_DECISIONS.md
- M docs/engineering/BUG_LOG.md
- M docs/engineering/DEPLOYMENT_GUIDE.md
- M docs/engineering/FINAL_RELEASE_REPORT_V1_3.md
- M docs/engineering/SECURITY_REVIEW.md
- M docs/engineering/TEST_RESULTS.md
- M docs/engineering/TROUBLESHOOTING.md
- M scripts/init-local.ps1
- M scripts/package-release.ps1
- M scripts/run-e2e.ps1
+ D audit-handover/v1.6.3/AUDIT_FILE_MANIFEST.md
+ D audit-handover/v1.6.3/evidence/backend/backend_test_results.txt
+ D audit-handover/v1.6.3/evidence/backend/bootstrap_guard_test_results.txt
+ D audit-handover/v1.6.3/evidence/bootstrap/bootstrap_integration_test_results.txt
+ D audit-handover/v1.6.3/evidence/docker/docker_compose_verification.txt
+ D audit-handover/v1.6.3/evidence/e2e/e2e_cleanup_verification.txt
+ D audit-handover/v1.6.3/evidence/e2e/e2e_compose_config_sanitized.txt
+ D audit-handover/v1.6.3/evidence/e2e/e2e_resource_ownership.txt
+ D audit-handover/v1.6.3/evidence/e2e/e2e_test_results.txt
+ D audit-handover/v1.6.3/evidence/frontend/frontend_test_results.txt
+ D audit-handover/v1.6.3/evidence/git/git_branch.txt
+ D audit-handover/v1.6.3/evidence/git/git_commit.txt
+ D audit-handover/v1.6.3/evidence/git/git_diff_summary.txt
+ D audit-handover/v1.6.3/evidence/git/git_status.txt
+ D audit-handover/v1.6.3/evidence/operational/environment_baseline.txt
+ D audit-handover/v1.6.3/evidence/operational/main_database_after.txt
+ D audit-handover/v1.6.3/evidence/operational/main_database_before.txt
+ D audit-handover/v1.6.3/evidence/operational/main_stack_after.txt
+ D audit-handover/v1.6.3/evidence/operational/main_stack_before.txt
+ D audit-handover/v1.6.3/evidence/operational/main_volume_after.txt
+ D audit-handover/v1.6.3/evidence/operational/main_volume_before.txt
+ D audit-handover/v1.6.3/evidence/reconciliation/test_reconciliation.txt
+ D audit-handover/v1.6.3/evidence/security/secret_scan.txt
+ D audit-handover/v1.6.3/evidence/security/secret_scanner_self_test.txt
+ D audit-handover/v1.6.3/evidence/windows-acl/init_local_test_results.txt
+ D audit-handover/v1.6.3/source/backend/tests/tests/api-health.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/app-error.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/bootstrap-guard.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/bootstrap.integration.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/bootstrap.unit.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/business-corrections.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/env-validation.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/forced-password-change.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/integration-api-flows.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/inventory-integrity.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/rbac.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/security-hardening.test.ts
+ D audit-handover/v1.6.3/source/backend/tests/tests/validation.test.ts
+ D audit-handover/v1.6.3/source/frontend/tests/tests/e2e/stockflow-lifecycle.spec.ts
+ D audit-handover/v1.6.3/source/frontend/tests/tests/utils.test.ts
+ D audit-handover/v1.6.3/source/frontend/tests/tests/workflow-logic.test.ts
+ D audit-handover/v1.6.3/source/scripts/scripts/assemble-handover.ps1
+ D audit-handover/v1.6.3/source/scripts/scripts/capture-evidence.ps1
+ D audit-handover/v1.6.3/source/scripts/scripts/chrome-daemon.js
+ D audit-handover/v1.6.3/source/scripts/scripts/create-remediated-zip.ps1
+ D audit-handover/v1.6.3/source/scripts/scripts/generate-evidence.ps1
+ D audit-handover/v1.6.3/source/scripts/scripts/init-local.ps1
+ D audit-handover/v1.6.3/source/scripts/scripts/package-release.ps1
+ D audit-handover/v1.6.3/source/scripts/scripts/run-bootstrap-test.ps1
+ D audit-handover/v1.6.3/source/scripts/scripts/run-e2e.ps1
+ D audit-handover/v1.6.3/source/scripts/scripts/scan-secrets.ps1
+ D audit-handover/v1.6.3/source/scripts/scripts/verify-db.js
+ D audit-handover/v1.6.3/source/scripts/scripts/verify-release.ps1
+ D audit-handover/v1.6.3/source/tests/tests/test-init-local.ps1
+ M scripts/assemble-handover.ps1
  M scripts/scan-secrets.ps1
- M scripts/verify-release.ps1
- M tests/test-init-local.ps1
-?? audit-handover/v1.6.3/
-?? docs/engineering/FINAL_RELEASE_REPORT_V1_6_3.md
-?? evidence/v1.6.3/
-?? scripts/assemble-handover.ps1
+?? audit-handover/v1.6.3/source/backend/tests/api-health.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/app-error.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/bootstrap-guard.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/bootstrap.integration.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/bootstrap.unit.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/business-corrections.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/env-validation.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/forced-password-change.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/integration-api-flows.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/inventory-integrity.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/rbac.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/security-hardening.test.ts
+?? audit-handover/v1.6.3/source/backend/tests/validation.test.ts
+?? audit-handover/v1.6.3/source/frontend/tests/e2e/
+?? audit-handover/v1.6.3/source/frontend/tests/utils.test.ts
+?? audit-handover/v1.6.3/source/frontend/tests/workflow-logic.test.ts
+?? audit-handover/v1.6.3/source/scripts/assemble-handover.ps1
+?? audit-handover/v1.6.3/source/scripts/capture-evidence.ps1
+?? audit-handover/v1.6.3/source/scripts/chrome-daemon.js
+?? audit-handover/v1.6.3/source/scripts/create-remediated-zip.ps1
+?? audit-handover/v1.6.3/source/scripts/generate-evidence.ps1
+?? audit-handover/v1.6.3/source/scripts/init-local.ps1
+?? audit-handover/v1.6.3/source/scripts/package-release.ps1
+?? audit-handover/v1.6.3/source/scripts/run-bootstrap-test.ps1
+?? audit-handover/v1.6.3/source/scripts/run-e2e.ps1
+?? audit-handover/v1.6.3/source/scripts/scan-secrets.ps1
+?? audit-handover/v1.6.3/source/scripts/verify-db.js
+?? audit-handover/v1.6.3/source/scripts/verify-release.ps1
+?? audit-handover/v1.6.3/source/tests/test-init-local.ps1

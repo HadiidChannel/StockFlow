@@ -1,50 +1,163 @@
-git.exe : warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+git.exe : warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/ARCHITECTURE_DECISIONS.md', LF will 
+be replaced by CRLF the next time Git touches it
 At D:\Les Web Programming\Project Belajar\StokFlow\scripts\assemble-handover.ps1:100 char:12
 + $gitDiff = & git.exe diff --stat 2>&1 | Out-String
 +            ~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
  
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'backend/tests/bootstrap.integration.test.ts', LF will be replaced by CRLF the next 
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/DATABASE_MAINTENANCE.md', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/DEPLOYMENT_GUIDE.md', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/FINAL_RELEASE_REPORT_V1_2.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/FINAL_RELEASE_REPORT_V1_3.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/FINAL_RELEASE_REPORT_V1_4.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/FINAL_RELEASE_REPORT_V1_5.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/FINAL_RELEASE_REPORT_V1_6.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/FINAL_RELEASE_REPORT_V1_6_1.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/FINAL_RELEASE_REPORT_V1_6_2.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/FINAL_RELEASE_REPORT_V1_6_3.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/REMEDIATION_REPORT.md', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/REMEDIATION_V1_1_REPORT.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/SECURITY_REVIEW.md', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/TESTING_STRATEGY.md', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/TEST_RESULTS.md', LF will be replaced by CRLF 
+the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/engineering/TROUBLESHOOTING.md', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/ARCHITECTURE_OVERVIEW.md', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/LEARNING_PROGRESS.md', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/LEARNING_ROADMAP.md', LF will be replaced by CRLF 
+the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/TECHNOLOGY_GLOSSARY.md', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/guides/01_JAVASCRIPT_FUNDAMENTALS.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/guides/02_TYPESCRIPT_ENGINEERING.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/guides/03_NODEJS_RUNTIME.md', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/guides/04_EXPRESSJS_BACKEND.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/guides/05_MYSQL_RELATIONAL_DATABASE.md', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/guides/06_PRISMA_ORM.md', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/guides/07_REACT_ARCHITECTURE.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/guides/08_NEXTJS_APP_ROUTER.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/docs/learning/guides/09_DOCKER_CONTAINERIZATION.md', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/backend/package.json', LF will be replaced by CRLF the 
+next time Git touches it
+warning: in the working copy of 
+'audit-handover/v1.6.3/source/backend/prisma/migrations/20261120172836_init_schema/migration.sql', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/backend/prisma/migrations/20261121031500_add_check_constr
+aints_and_composite_fks/migration.sql', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/backend/prisma/migrations/migration_lock.toml', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/backend/prisma/schema.prisma', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/backend/src/scripts/bootstrap.ts', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/backend/src/utils/bootstrap-guard.ts', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/backend/vitest.config.ts', LF will be replaced by CRLF 
+the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/frontend/package.json', LF will be replaced by CRLF the 
+next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/frontend/playwright.config.ts', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/frontend/vitest.config.ts', LF will be replaced by CRLF 
+the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/root/.env.example', LF will be replaced by CRLF the next 
 time Git touches it
-warning: in the working copy of 'backend/tests/bootstrap.unit.test.ts', LF will be replaced by CRLF the next time Git 
-touches it
-warning: in the working copy of 'docker-compose.e2e.yml', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'docs/engineering/ARCHITECTURE_DECISIONS.md', LF will be replaced by CRLF the next 
+warning: in the working copy of 'audit-handover/v1.6.3/source/root/README.md', LF will be replaced by CRLF the next 
 time Git touches it
-warning: in the working copy of 'docs/engineering/DEPLOYMENT_GUIDE.md', LF will be replaced by CRLF the next time Git 
-touches it
-warning: in the working copy of 'docs/engineering/FINAL_RELEASE_REPORT_V1_3.md', LF will be replaced by CRLF the next 
-time Git touches it
-warning: in the working copy of 'docs/engineering/SECURITY_REVIEW.md', LF will be replaced by CRLF the next time Git 
-touches it
-warning: in the working copy of 'docs/engineering/TEST_RESULTS.md', LF will be replaced by CRLF the next time Git 
-touches it
-warning: in the working copy of 'docs/engineering/TROUBLESHOOTING.md', LF will be replaced by CRLF the next time Git 
-touches it
-warning: in the working copy of 'scripts/init-local.ps1', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'scripts/package-release.ps1', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'scripts/run-e2e.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/root/docker-compose.bootstrap-test.yml', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/root/docker-compose.dev.yml', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/root/docker-compose.e2e.yml', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/root/docker-compose.test.yml', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'audit-handover/v1.6.3/source/root/docker-compose.yml', LF will be replaced by CRLF 
+the next time Git touches it
+warning: in the working copy of 'scripts/assemble-handover.ps1', LF will be replaced by CRLF the next time Git touches 
+it
 warning: in the working copy of 'scripts/scan-secrets.ps1', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'scripts/verify-release.ps1', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'tests/test-init-local.ps1', LF will be replaced by CRLF the next time Git touches it
- .gitignore                                    |   2 +
- README.md                                     |   2 +-
- backend/tests/bootstrap.integration.test.ts   |   9 +-
- backend/tests/bootstrap.unit.test.ts          |   2 +-
- docker-compose.e2e.yml                        |  14 +-
- docs/engineering/ARCHITECTURE_DECISIONS.md    |  29 +++
- docs/engineering/BUG_LOG.md                   |  54 ++++++
- docs/engineering/DEPLOYMENT_GUIDE.md          |  36 ++--
- docs/engineering/FINAL_RELEASE_REPORT_V1_3.md |   4 +-
- docs/engineering/SECURITY_REVIEW.md           |  12 ++
- docs/engineering/TEST_RESULTS.md              |  25 +--
- docs/engineering/TROUBLESHOOTING.md           |  21 +++
- scripts/init-local.ps1                        |  20 ++-
- scripts/package-release.ps1                   | 129 ++++++++------
- scripts/run-e2e.ps1                           |  38 +++-
- scripts/scan-secrets.ps1                      |  52 +++---
- scripts/verify-release.ps1                    | 235 ++++++++++++++++++-------
- tests/test-init-local.ps1                     | 244 +++++++++++++++++---------
- 18 files changed, 652 insertions(+), 276 deletions(-)
+ audit-handover/v1.6.3/AUDIT_FILE_MANIFEST.md       |  82 ---
+ .../evidence/backend/backend_test_results.txt      | 134 ----
+ .../backend/bootstrap_guard_test_results.txt       |  10 -
+ .../bootstrap_integration_test_results.txt         |  27 -
+ .../docker/docker_compose_verification.txt         |  12 -
+ .../evidence/e2e/e2e_cleanup_verification.txt      |  10 -
+ .../evidence/e2e/e2e_compose_config_sanitized.txt  | 128 ----
+ .../v1.6.3/evidence/e2e/e2e_resource_ownership.txt |  23 -
+ .../v1.6.3/evidence/e2e/e2e_test_results.txt       |  34 -
+ .../evidence/frontend/frontend_test_results.txt    |  26 -
+ audit-handover/v1.6.3/evidence/git/git_branch.txt  |   1 -
+ audit-handover/v1.6.3/evidence/git/git_commit.txt  |   1 -
+ .../v1.6.3/evidence/git/git_diff_summary.txt       |  50 --
+ audit-handover/v1.6.3/evidence/git/git_status.txt  |  22 -
+ .../evidence/operational/environment_baseline.txt  |  23 -
+ .../evidence/operational/main_database_after.txt   |   1 -
+ .../evidence/operational/main_database_before.txt  |  11 -
+ .../evidence/operational/main_stack_after.txt      |   5 -
+ .../evidence/operational/main_stack_before.txt     |   5 -
+ .../evidence/operational/main_volume_after.txt     |  16 -
+ .../evidence/operational/main_volume_before.txt    |  16 -
+ .../reconciliation/test_reconciliation.txt         | 148 ----
+ .../v1.6.3/evidence/security/secret_scan.txt       |   8 -
+ .../evidence/security/secret_scanner_self_test.txt |  11 -
+ .../windows-acl/init_local_test_results.txt        |  55 --
+ .../source/backend/tests/tests/api-health.test.ts  |  33 -
+ .../source/backend/tests/tests/app-error.test.ts   |  59 --
+ .../backend/tests/tests/bootstrap-guard.test.ts    | 148 ----
+ .../tests/tests/bootstrap.integration.test.ts      | 121 ----
+ .../backend/tests/tests/bootstrap.unit.test.ts     | 233 -------
+ .../tests/tests/business-corrections.test.ts       |  63 --
+ .../backend/tests/tests/env-validation.test.ts     | 294 --------
+ .../tests/tests/forced-password-change.test.ts     | 103 ---
+ .../tests/tests/integration-api-flows.test.ts      | 382 ----------
+ .../tests/tests/inventory-integrity.test.ts        | 765 ---------------------
+ .../v1.6.3/source/backend/tests/tests/rbac.test.ts |  31 -
+ .../backend/tests/tests/security-hardening.test.ts | 132 ----
+ .../source/backend/tests/tests/validation.test.ts  |  65 --
+ .../tests/tests/e2e/stockflow-lifecycle.spec.ts    | 402 -----------
+ .../source/frontend/tests/tests/utils.test.ts      |  28 -
+ .../frontend/tests/tests/workflow-logic.test.ts    |  73 --
+ .../source/scripts/scripts/assemble-handover.ps1   | 219 ------
+ .../source/scripts/scripts/capture-evidence.ps1    |  98 ---
+ .../v1.6.3/source/scripts/scripts/chrome-daemon.js |  58 --
+ .../scripts/scripts/create-remediated-zip.ps1      |  52 --
+ .../source/scripts/scripts/generate-evidence.ps1   | 190 -----
+ .../v1.6.3/source/scripts/scripts/init-local.ps1   | 272 --------
+ .../source/scripts/scripts/package-release.ps1     | 257 -------
+ .../source/scripts/scripts/run-bootstrap-test.ps1  | 183 -----
+ .../v1.6.3/source/scripts/scripts/run-e2e.ps1      | 413 -----------
+ .../v1.6.3/source/scripts/scripts/scan-secrets.ps1 | 316 ---------
+ .../v1.6.3/source/scripts/scripts/verify-db.js     |  59 --
+ .../source/scripts/scripts/verify-release.ps1      | 281 --------
+ .../v1.6.3/source/tests/tests/test-init-local.ps1  | 429 ------------
+ scripts/assemble-handover.ps1                      |  12 +-
+ scripts/scan-secrets.ps1                           |  16 +-
+ 56 files changed, 16 insertions(+), 6630 deletions(-)

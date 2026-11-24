@@ -1,9 +1,9 @@
 # StockFlow v1.6.3: Independent Audit Handover Manifest
 
-Date: 2026-11-25 03:34:02 +08:00
+Date: 2026-11-25 03:36:32 +08:00
 Release Version: v1.6.3
 Branch: fix/stockflow-v16-3-release-integrity
-Commit: 307939065353e6e4578ea898b071e0be9bcdfa1b
+Commit: db8f53f571bd4005646978beb899dd26c834b852
 
 ## 1. Directory Structure Overview
 
