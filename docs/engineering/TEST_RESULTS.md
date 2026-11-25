@@ -26,21 +26,23 @@ Dokumen ini mencatat ringkasan eksekusi pengujian pada setiap fase pengembangan.
 | 2026-11-24 | Release v1.6 | E2E Isolation, Security Hardening & Local Setup Reliability | 107 | 107 | 0 | PASS | Dedicated E2E stack (port 3100), dynamic crypto credentials, init-local rollback + ACL, bootstrap test fix, zero DB pollution |
 | 2026-11-25 | Release v1.6.1 | Release Blocker Remediation, Full Isolation & Secret Hygiene | 125 | 125 | 0 | PASS | Healthcheck $$MYSQL_ROOT_PASSWORD, SID ACLs, strict mode safe rollback, bootstrap mock unit tests + fail-closed guard, dynamic E2E project namespaces, comprehensive secret scanner |
 | 2026-11-25 | Release v1.6.2 | Verification Integrity & Security Gate Remediation | 147 | 147 | 0 | PASS | Real disposable MySQL 8.4 bootstrap test, 14 guard scenarios, 19 init-local tests with 4 fault rollbacks, Docker label ownership, rebuilt 6-pattern secret scanner, 8 release gates verified |
-| 2026-11-25 | Release v1.6.3 | Master Remediation, Verification Integrity & Release Packaging | 161 | 161 | 0 | PASS | Windows Modify (M) ACL permission, fail-closed E2E secret cleanup, standardized owner labels, word-bounded secret scanner, 10 release quality gates verified |
+| 2026-11-25 | Release v1.6.3 | Master Remediation, Verification Integrity & Release Packaging | 161 | 161 | 0 | PASS | Windows Modify (M) ACL permission, fail-closed E2E secret cleanup, standardized owner labels, word-bounded secret scanner, 10 release quality gates verified (Note: jumlah 161 mencampurkan application tests & checks) |
+| 2026-11-25 | Release v1.6.4 | Master Release Integrity Remediation & Complete Audit Handover | 145 app + 13 verifier suite | All Passed | 0 failed (3 skipped in default Vitest, executed in Bootstrap suite) | PASS | Pemisahan ketat Application Test Cases (145 inherited from v1.6.3 with unchanged app source) vs Engineering Verification Checks (13/13 fail-closed verifier scenarios, 11 secret fixtures, 5 compose configs, 13 release gates, handover 1-to-1 check) |
 
-### Ringkasan Eksekusi Pengujian Otomatis Final (v1.6.3 Master Remediation, Verification Integrity & Release Packaging)
-- **Backend Test Suite (Vitest)**: 111 Passed, 3 Skipped (114 Total) across 13 test files (100% green, exit code 0)
-- **Disposable MySQL 8.4 Bootstrap Integration (Vitest + Docker)**: 3 Passed in backend/tests/bootstrap.integration.test.ts against dedicated disposable MySQL 8.4 container on port 3307 (100% clean teardown)
-- **Bootstrap Fail-Closed Guard Tests (Vitest)**: 14 Passed in backend/tests/bootstrap-guard.test.ts (rejection of non-disposable DBs, protocol validation, run ID matching)
-- **Frontend Test Suite (Vitest)**: 9 Passed across 2 test files (100% green, exit code 0)
-- **Windows File Security ACL & Rollback Suite (PowerShell)**: 19 Passed in tests/test-init-local.ps1 (fresh initialization, safety guard overwrite protection, password complexity, entropy checks, console hygiene, Windows ACL with well-known SIDs and Modify permission, Set-StrictMode Latest compatibility, 4 transactional fault injection rollbacks)
-- **Playwright Browser E2E**: 3 Passed (13-stage comprehensive inventory lifecycle workflow + secret file tests in 9.6s against isolated E2E Docker stack on port 3100, exit code 0, 100% VERIFIED_CLEAN teardown with zero secret residue)
-- **Secret Scanner Automated Fixtures (PowerShell)**: 11 Passed in scripts/scan-secrets.ps1 -SelfTest (6/6 categories verified across 7 positive tests, 4 negative safe files, 0 false positives)
-- **Docker Compose Configuration Validation**: 5/5 Passed in scripts/verify-release.ps1 across docker-compose.yml, docker-compose.dev.yml, docker-compose.e2e.yml, docker-compose.bootstrap-test.yml, and docker-compose.test.yml
-- **Release Verification Gate**: 10/10 Passed in scripts/verify-release.ps1 (Git branch validation, 40-character commit hash manifest consistency, 3 ZIP presence, checksum and byte size matching, archive integrity test, .env.example presence, sensitive secret exclusion, loopback binding 127.0.0.1, comprehensive secret scan across all 3 ZIPs, and writing constraint verification)
-- **TypeScript Typecheck**: 0 Type errors (Backend & Frontend)
-- **ESLint Analysis**: 0 Errors, 0 Warnings (Backend & Frontend)
-- **Total Test Otomatis & Verification Gates**: 161 automated unit, integration, and E2E tests passing hijau 100% (0 failed, 3 skipped disposable, 0 flaky)
-- **Vulnerabilities**: 0 Critical, 0 High, 0 Moderate, 0 Low (npm audit exit code 0)
-- **Secret Scan**: 100% Clean across all 276 project files (0 leaks found, 6/6 positive & negative self-tests passed)
-- **Operational Application Status**: Main stack (port 3000) and persistent volume (stockflow-prod_mysql_prod_data) remained 100% healthy, UP, and completely untouched throughout all tests.
+### Ringkasan Rekonsiliasi Pengujian dan Verifikasi v1.6.4 (Tanpa Double-Counting)
+
+Catatan Metodologi: Pengujian aplikasi (`backend/`, `frontend/`, `init-local.ps1`, `run-bootstrap-test.ps1`, `run-e2e.ps1`) tidak mengalami perubahan kode sumber antara rilis `v1.6.3` dan `v1.6.4`, sehingga bukti mentahnya dipertahankan sebagai **Inherited from v1.6.3, relevant source unchanged** dengan timestamp dan commit asal asli (`e7bccf7792725888a449822c8a838cc1a556de01`). Seluruh komponen rilis, keamanan, Git, Docker Compose, pemaketan, dan handover yang berubah atau terdampak pada `v1.6.4` dieksekusi ulang secara nyata (**Re-executed in v1.6.4**).
+
+#### 1. Application Test Cases (Total Unik: 145 Lulus, 0 Gagal)
+- **Backend Unit & Integration (Vitest)**: 111 Passed, 3 Skipped across 13 files (`Inherited from v1.6.3, relevant source unchanged`). Ke-14 test `bootstrap-guard.test.ts` sudah termasuk di dalam angka 111 ini (tidak dihitung ganda).
+- **Disposable MySQL 8.4 Bootstrap Integration (Vitest + Docker)**: 3 Passed (`Inherited from v1.6.3, relevant source unchanged`; ini merupakan 3 test yang dilewati saat default Vitest run).
+- **Frontend Unit & Workflow Logic (Vitest)**: 9 Passed across 2 files (`Inherited from v1.6.3, relevant source unchanged`).
+- **Windows NTFS File ACL & Rollback Suite (`tests/test-init-local.ps1`)**: 19 Passed scenarios (`Inherited from v1.6.3, relevant source unchanged`).
+- **Playwright Browser E2E (`frontend/tests/e2e/stockflow-lifecycle.spec.ts`)**: 3 Test Cases Passed covering 13 workflow stages (`Inherited from v1.6.3, relevant source unchanged`).
+
+#### 2. Engineering Verification Checks (Re-executed in v1.6.4)
+- **Release Verifier Negative & Positive Suite (`tests/test-verify-release.ps1`)**: 13 / 13 scenarios Passed (`Re-executed in v1.6.4`, menguji fail-closed rejection untuk commit mismatch, branch mismatch, dirty modified, untracked, missing git, missing/corrupt manifest, missing ZIP, checksum mismatch, embedded manifest, false verified claim, dan stale git evidence).
+- **Secret Scanner Automated Fixtures (`scripts/scan-secrets.ps1 -SelfTest`)**: 11 / 11 fixtures Passed (6/6 kategori terdeteksi pada 7 uji positif, 0 false positives pada 4 berkas aman).
+- **Secret Scanner Repository & Packages**: Memindai repositori aktif (0 findings) serta memindai masing-masing Source ZIP, Verification ZIP, dan Audit Handover ZIP (seluruh hasil final tercatat dalam `release-output/v1.6.4/`).
+- **Docker Compose Configuration Validation**: 5 / 5 konfigurasi Compose tervalidasi dengan output mentah ter-sanitasi (`docker-compose.yml`, `docker-compose.dev.yml`, `docker-compose.e2e.yml`, `docker-compose.bootstrap-test.yml`, `docker-compose.test.yml`).
+- **Release Packaging, Handover Completeness, dan 13 Fail-Closed Gates**: Dieksekusi langsung pasca-commit oleh `scripts/package-release.ps1` dan `scripts/verify-release.ps1` dengan laporan akhir lengkap pada `release-output/v1.6.4/FINAL_RELEASE_REPORT_V1_6_4.md`.

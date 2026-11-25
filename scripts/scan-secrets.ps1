@@ -1,5 +1,5 @@
 # ==============================================================================
-# StockFlow - Comprehensive Secret & Credential Exposure Scanner (v1.6.3)
+# StockFlow - Comprehensive Secret & Credential Exposure Scanner (v1.6.4)
 # Script: scripts/scan-secrets.ps1
 # Description: Rigorously scans directories or ZIP archives for credentials,
 #              CLI arguments, connection strings, YAML/JSON secrets, tokens,
@@ -76,7 +76,7 @@ $secretPatterns = @(
 # ------------------------------------------------------------------------------
 if ($SelfTest) {
     Write-Host "======================================================================"
-    Write-Host " Running Secret Scanner Automated Self-Test Fixtures (v1.6.3)"
+    Write-Host " Running Secret Scanner Automated Self-Test Fixtures (v1.6.4)"
     Write-Host "======================================================================"
 
     $fixtureDir = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_scanner_fixture_" + [Guid]::NewGuid().ToString().Substring(0, 8))
@@ -157,7 +157,7 @@ if ([string]::IsNullOrWhiteSpace($TargetScanPath)) {
 }
 
 Write-Host "======================================================================"
-Write-Host " StockFlow Credential and Sensitive Secret Scanner (v1.6.3)"
+Write-Host " StockFlow Credential and Sensitive Secret Scanner (v1.6.4)"
 Write-Host " Target Path: $scanPath"
 Write-Host " Zero Secret Output Policy: Enabled ([REDACTED] Masking)"
 Write-Host "======================================================================"
@@ -228,9 +228,9 @@ try {
         $fileName = [System.IO.Path]::GetFileName($filePath).ToLowerInvariant()
         $ext = [System.IO.Path]::GetExtension($filePath).ToLowerInvariant()
 
-        $isInspectable = ($fileName -in @(".env.example", ".env.test", "dockerfile") -or
+        $isInspectable = ($fileName -in @(".env.example", ".env.test", "dockerfile", ".dockerignore", ".gitignore", ".npmrc") -or
                           $fileName.StartsWith("docker-compose") -or
-                          $ext -in @(".txt", ".md", ".json", ".yml", ".yaml", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".ps1", ".sh", ".sql", ".xml", ".config", ".log", ".pem", ".key", ".env"))
+                          $ext -in @(".txt", ".md", ".json", ".yml", ".yaml", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".ps1", ".sh", ".sql", ".xml", ".config", ".log", ".pem", ".key", ".env", ".toml", ".css"))
 
         if ($isInspectable) {
             try {

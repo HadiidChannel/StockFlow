@@ -258,3 +258,13 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
    Menambahkan negative lookbehind `(?<![A-Za-z0-9_])` pada nama variabel rahasia agar tidak terjadi false positive pada variabel berawalan `DEV_`, `TEST_`, atau `PROD_`. Mewajibkan tanda petik pembuka dan penutup `["']` pada pola password statis Kategori 4 dan mengganti password pengujian integrasi bootstrap menjadi string acak kriptografis dinamis (`crypto.randomBytes`).
 5. **Penegakan 10 Gerbang Kualitas Rilis Resmi**:
    Memperluas `scripts/verify-release.ps1` menjadi 10 gerbang kualitas rilis fail-closed: status branch git, konsistensi 40-karakter commit hash manifest, keberadaan 3 paket rilis ZIP dan manifest external, verifikasi ukuran byte dan SHA-256, integritas ekstraksi arsip, kehadiran `.env.example`, ketiadaan berkas rahasia aktif, validasi loopback compose 127.0.0.1, pemindaian menyeluruh bebas rahasia, serta kepatuhan mutlak writing constraint (0 en dash, 0 em dash).
+
+### H. Hardening Integritas Rilis dan Audit Handover v1.6.4 (Fail-Closed Gates & Anti-Circular Pipeline)
+1. **Verifikator Rilis Fail-Closed Mutlak (13 Gerbang)**:
+   `scripts/verify-release.ps1` kini mewajibkan ketersediaan binary Git, exact match pada nama branch, exact match pada 40-karakter SHA-1 commit hash (`HEAD` vs manifest vs bukti di dalam arsip), serta kebersihan total working tree (`git status --porcelain --untracked-files=all`). Kegagalan pada salah satu gerbang langsung mengeksekusi `exit 1` tanpa pernah menambah hitungan lulus.
+2. **Pembuktian Negatif Terisolasi (`tests/test-verify-release.ps1`)**:
+   Menambahkan 13 skenario uji otomatis pada repository sementara `%TEMP%` yang membuktikan penolakan fail-closed atas commit mismatch, branch mismatch, file termodifikasi, file untracked, ketiadaan binary Git, manifest hilang, manifest rusak, ZIP hilang, checksum salah, manifest historis tertanam dalam Source ZIP, klaim palsu file Verified dalam Handover manifest, serta bukti Git kadaluarsa dalam arsip.
+3. **Source ZIP Provenance via `git archive HEAD`**:
+   `scripts/package-release.ps1` mengekspor kode sumber langsung dari commit `HEAD` yang sudah bersih sehingga berkas lokal `.env`, `.secrets/`, cache build, maupun manifest historis (`StockFlow_Release_Checksums_*.txt`) mustahil masuk ke `StockFlow_Final_v8_4.zip`.
+4. **Validasi 1-to-1 Inventaris Handover dan Pemindaian Rahasia 4-Vektor**:
+   `scripts/assemble-handover.ps1` memverifikasi setiap path dan hash SHA-256 pada `AUDIT_FILE_MANIFEST.md` terhadap isi ekstraksi `StockFlow_Audit_Handover_v8_4.zip`, sementara `scripts/scan-secrets.ps1` memindai repositori maupun ketiga paket arsip rilis dengan masking `[REDACTED]`.

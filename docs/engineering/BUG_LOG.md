@@ -269,3 +269,39 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 - **Fix**: Menambahkan `release-output/`, `audit/`, `*.zip`, dan `StockFlow_Release_Checksums_*.txt` ke `.gitignore`. Mengarahkan skrip pemaketan rilis untuk menghasilkan output ke direktori `release-output/v1.6.3/` dan `audit/v8_3/` yang diabaikan git, sehingga commit git bersih dapat dilakukan terlebih dahulu sebelum artefak rilis final dieksekusi.
 - **Regression Test**: Skrip verifikasi release gate memvalidasi status git clean dan mencocokkan commit hash 40 karakter secara presisi.
 - **Status**: Fixed & Verified
+
+### BUG-029: Verifikasi Git Commit Bersifat Fail-Open dan Ketiadaan Cek Working Tree pada Release Verifier (FINDING-01)
+- **Severity**: Critical
+- **Deskripsi**: Pada v1.6.3, `scripts/verify-release.ps1` hanya mengeluarkan `Write-Warning` saat commit HEAD tidak cocok dengan manifest dan tetap mengeksekusi `$checksPassed++`. Selain itu, tidak terdapat validasi `git status --porcelain --untracked-files=all` maupun pengujian negatif terisolasi.
+- **Steps to Reproduce**: Mengubah nilai `Final Git Commit` pada manifest rilis menjadi hash berbeda lalu menjalankan `verify-release.ps1` v1.6.3.
+- **Root Cause**: Blok kondisi mismatch menggunakan warning non-terminating tanpa `exit 1` dan logika pencacahan kelulusan dijalankan di luar percabangan error.
+- **Fix**: Mengimplementasikan fungsi fail-closed `Fail-Gate` pada `scripts/verify-release.ps1` (Gate 01 sampai Gate 13) yang langsung keluar dengan kode 1 apabila branch tidak cocok, 40-karakter commit hash berbeda, working tree tidak bersih, atau Git CLI tidak tersedia. Membuat harness pengujian `tests/test-verify-release.ps1` dengan 13 skenario positif dan negatif terisolasi.
+- **Regression Test**: Seluruh 13 skenario pada `tests/test-verify-release.ps1` lulus 100% (commit mismatch, branch mismatch, dirty modified, untracked, missing git, missing manifest, corrupt manifest, missing ZIP, checksum mismatch, embedded manifest, false verified claim, dan stale git evidence seluruhnya ditolak fail-closed).
+- **Status**: Fixed & Verified
+
+### BUG-030: Inkonsistensi Hash Commit pada Bukti Git Akibat Pembuatan Bukti Sebelum Commit Final (FINDING-02)
+- **Severity**: High
+- **Deskripsi**: Manifest eksternal v1.6.3 mencatat commit `e7bccf7`, namun berkas `evidence/git/git_commit.txt` di dalam Audit Handover mencatat `db8f53f` serta `git_status.txt` menampilkan file modified/deleted.
+- **Steps to Reproduce**: Mengekstrak `StockFlow_Audit_Handover_v8_3.zip` dan membandingkan `git_commit.txt` dengan manifest eksternal.
+- **Root Cause**: Skrip perakitan handover merekam `git_commit.txt` dan memasukkannya ke dalam commit terakhir, sehingga commit terakhir mengubah hash HEAD menjadi nilai baru yang berbeda dari isi file yang ikut dikomit.
+- **Fix**: Menerapkan urutan rilis anti-sirkular: melakukan commit final terlebih dahulu, memverifikasi working tree 100% bersih, lalu membangkitkan seluruh bukti Git dan bundel rilis di dalam direktori terisolasi `.gitignore` (`release-output/v1.6.4/`). Menambahkan Gate 12 pada `verify-release.ps1` untuk mencocokkan `git_commit.txt`, `git_branch.txt`, dan `git_status.txt` di dalam arsip Verification dan Handover terhadap Git HEAD aktual.
+- **Regression Test**: `tests/test-verify-release.ps1` Scenario 13 membuktikan Gate 12 menolak bukti Git kadaluarsa di dalam arsip, dan pipeline rilis v1.6.4 menghasilkan hash 40 karakter yang identik 100%.
+- **Status**: Fixed & Verified
+
+### BUG-031: Manifest Checksum Historis dan Aktif Ikut Terkemas di Dalam Source ZIP (FINDING-03)
+- **Severity**: High
+- **Deskripsi**: Arsip `StockFlow_Final_v8_3.zip` kedapatan masih menyertakan `StockFlow_Release_Checksums_v8_2.txt` dan `StockFlow_Release_Checksums_v8_3.txt`.
+- **Steps to Reproduce**: Memeriksa daftar berkas hasil ekstraksi `StockFlow_Final_v8_3.zip`.
+- **Root Cause**: Berkas `StockFlow_Release_Checksums_v8_2.txt` masih terlacak pada Git index sebelumnya, dan skrip `package-release.ps1` v1.6.3 menyalin manifest ke root proyek serta menyapu seluruh direktori root tanpa rule eksklusi spesifik untuk pola manifest checksum.
+- **Fix**: Menghapus `StockFlow_Release_Checksums_v8_2.txt` dari Git index, membangun `StockFlow_Final_v8_4.zip` secara deterministik melalui `git archive HEAD` dengan eksklusi eksplisit `(?:^|[\\/])StockFlow_Release_Checksums_.*\.txt$`, menghentikan penyalinan ke root proyek (satu lokasi resmi `release-output/v1.6.4/`), serta menambahkan pengecekan pelarangan manifest di Gate 08.
+- **Regression Test**: `tests/test-verify-release.ps1` Scenario 11 membuktikan Gate 08 menolak Source ZIP apabila mengandung berkas manifest checksum historis.
+- **Status**: Fixed & Verified
+
+### BUG-032: Ketidaklengkapan Source Backend/Frontend pada Audit Handover dan Klaim Manifest Tidak Akurat (FINDING-04)
+- **Severity**: Critical
+- **Deskripsi**: Paket Audit Handover v1.6.3 hanya menyertakan sebagian kecil file sumber backend/frontend (tidak memuat `backend/src/` lengkap, `frontend/src/` lengkap, lockfiles, Dockerfiles, `next.config.ts`, dan `.env.example` per workspace), serta `AUDIT_FILE_MANIFEST.md` mengklaim `source/root/package.json` berstatus Verified Present padahal file tersebut tidak ada pada repositori.
+- **Steps to Reproduce**: Memeriksa struktur direktori `StockFlow_Audit_Handover_v8_3.zip` dan membandingkannya dengan tabel pada `AUDIT_FILE_MANIFEST.md`.
+- **Root Cause**: Skrip `assemble-handover.ps1` v1.6.3 menyalin file secara selektif berbasis daftar manual parsial dan mencetak baris manifest statis tanpa validasi keberadaan fisik file.
+- **Fix**: Membangun ulang `scripts/assemble-handover.ps1` agar mengekspor seluruh workspace `backend/` dan `frontend/` (source implementation, `prisma/`, `public/`, `tests/`, lockfiles `package-lock.json`, Dockerfiles, konfigurasi Next/Vitest/Playwright/TypeScript, serta seluruh template `.env.example`) secara lengkap dari `git archive HEAD`, memetakan struktur monorepo aktual tanpa mengarang file fiktif, menghitung SHA-256 setiap berkas secara programatis untuk menyusun `AUDIT_FILE_MANIFEST.md`, serta menambahkan validasi 1-to-1 pada Gate 09 di `verify-release.ps1`.
+- **Regression Test**: `tests/test-verify-release.ps1` Scenario 12 memverifikasi Gate 09 menolak manifest yang mengklaim berkas hilang sebagai `Verified`, dan `assemble-handover.ps1` memvalidasi kesesuaian hash 100% setelah ekstraksi ulang ZIP.
+- **Status**: Fixed & Verified

@@ -317,3 +317,33 @@ Pada audit v1.6.2, tiga temuan teknis utama masih terbuka:
 ### Konsekuensi
 - Positif: Operasi rollback transaksional dan pembersihan secret E2E berjalan 100% andal tanpa permission error, ketiadaan silent failure menjamin zero secret residue, dan siklus commit git bersih sebelum pemaketan rilis deterministik.
 - Negatif: Memerlukan tahapan komit git terlebih dahulu sebelum menjalankan skrip pemaketan rilis final.
+
+---
+
+## ADR-015: Anti-Circular Post-Commit Release Pipeline, Fail-Closed Verifier, and Complete Archive Handover
+
+### Status
+Accepted & Implemented (v1.6.4)
+
+### Konteks
+Audit independen terhadap v1.6.3 mengidentifikasi empat masalah integritas rilis:
+1. Skrip verifikasi `scripts/verify-release.ps1` memperlakukan ketidakcocokan commit hash secara fail-open (hanya warning dan tetap menambah hitungan lulus), serta tidak memeriksa kebersihan working tree.
+2. Bukti Git di dalam Audit Handover dibuat sebelum commit final sehingga mencatat hash yang berbeda dengan manifest eksternal.
+3. Manifest checksum lama terbawa ke dalam Source ZIP akibat file terlacak lama dan penyalinan output rilis ke root proyek.
+4. Paket Audit Handover menyalin file secara selektif parsial dan mencantumkan file tidak ada pada manifest sebagai Verified Present.
+
+### Keputusan
+1. **Urutan Eksekusi Rilis Anti-Sirkular di Lokasi Resmi Tunggal**:
+   - Seluruh perubahan kode sumber, skrip, pengujian, dan dokumentasi terlacak diselesaikan dan dikomit bersih terlebih dahulu pada branch `fix/stockflow-v16-4-release-integrity`.
+   - Seluruh artefak keluaran rilis (`StockFlow_Final_v8_4.zip`, `StockFlow_Final_Verification_v8_4.zip`, `StockFlow_Audit_Handover_v8_4.zip`, `StockFlow_Release_Checksums_v8_4.txt`, `FINAL_RELEASE_REPORT_V1_6_4.md`, dan bukti verifikasi pasca-commit) dihasilkan khusus di dalam direktori `.gitignore` tunggal `release-output/v1.6.4/`, tanpa menyalin artefak ke root proyek atau direktori `audit/`.
+2. **Pemaketan Source ZIP Deterministik Berbasis `git archive HEAD`**:
+   - Mengganti penyalinan langsung folder kerja pada `scripts/package-release.ps1` dengan ekspor `git archive --format=zip HEAD` disertai aturan eksklusi eksplisit untuk manifest checksum (`StockFlow_Release_Checksums_*.txt`), riwayat bukti, rahasia lokal, dan artefak build.
+3. **Verifikator Rilis Fail-Closed (13 Gerbang) dan Negative Testing**:
+   - Memperketat `scripts/verify-release.ps1` dengan fungsi `Fail-Gate` yang menghentikan eksekusi dengan exit code non-zero pada setiap kegagalan (Git binary, branch, full 40-char commit exact match, clean `git status --porcelain --untracked-files=all`, ukuran dan SHA-256, integritas arsip, template `.env.example`, ketiadaan manifest checksum tertanam, akurasi 1-to-1 `AUDIT_FILE_MANIFEST.md`, loopback port 127.0.0.1, pemindaian rahasia, konsistensi bukti Git di dalam arsip, dan larangan en/em dash).
+   - Menambahkan suite pengujian terisolasi `tests/test-verify-release.ps1` (13 skenario) untuk membuktikan perilaku fail-closed di repository sementara `%TEMP%`.
+4. **Perakitan Audit Handover Lengkap Berbasis Inventaris Programatis**:
+   - Memperbarui `scripts/assemble-handover.ps1` untuk menyertakan keseluruhan implementasi backend dan frontend, Prisma migrations, lockfiles, Dockerfiles, skrip, dan seluruh berkas pengujian dari committed `HEAD`, memvalidasi berkas wajib, menyusun tabel `AUDIT_FILE_MANIFEST.md` lengkap dengan SHA-256 setiap file, lalu mengekstrak ulang ZIP untuk memverifikasi kelengkapan 100%.
+
+### Konsekuensi
+- Positif: Konsistensi 100% antara Git HEAD, Git evidence, ketiga ZIP, external manifest, dan laporan akhir; mustahil meloloskan commit mismatch atau manifest tidak akurat; serta tidak ada lagi circular dependency atau manifest historis bocor ke Source ZIP.
+- Negatif: Laporan akhir `FINAL_RELEASE_REPORT_V1_6_4.md` dan `StockFlow_Release_Checksums_v8_4.txt` ditempatkan di `release-output/v1.6.4/` di luar pelacakan Git agar hash kriptografis tidak memicu perubahan commit tambahan.

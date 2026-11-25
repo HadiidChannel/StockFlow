@@ -200,40 +200,43 @@ Skrip runner akan melakukan secara otomatis:
 
 ---
 
-## 7. Prosedur Verifikasi Rilis dan Pemaketan v1.6.3
+## 7. Prosedur Verifikasi Rilis dan Pemaketan v1.6.4 (Anti-Circular Pipeline)
 
-Untuk menjamin integritas paket rilis sebelum diserahkan, repositori StockFlow menyediakan skrip verifikasi otomatis dan pipeline pemaketan resmi.
+Untuk menjamin integritas paket rilis sebelum diserahkan, repositori StockFlow menerapkan pipeline pemaketan anti-sirkular ke satu lokasi keluaran resmi `release-output/v1.6.4/`.
 
-### A. Verifikasi 10 Gerbang Kualitas Rilis (scripts/verify-release.ps1)
+### A. Verifikasi 13 Gerbang Kualitas Rilis Fail-Closed (`scripts/verify-release.ps1`)
 
 Jalankan gerbang verifikasi rilis melalui terminal PowerShell:
-```bash
+```powershell
 powershell -ExecutionPolicy Bypass -File scripts/verify-release.ps1
 ```
 
-Skrip ini memverifikasi 10 kriteria penentu:
-1. **Git Repository and Branch Validation**: Memastikan branch aktif adalah `fix/stockflow-v16-3-release-integrity`.
-2. **Commit Hash Consistency**: Memverifikasi konsistensi commit hash 40 karakter antara `git rev-parse HEAD` dan manifest.
-3. **Artifact Presence**: Memastikan ketiga arsip (`StockFlow_Final_v8_3.zip`, `StockFlow_Final_Verification_v8_3.zip`, `StockFlow_Audit_Handover_v8_3.zip`) dan manifest external (`StockFlow_Release_Checksums_v8_3.txt`) tersedia dan tidak kosong.
-4. **Checksum & Size Verification**: Menghitung hash SHA-256 dan ukuran byte riil dari setiap file arsip dan memverifikasinya terhadap isi manifest.
-5. **Archive Extraction Integrity**: Menguji pembukaan dan ekstraksi seluruh arsip ZIP untuk membuktikan arsip valid dan tidak corrupt.
-6. **Required Template Presence**: Memastikan `.env.example` terkonfirmasi ada di dalam source package ZIP.
-7. **Clean Sensitive Data**: Memastikan file rahasia aktif (`.env`, `.env.local`, `.secrets/`) tidak ada di dalam source package.
-8. **Loopback Binding Verification**: Memvalidasi bahwa seluruh konfigurasi compose hanya mempublikasikan port ke antarmuka loopback `127.0.0.1`.
-9. **Deep Secret Scanning**: Memindai seluruh isi ketiga arsip ZIP yang diekstrak untuk menjamin zero credential leakage (0 findings).
-10. **Writing Constraint Verification**: Memindai seluruh dokumen laporan rilis untuk memastikan tidak ada karakter terlarang seperti en dash atau em dash.
+Skrip ini memvalidasi 13 gerbang secara fail-closed (setiap kegagalan langsung berhenti dengan exit code 1):
+1. **GATE-01 (Git Tooling & Worktree)**: Memastikan `git.exe` tersedia dan direktori target merupakan worktree Git yang valid.
+2. **GATE-02 (Artifacts & Manifest Schema)**: Memastikan ketiga arsip (`StockFlow_Final_v8_4.zip`, `StockFlow_Final_Verification_v8_4.zip`, `StockFlow_Audit_Handover_v8_4.zip`) dan manifest eksternal (`StockFlow_Release_Checksums_v8_4.txt`) tersedia dengan skema lengkap dan 40-karakter commit hash valid.
+3. **GATE-03 (Branch Match)**: Membandingkan branch Git aktif terhadap branch harapan (`fix/stockflow-v16-4-release-integrity`) dan manifest.
+4. **GATE-04 (Full 40-Char Commit Match)**: Membandingkan `git rev-parse HEAD` secara exact match (seluruh 40 karakter) terhadap manifest eksternal.
+5. **GATE-05 (Clean Working Tree)**: Memastikan `git status --porcelain --untracked-files=all` kosong sepenuhnya dan manifest mencatat `Working Tree: Clean`.
+6. **GATE-06 (Byte Size & SHA-256)**: Memverifikasi ukuran byte aktual dan hash SHA-256 ketiga ZIP cocok 100% terhadap blok manifest masing-masing.
+7. **GATE-07 (Archive Extraction Integrity)**: Mengekstrak ketiga ZIP dan memastikan bebas korupsi serta non-kosong.
+8. **GATE-08 (Source Hygiene & No Embedded Manifests)**: Memastikan template `.env.example`, `backend/.env.example`, dan `frontend/.env.example` hadir di Source ZIP, serta tidak ada `.env` aktif, `.secrets/`, maupun file `StockFlow_Release_Checksums_*.txt` di dalam ketiga ZIP.
+9. **GATE-09 (Audit Handover Manifest Accuracy)**: Memverifikasi `AUDIT_FILE_MANIFEST.md` secara baris per baris terhadap berkas aktual dan hash SHA-256 di dalam Handover ZIP (0 file `Missing` atau klaim palsu).
+10. **GATE-10 (Loopback Port Binding)**: Memastikan seluruh port pada konfigurasi Docker Compose terikat ketat ke antarmuka loopback `127.0.0.1`.
+11. **GATE-11 (Deep Secret Scan)**: Memindai isi ekstraksi ketiga ZIP dengan `scripts/scan-secrets.ps1` (wajib 0 temuan).
+12. **GATE-12 (Git Evidence Consistency)**: Memastikan `evidence/git/git_commit.txt`, `git_branch.txt`, dan `git_status.txt` di dalam Verification ZIP dan Handover ZIP identik dengan kondisi Git aktual.
+13. **GATE-13 (Writing Constraint Check)**: Memastikan 0 en dash (`U+2013`) dan 0 em dash (`U+2014`) pada dokumentasi markdown.
 
-### B. Prosedur Pembuatan Paket Rilis Resmi (scripts/package-release.ps1)
+### B. Prosedur Pembuatan Paket Rilis Resmi (`scripts/package-release.ps1`)
 
-Untuk menghasilkan arsip rilis bersih secara otomatis:
-```bash
+Pastikan seluruh perubahan source code, skrip, dan dokumentasi terlacak telah di-commit ke Git dan working tree bersih, lalu jalankan:
+```powershell
 powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
 ```
 
-Skrip akan menghasilkan empat artefak rilis utama:
-- `StockFlow_Final_v8_3.zip`: Berisi source code lengkap, konfigurasi Docker, dokumen arsitektur, dan skrip runner bersih dengan `.env.example`.
-- `StockFlow_Final_Verification_v8_3.zip`: Berisi seluruh rekaman bukti uji verifikasi (`evidence/v1.6.3/`) dan laporan engineering.
-- `StockFlow_Audit_Handover_v8_3.zip`: Berisi direktori `audit-handover/v1.6.3/` yang memuat pemetaan manifest file, berkas sumber daya terkait, dan file bukti mentah independen.
-- `StockFlow_Release_Checksums_v8_3.txt`: Berisi tanda tangan digital SHA-256 dan ukuran byte untuk memvalidasi integritas ketiga arsip.
-
-Seluruh artefak secara otomatis ditempatkan pada `release-output/v1.6.3/`, diduplikasi ke `audit/v8_3/`, dan disalin ke project root.
+Skrip menjalankan urutan deterministik pada `release-output/v1.6.4/`:
+- Menjalankan `scripts/capture-evidence.ps1` untuk merekam bukti Git pasca-commit, validasi Docker Compose mentah, secret scan repositori, serta 13 skenario uji negatif/positif `tests/test-verify-release.ps1`.
+- Membangun `StockFlow_Final_v8_4.zip` langsung dari `git archive HEAD` tanpa manifest historis maupun secret lokal.
+- Menjalankan `scripts/assemble-handover.ps1` untuk membangun dan memvalidasi kelengkapan `StockFlow_Audit_Handover_v8_4.zip`.
+- Membangun `StockFlow_Final_Verification_v8_4.zip` berisi bukti v1.6.4, bukti warisan v1.6.3 berlabel asal, dan dokumentasi rekayasa.
+- Menghitung SHA-256 ketiga ZIP dan menulis manifest eksternal `StockFlow_Release_Checksums_v8_4.txt` di luar ketiga ZIP.
+- Mengeksekusi `scripts/verify-release.ps1` dan memastikan status Git tetap bersih 100%.

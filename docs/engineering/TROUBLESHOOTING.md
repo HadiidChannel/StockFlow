@@ -183,4 +183,28 @@ Dokumen ini memuat panduan identifikasi dan pemecahan masalah teknis yang sering
 - **Penyebab**:
   - Versi sebelumnya membungkam kegagalan penghapusan secret dengan `-ErrorAction SilentlyContinue`.
 - **Solusi**:
-  - Gunakan skrip `scripts/run-e2e.ps1` v1.6.3 yang menerapkan pembersihan fail-closed dengan verifikasi post-kondisi dan melempar error jika secret tidak terhapus.
+  - Gunakan skrip `scripts/run-e2e.ps1` v1.6.3+ yang menerapkan pembersihan fail-closed dengan verifikasi post-kondisi dan melempar error jika secret tidak terhapus.
+
+---
+
+## 11. Masalah Verifikasi Rilis dan Pemaketan Anti-Sirkular (v1.6.4)
+
+### Gejala: `[GATE-04] FAIL - Git commit mismatch` atau `[GATE-05] FAIL - Dirty Git working tree`
+- **Penyebab**:
+  - Terjadi modifikasi atau penambahan commit pada file terlacak setelah manifest rilis dibuat, atau terdapat file tidak terabaikan `.gitignore` yang belum di-commit.
+- **Solusi**:
+  - Periksa `git status --porcelain --untracked-files=all`.
+  - Pastikan seluruh perubahan kode sumber, skrip, dan dokumentasi terlacak telah di-commit bersih terlebih dahulu.
+  - Jalankan ulang `scripts/package-release.ps1` sehingga manifest dan bukti Git diperbarui konsisten terhadap `HEAD` terbaru.
+
+### Gejala: `[GATE-08] FAIL - Checksum manifest file(s) illegally embedded inside ZIP`
+- **Penyebab**:
+  - Berkas `StockFlow_Release_Checksums_*.txt` tersisa terlacak di Git index atau disalin ke direktori sumber.
+- **Solusi**:
+  - Hapus manifest lama dari Git tracking (`git rm`), pastikan pola `StockFlow_Release_Checksums_*.txt` terdaftar pada `.gitignore`, dan selalu bangun Source ZIP melalui `scripts/package-release.ps1` yang mengekspor dari `git archive HEAD`.
+
+### Gejala: `[GATE-09] FAIL - Manifest claims '...' is 'Verified' but file is MISSING`
+- **Penyebab**:
+  - Daftar file pada `AUDIT_FILE_MANIFEST.md` tidak sinkron dengan isi aktual `StockFlow_Audit_Handover_v8_4.zip`.
+- **Solusi**:
+  - Gunakan `scripts/assemble-handover.ps1` untuk menyusun manifest secara otomatis langsung dari direktori staging aktual serta memvalidasi hash SHA-256 pasca-ekstraksi.
