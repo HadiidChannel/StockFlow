@@ -268,3 +268,15 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
    `scripts/package-release.ps1` mengekspor kode sumber langsung dari commit `HEAD` yang sudah bersih sehingga berkas lokal `.env`, `.secrets/`, cache build, maupun manifest historis (`StockFlow_Release_Checksums_*.txt`) mustahil masuk ke `StockFlow_Final_v8_4.zip`.
 4. **Validasi 1-to-1 Inventaris Handover dan Pemindaian Rahasia 4-Vektor**:
    `scripts/assemble-handover.ps1` memverifikasi setiap path dan hash SHA-256 pada `AUDIT_FILE_MANIFEST.md` terhadap isi ekstraksi `StockFlow_Audit_Handover_v8_4.zip`, sementara `scripts/scan-secrets.ps1` memindai repositori maupun ketiga paket arsip rilis dengan masking `[REDACTED]`.
+
+---
+
+### I. Penguatan Portabilitas ZIP, Proteksi Zip Slip Biner, Audit 4-Laporan Rahasia, dan Verifikasi 14-Gerbang (v1.6.5)
+1. **Proteksi Pra-Ekstraksi ZIP Biner (`scripts/zip-utils.ps1`)**:
+   - `Get-RawZipCentralDirectoryEntries` membaca langsung Central Directory (`PK 01 02`) dan Local File Header (`PK 03 04`) pada level byte untuk memblokir byte backslash `0x5C`, path absolut, drive letter (`C:`), symlink Unix (`S_IFLNK`), traversal `../`, duplikasi entry ternormalisasi, dan tabrakan case-insensitive sebelum ekstraksi disk berlangsung.
+   - Menghilangkan seluruh ketergantungan pada `[System.IO.Compression.ZipFile]::CreateFromDirectory` di seluruh skrip pemaketan agar tidak ada arsip dengan pemisah direktori OS-spesifik.
+2. **Validasi 4 Laporan Pemindaian Rahasia Independen (Gate 11)**:
+   - `scripts/scan-secrets.ps1` mencatat versi scanner, target pemeriksaan, jumlah berkas diperiksa, jumlah dikecualikan, daftar allowlist berdasar alasan, status masking `[REDACTED]`, dan exit code eksplisit.
+   - `scripts/verify-release.ps1` Gate 11 memvalidasi keberadaan, target, kebersihan status (`100% CLEAN`, `0` temuan, `Exit Code: 0`) dari `secret_scan_repository.txt`, `source_package_scan.txt`, `verification_package_scan.txt`, dan `audit_handover_package_scan.txt`, serta menjalankan pemindaian langsung ke seluruh isi ekstraksi ketiga ZIP.
+3. **Verifikasi 3-Engine Lintas Platform (`GATE-14`) & Validasi Handover Dua Arah (`GATE-09`)**:
+   - Memastikan ketiga arsip lulus uji CRC dan ekstraksi identik di Python `zipfile`, Info-ZIP `unzip`, dan .NET `ZipFile` (0 perbedaan struktur, jumlah file, ukuran byte, maupun SHA-256), serta memastikan `StockFlow_Audit_Handover_v8_5.zip` 100% sinkron dua arah dengan `AUDIT_FILE_MANIFEST.md`.

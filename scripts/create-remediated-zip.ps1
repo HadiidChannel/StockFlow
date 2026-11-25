@@ -1,5 +1,8 @@
 $ErrorActionPreference = "Stop"
 
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $scriptDir "zip-utils.ps1")
+
 $staging = "temp_remediated_staging"
 $outputZip = "audit\StockFlow_Remediated_v2.zip"
 
@@ -42,9 +45,8 @@ if ($forbidden.Count -gt 0) {
     exit 1
 }
 
-Write-Host "Compressing to $outputZip..."
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-[System.IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $staging).Path, (Resolve-Path "audit").Path + "\StockFlow_Remediated_v2.zip", [System.IO.Compression.CompressionLevel]::Optimal, $false)
+Write-Host "Compressing to $outputZip with POSIX '/' paths..."
+New-PortableZipArchive -SourceDirectory (Resolve-Path $staging).Path -DestinationZipPath (Join-Path (Resolve-Path "audit").Path "StockFlow_Remediated_v2.zip") | Out-Null
 
 Remove-Item -Recurse -Force $staging
 

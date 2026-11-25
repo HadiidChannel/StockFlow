@@ -305,3 +305,48 @@ Dokumen ini mencatat setiap bug atau kegagalan sistem yang ditemukan selama peng
 - **Fix**: Membangun ulang `scripts/assemble-handover.ps1` agar mengekspor seluruh workspace `backend/` dan `frontend/` (source implementation, `prisma/`, `public/`, `tests/`, lockfiles `package-lock.json`, Dockerfiles, konfigurasi Next/Vitest/Playwright/TypeScript, serta seluruh template `.env.example`) secara lengkap dari `git archive HEAD`, memetakan struktur monorepo aktual tanpa mengarang file fiktif, menghitung SHA-256 setiap berkas secara programatis untuk menyusun `AUDIT_FILE_MANIFEST.md`, serta menambahkan validasi 1-to-1 pada Gate 09 di `verify-release.ps1`.
 - **Regression Test**: `tests/test-verify-release.ps1` Scenario 12 memverifikasi Gate 09 menolak manifest yang mengklaim berkas hilang sebagai `Verified`, dan `assemble-handover.ps1` memvalidasi kesesuaian hash 100% setelah ekstraksi ulang ZIP.
 - **Status**: Fixed & Verified
+
+### BUG-033: Entry Path Separator Backslash (0x5C) pada Arsip ZIP Menghambat Portabilitas Lintas Platform (FINDING-01 / FINDING-02)
+- **Severity**: Critical
+- **Deskripsi**: Ketiga arsip rilis v1.6.4 (`StockFlow_Final_v8_4.zip`, `StockFlow_Final_Verification_v8_4.zip`, `StockFlow_Audit_Handover_v8_4.zip`) dibuat memakai `[System.IO.Compression.ZipFile]::CreateFromDirectory` di Windows PowerShell 5.1 (.NET Framework 4.8), sehingga menulis 190 entry mentah berpemisah backslash (`\`) di Central Directory (`PK 01 02`). Baik Python stdlib `ZipFile.namelist()` maupun .NET `ZipFile.OpenRead` di Windows menyamarkan backslash menjadi `/` di memori, namun Info-ZIP, Linux, dan macOS memperlakukannya secara tidak portabel.
+- **Steps to Reproduce**: Memeriksa raw bytes Central Directory (`PK 01 02`) pada `StockFlow_Final_v8_4.zip` menggunakan parser biner atau mengekstrak arsip di lingkungan POSIX/Info-ZIP.
+- **Root Cause**: `ZipFile::CreateFromDirectory` di .NET Framework Windows memakai separator OS lokal (`\`), serta verifier sebelumnya tidak melakukan inspeksi Central Directory biner maupun pengujian tiga extractor lintas platform.
+- **Fix**: Membangun modul `scripts/zip-utils.ps1` (`New-PortableZipArchive`, `Get-RawZipCentralDirectoryEntries`, `Test-ZipArchiveEntries`, dan `Invoke-CrossPlatformZipValidation`) yang menulis entry menggunakan `ZipArchive::CreateEntry($rel.Replace('\', '/'))`, memperbarui seluruh skrip pembuat ZIP, dan menerapkan Gate 14 pada `scripts/verify-release.ps1` yang menguji Python `zipfile`, Info-ZIP `unzip`, dan .NET `ZipFile` secara 3-arah.
+- **Regression Test**: `tests/test-verify-release.ps1` Scenario 38..44 membuktikan deteksi raw byte `0x5C`, penolakan traversal/absolute/duplicate/corrupt-CRC/case-collision, serta paritas SHA-256 3-arah lulus 100%.
+- **Status**: Fixed & Verified
+
+### BUG-034: Validasi Gate 09 Belum Memeriksa Arah Archive-ke-Manifest dan Aturan Self-Reference (FINDING-03)
+- **Severity**: High
+- **Deskripsi**: Gate 09 pada v1.6.4 hanya memeriksa apakah baris yang tertulis di manifest ada di ZIP, namun tidak menolak berkas ekstra tidak terdaftar di dalam Handover ZIP dan belum memvalidasi ukuran byte secara eksplisit.
+- **Steps to Reproduce**: Menyisipkan berkas tambahan ke dalam `StockFlow_Audit_Handover` tanpa mencantumkannya di `AUDIT_FILE_MANIFEST.md`.
+- **Root Cause**: Kurangnya himpunan pembanding terbalik (Archive-to-Manifest) serta tidak adanya penegakan pemisahan `AUDIT_FILE_MANIFEST.md` dari self-hashing.
+- **Fix**: Memperketat Gate 09 di `scripts/verify-release.ps1` dan `scripts/assemble-handover.ps1` agar melakukan pemeriksaan dua arah (Manifest <-> Archive) termasuk ukuran byte, SHA-256, larangan duplikasi baris, serta aturan wajib non-self-referential untuk `AUDIT_FILE_MANIFEST.md`.
+- **Regression Test**: `tests/test-verify-release.ps1` Scenario 12..18 (8 skenario Gate 09) lulus 100%.
+- **Status**: Fixed & Verified
+
+### BUG-035: Bukti `git_status.txt` Minimalist Tanpa Marker Metadata dan Risiko Penilaian Tunggal Gate 12 (FINDING-04)
+- **Severity**: High
+- **Deskripsi**: File `git_status.txt` v1.6.4 hanya berupa satu baris ringkas sehingga berisiko lolos bila terjadi file kosong atau output perintah Git terpotong tanpa bukti exit code.
+- **Steps to Reproduce**: Memeriksa format `evidence/git/git_status.txt` dan menguji `git_status.txt` kosong di dalam arsip verifier.
+- **Root Cause**: Skrip `capture-evidence.ps1` tidak menulis marker eksplisit dan Gate 12 sebelumnya mengizinkan string kosong sebagai clean status.
+- **Fix**: Menstandarkan `git_status.txt` dengan `Evidence Version`, `Command`, `Timestamp`, `Working Directory`, `Exit Code`, marker `PORCELAIN_OUTPUT_BEGIN` / `PORCELAIN_OUTPUT_END`, dan `Working Tree: Clean`, serta menegakkan pemeriksaan independen di Gate 12 untuk Verification ZIP maupun Handover ZIP.
+- **Regression Test**: `tests/test-verify-release.ps1` Scenario 25..33 menolak file kosong, metadata hilang, stale commit pada masing-masing ZIP, output dirty, dan `Exit Code` non-zero.
+- **Status**: Fixed & Verified
+
+### BUG-036: Pelacakan 4 Laporan Secret Scan Terpisah Belum Divalidasi Targetnya di Gate 11 (FINDING-05)
+- **Severity**: High
+- **Deskripsi**: Gate 11 pada v1.6.4 menuliskan referensi bukti statis ke `secret_scan_repository.txt` dan belum memverifikasi keempat file laporan terpisah (`secret_scan_repository.txt`, `source_package_scan.txt`, `verification_package_scan.txt`, `audit_handover_package_scan.txt`) serta kecocokan target masing-masing.
+- **Steps to Reproduce**: Menghapus satu laporan scan ZIP atau mengarahkan target laporannya ke repositori sementara.
+- **Root Cause**: Pemindaian Verification ZIP dijalankan bersamaan di dalam Gate 11 tanpa memvalidasi keberadaan dan akurasi metadata empat laporan secara fail-closed.
+- **Fix**: Memperbarui `scripts/scan-secrets.ps1` agar mencatat `Scanner Version`, `Total Files Excluded`, `Allowlisted Files`, `Masking Status`, dan `Exit Code`; menjalankan scan Verification ZIP pada tahap post-package sebelum Gate Check; dan mewajibkan Gate 11 memvalidasi keempat laporan serta memindai ulang arsip.
+- **Regression Test**: `tests/test-verify-release.ps1` Scenario 19..24 (6 skenario Gate 11) seluruhnya lulus.
+- **Status**: Fixed & Verified
+
+### BUG-037: Cakupan Pemeriksaan Dash Markdown di Gate 13 Belum Mencakup Source ZIP dan Eksternal Report (FINDING-06)
+- **Severity**: Medium
+- **Deskripsi**: Gate 13 pada v1.6.4 hanya memindai Markdown di dalam Verification ZIP dan Handover ZIP, sehingga Markdown di dalam Source ZIP maupun laporan rilis eksternal belum terjamin bebas dari en dash (`U+2013`) dan em dash (`U+2014`).
+- **Steps to Reproduce**: Menyisipkan en dash di `README.md` di dalam Source ZIP atau em dash pada laporan eksternal.
+- **Root Cause**: Koleksi scope Markdown di `verify-release.ps1` hanya membaca `$verExtDir` dan `$hanExtDir`.
+- **Fix**: Memperluas Gate 13 agar memindai seluruh Markdown pada Source ZIP, Verification ZIP, Handover ZIP, folder `evidence/`, dan laporan rilis eksternal, serta menyimpan log di `evidence/release/writing_constraint_verification.txt`.
+- **Regression Test**: `tests/test-verify-release.ps1` Scenario 34..37 memverifikasi penolakan di keempat scope tersebut.
+- **Status**: Fixed & Verified

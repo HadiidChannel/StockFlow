@@ -288,24 +288,25 @@ powershell -ExecutionPolicy Bypass -File scripts/run-e2e.ps1
 # Menjalankan pemindaian rahasia dan kredensial komprehensif (Multi-vector regex scanner)
 powershell -ExecutionPolicy Bypass -File scripts/scan-secrets.ps1
 
-# Menjalankan pengujian negatif & positif terisolasi untuk release verifier (13 scenarios)
+# Menjalankan pengujian negatif & positif terisolasi untuk release verifier (44 scenarios)
 powershell -ExecutionPolicy Bypass -File tests/test-verify-release.ps1
 
-# Menjalankan verifikasi rilis fail-closed 13 gerbang integritas dan kualitas
+# Menjalankan verifikasi rilis fail-closed 14 gerbang (termasuk uji portabilitas ZIP 3-engine)
 powershell -ExecutionPolicy Bypass -File scripts/verify-release.ps1
 ```
 
-### Ringkasan Hasil Pengujian dan Verifikasi v1.6.4:
-- **Application Tests (145 Unique Test Cases Passed, 0 Failed)**:
+### Ringkasan Hasil Pengujian dan Verifikasi v1.6.5:
+- **Application Tests (145 Unique Test Cases Passed, 0 Failed - Inherited via v1.6.4 from e7bccf7)**:
   - **Backend Tests (Vitest)**: 111 passed, 3 skipped across 13 files (termasuk AppError, Zod Validation, RBAC Permissions, CSRF Security, Origin Allowlist, Rate Limiting, Idempotency Hashing, Pessimistic Locking, Multi-Table Atomic Rollbacks, Environment Validation, Bootstrap Unit, dan 14 Bootstrap Guard tests).
   - **Bootstrap Integration Tests**: 3 tests passed in `backend/tests/bootstrap.integration.test.ts` against disposable MySQL 8.4 container on port 3307 (merupakan 3 tests yang dilewati pada default Vitest run).
   - **Frontend Tests (Vitest)**: 9 tests passed across 2 files (Utils formatters, Concurrency calculation, Audit ledger reconciliation, Reversal logic).
   - **Setup Automation Tests**: 19 scenarios passed in `tests/test-init-local.ps1` (fresh generation, overwrite guards, entropy checks, Windows ACL Modify permission with SIDs, Set-StrictMode Latest, dan 4 transactional fault injection rollbacks).
   - **Playwright Browser E2E**: 3 tests / 13-stage comprehensive inventory lifecycle workflow passed against isolated E2E Docker stack on port 3100.
-- **Engineering Verification Checks**:
-  - **Release Verifier Negative & Positive Tests**: 13/13 scenarios passed in `tests/test-verify-release.ps1` (membuktikan penolakan fail-closed atas commit mismatch, branch mismatch, dirty tree, untracked file, missing git, corrupt/missing manifest, checksum mismatch, dan handover inconsistency).
-  - **Secret Scanner & Docker Compose**: Self-test 11 fixtures passed (6/6 kategori), repo scan 0 findings, dan 5/5 compose configs valid.
-  - **Release Verification Gates**: 13 fail-closed gates pada `scripts/verify-release.ps1` mengevaluasi paket rilis resmi di `release-output/v1.6.4/`.
+- **Engineering Verification Checks (Re-executed in v1.6.5)**:
+  - **Expanded Release Verifier Positive & Negative Suite**: 44/44 scenarios passed in `tests/test-verify-release.ps1` (Core Git/Manifest/Checksums, Gate 09 Bidirectional Handover, Gate 11 4-Report Secret Scan, Gate 12 Metadata Git Status, Gate 13 All-Scope Markdown Dash, dan Gate 14 POSIX Raw Binary Backslash / Traversal / CRC / 3-Engine Portability).
+  - **Cross-Platform ZIP Portability**: Seluruh 3 ZIP menggunakan separator POSIX `/` murni (0 byte backslash `0x5C`), lulus CRC serta ekstraksi identik pada Python `zipfile`, Info-ZIP `unzip`, dan .NET `ZipFile`.
+  - **Secret Scanner & Docker Compose**: Self-test 11 fixtures passed (6/6 kategori), 4 laporan scan terpisah (Repo, Source ZIP, Verification ZIP, Handover ZIP) 0 findings, dan 5/5 compose configs valid.
+  - **Release Verification Gates**: 14 fail-closed gates pada `scripts/verify-release.ps1` mengevaluasi paket rilis resmi di `release-output/v1.6.5/`.
 
 ---
 
@@ -322,31 +323,32 @@ StockFlow/
 ├── SPEC.md                      # Dokumen spesifikasi acuan engineering
 ├── README.md                    # Dokumentasi utama proyek portofolio
 ├── scripts/
+│   ├── zip-utils.ps1            # Pembentuk ZIP POSIX '/' & validator raw Central Directory / 3-engine
 │   ├── init-local.ps1           # Generator kredensial kriptografis .NET dengan Windows ACL & rollback
 │   ├── run-bootstrap-test.ps1   # Runner pengujian integrasi bootstrap MySQL 8.4 sekali pakai
 │   ├── run-e2e.ps1              # Orkestrator pengujian Playwright E2E pada stack terisolasi port 3100
 │   ├── scan-secrets.ps1         # Scanner pendeteksi kebocoran kredensial multi-vektor dengan self-test
-│   ├── capture-evidence.ps1     # Perekam bukti pasca-commit anti-sirkular ke release-output/
-│   ├── assemble-handover.ps1    # Perakit dan validator kelengkapan Audit Handover 1-to-1
-│   ├── verify-release.ps1       # Verifikator fail-closed 13 gerbang integritas rilis dan Git
+│   ├── capture-evidence.ps1     # Perekam bukti pre-package anti-sirkular ke release-output/
+│   ├── assemble-handover.ps1    # Perakit dan validator kelengkapan Audit Handover dua arah
+│   ├── verify-release.ps1       # Verifikator fail-closed 14 gerbang integritas rilis, Git & portabilitas ZIP
 │   └── package-release.ps1      # Pemaket release resmi berbasis git archive HEAD ke release-output/
 ├── tests/
 │   ├── test-init-local.ps1      # 19 skenario pengujian otomatis untuk skrip inisialisasi lokal
-│   └── test-verify-release.ps1  # 13 skenario uji positif & negatif terisolasi untuk release verifier
+│   └── test-verify-release.ps1  # 44 skenario uji positif & negatif terisolasi untuk release verifier
 ├── tasks/
 │   ├── plan.md                  # Rencana arsitektur dan milestone bertahap
 │   └── todo.md                  # Checklist eksekusi tugas
 ├── docs/
 │   ├── engineering/             # Dokumentasi teknis & rekayasa perangkat lunak
-│   │   ├── ARCHITECTURE_DECISIONS.md  # Catatan keputusan arsitektur (ADR-001 s.d. ADR-015)
+│   │   ├── ARCHITECTURE_DECISIONS.md  # Catatan keputusan arsitektur (ADR-001 s.d. ADR-016)
 │   │   ├── SECURITY_REVIEW.md         # Threat modeling & audit OWASP Top 10
 │   │   ├── TESTING_STRATEGY.md        # Rencana piramida testing
 │   │   ├── TEST_RESULTS.md            # Catatan riwayat eksekusi & rekonsiliasi pengujian
-│   │   ├── BUG_LOG.md                 # Pelacakan issue dan regresi bug (BUG-001 s.d. BUG-032)
-│   │   ├── DEPLOYMENT_GUIDE.md        # Panduan deployment lokal, isolasi E2E, & prosedur release v1.6.4
+│   │   ├── BUG_LOG.md                 # Pelacakan issue dan regresi bug (BUG-001 s.d. BUG-037)
+│   │   ├── DEPLOYMENT_GUIDE.md        # Panduan deployment lokal, isolasi E2E, & prosedur release v1.6.5
 │   │   ├── DATABASE_MAINTENANCE.md    # Backup, restore, dan migrasi database
 │   │   ├── E2E_REPORT.md              # Laporan pengujian browser Playwright E2E 13 tahap
-│   │   ├── FINAL_RELEASE_REPORT_V1_6_3.md # Laporan rilis v1.6.3 (arsip historis; laporan v1.6.4 berada di release-output/v1.6.4/)
+│   │   ├── FINAL_RELEASE_REPORT_V1_6_3.md # Arsip laporan historis v1.6.3 (laporan v1.6.5 di release-output/v1.6.5/)
 │   │   └── TROUBLESHOOTING.md         # Solusi masalah teknis umum
 │   └── learning/                # Dokumentasi materi fundamental
 │       ├── LEARNING_ROADMAP.md        # Peta jalan pembelajaran teknologi

@@ -178,13 +178,13 @@ $gitDiff | Out-File -FilePath "$evidenceDir\git\git-diff.txt" -Encoding utf8
 
 Copy-Item "audit\evidence\VERIFICATION_SUMMARY.md" "$evidenceDir\" -Force -ErrorAction SilentlyContinue
 
+. (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "zip-utils.ps1")
 $outputEvidenceZip = "audit\StockFlow_Verification_Evidence.zip"
 if (Test-Path $outputEvidenceZip) {
     Remove-Item -Force $outputEvidenceZip
 }
 
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-[System.IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $evidenceDir).Path, (Resolve-Path "audit").Path + "\StockFlow_Verification_Evidence.zip", [System.IO.Compression.CompressionLevel]::Optimal, $false)
+New-PortableZipArchive -SourceDirectory (Resolve-Path $evidenceDir).Path -DestinationZipPath (Join-Path (Resolve-Path "audit").Path "StockFlow_Verification_Evidence.zip") | Out-Null
 
 $evidenceZipItem = Get-Item $outputEvidenceZip
 Write-Host "Success! Created $outputEvidenceZip (Size: $([math]::Round($evidenceZipItem.Length / 1MB, 2)) MB)"

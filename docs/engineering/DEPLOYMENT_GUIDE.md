@@ -240,3 +240,19 @@ Skrip menjalankan urutan deterministik pada `release-output/v1.6.4/`:
 - Membangun `StockFlow_Final_Verification_v8_4.zip` berisi bukti v1.6.4, bukti warisan v1.6.3 berlabel asal, dan dokumentasi rekayasa.
 - Menghitung SHA-256 ketiga ZIP dan menulis manifest eksternal `StockFlow_Release_Checksums_v8_4.txt` di luar ketiga ZIP.
 - Mengeksekusi `scripts/verify-release.ps1` dan memastikan status Git tetap bersih 100%.
+
+---
+
+## 8. Verifikasi Portabilitas ZIP Lintas Platform & 14 Gerbang Rilis (v1.6.5)
+
+Mulai v1.6.5, keluaran rilis resmi StockFlow dikemas ke `release-output/v1.6.5/` memakai separator POSIX `/` murni agar kompatibel penuh di Windows, Linux, dan macOS.
+
+### A. Perubahan Pipeline Anti-Sirkular v1.6.5 (`scripts/package-release.ps1`)
+1. Pastikan branch aktif adalah `fix/stockflow-v16-5-zip-portability` dengan working tree bersih setelah commit final.
+2. Pastikan Python 3 (`python`) dan Info-ZIP `unzip` (`unzip` pada PATH atau `C:\Program Files\Git\usr\bin\unzip.exe`) tersedia di mesin eksekusi.
+3. Jalankan `powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1`:
+   - `capture-evidence.ps1` memproduksi bukti pre-package (`git_status.txt` ber-marker metadata, validasi Compose, scan repo, serta 44 skenario uji negatif/positif).
+   - `New-PortableZipArchive` (`scripts/zip-utils.ps1`) mengemas Source ZIP (`StockFlow_Final_v8_5.zip`), Handover ZIP (`StockFlow_Audit_Handover_v8_5.zip`), dan Verification ZIP (`StockFlow_Final_Verification_v8_5.zip`) tanpa byte `0x5C`.
+   - Manifest eksternal `StockFlow_Release_Checksums_v8_5.txt` dan laporan scan post-package Verification ZIP (`verification_package_scan.txt`) dibangkitkan sebelum pengecekan gerbang.
+   - `scripts/verify-release.ps1` mengeksekusi **14 gerbang fail-closed** (`GATE-01` s.d. `GATE-14`) termasuk uji ekstraksi 3-arah Python `zipfile` + Info-ZIP `unzip` + .NET `ZipFile`, validasi Handover dua arah (Gate 09), audit 4 laporan secret scan (Gate 11), bukti Git independen Verification & Handover (Gate 12), dan pindaian dash di seluruh Markdown (Gate 13).
+   - Skrip menangkap status stack produksi beserta jumlah baris read-only tabel database sesudah pengemasan (`main_stack_after.txt`, `main_database_after.txt`, `main_volume_after.txt`).

@@ -1,26 +1,27 @@
 # ==============================================================================
-# StockFlow - Anti-Circular Deterministic Release Packager (v1.6.4)
+# StockFlow - Anti-Circular Cross-Platform Release Packager (v1.6.5)
 # Script: scripts/package-release.ps1
-# Description: Enforces clean committed Git tree FIRST, then stages ALL
-#              outputs exclusively inside .gitignore-excluded release-output/v1.6.4/:
-#              1. Capture post-commit Git, Docker, Security, Negative Test evidence
-#              2. Build StockFlow_Final_v8_4.zip strictly from git archive HEAD
-#                 with explicit exclusion of historical manifests & active secrets
-#              3. Assemble & verify StockFlow_Audit_Handover_v8_4.zip
-#              4. Build StockFlow_Final_Verification_v8_4.zip
-#              5. Compute SHA-256 checksums and write external manifest outside ZIPs
-#              6. Run scripts/verify-release.ps1 across all 13 fail-closed gates
-#              7. Verify Git working tree remains 100% clean
+# Description: Implements the 18-step anti-circular release pipeline on clean HEAD:
+#              1. Capture pre-package Git, Docker, Secret, Negative Test evidence
+#              2. Build StockFlow_Final_v8_5.zip from git archive HEAD using
+#                 POSIX '/' entries (via zip-utils.ps1) + source secret scan
+#              3. Build & verify StockFlow_Audit_Handover_v8_5.zip
+#              4. Build StockFlow_Final_Verification_v8_5.zip with POSIX '/'
+#              5. Compute SHA-256 checksums -> StockFlow_Release_Checksums_v8_5.txt
+#              6. Execute post-package Verification ZIP secret scan
+#              7. Execute scripts/verify-release.ps1 across all 14 gates (incl.
+#                 Python zipfile, Info-ZIP unzip, .NET 3-way extraction parity)
+#              8. Capture operational stack + DB read-only row counts (after)
 # Target OS: Windows (PowerShell 7+ / Windows PowerShell 5.1)
 # ==============================================================================
 
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
-    [string]$ReleaseVersion = "v1.6.4",
+    [string]$ReleaseVersion = "v1.6.5",
 
     [Parameter(Mandatory = $false)]
-    [string]$ExpectedBranch = "fix/stockflow-v16-4-release-integrity"
+    [string]$ExpectedBranch = "fix/stockflow-v16-5-zip-portability"
 )
 
 Set-StrictMode -Version Latest
@@ -29,11 +30,11 @@ $ProgressPreference = "SilentlyContinue"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path
-$releaseDir = Join-Path $projectRoot "release-output\v1.6.4"
+. (Join-Path $scriptDir "zip-utils.ps1")
+
+$releaseDir = Join-Path $projectRoot "release-output\v1.6.5"
 $evRoot = Join-Path $releaseDir "evidence"
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-
-Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
 
 function Invoke-GitPack([string[]]$gitArgs) {
     $prevEap = $ErrorActionPreference
@@ -74,16 +75,14 @@ if ($hdRes.ExitCode -ne 0 -or $finalCommit -notmatch '^[a-f0-9]{40}$') {
 }
 Write-Host "[OK] Clean Git HEAD verified: $finalCommit on $actualBranch"
 
-# Prepare output directories without wiping operational pre-remediation baseline files
 if (-not (Test-Path -LiteralPath $releaseDir)) {
     New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
 }
-foreach ($oldFile in @("StockFlow_Final_v8_4.zip", "StockFlow_Final_Verification_v8_4.zip", "StockFlow_Audit_Handover_v8_4.zip", "StockFlow_Release_Checksums_v8_4.txt", "FINAL_RELEASE_REPORT_V1_6_4.md")) {
+foreach ($oldFile in @("StockFlow_Final_v8_5.zip", "StockFlow_Final_Verification_v8_5.zip", "StockFlow_Audit_Handover_v8_5.zip", "StockFlow_Release_Checksums_v8_5.txt", "FINAL_RELEASE_REPORT_V1_6_5.md")) {
     $p = Join-Path $releaseDir $oldFile
     if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force }
 }
-# Purge stale verification evidence directories from any prior run while keeping operational main_*_before.txt
-foreach ($staleSub in @("git", "docker", "security", "release", "backend", "frontend", "bootstrap", "windows-acl", "e2e")) {
+foreach ($staleSub in @("pre-package", "post-package", "git", "docker", "security", "release", "portability", "handover", "backend", "frontend", "bootstrap", "windows-acl", "e2e")) {
     $sp = Join-Path $evRoot $staleSub
     if (Test-Path -LiteralPath $sp) { Remove-Item -LiteralPath $sp -Recurse -Force }
 }
@@ -93,9 +92,9 @@ foreach ($afterFile in @("main_stack_after.txt", "main_database_after.txt", "mai
 }
 
 # ------------------------------------------------------------------------------
-# Step 1: Capture Post-Commit Git, Docker, Security & Verifier Negative Evidence
+# Step 1: Capture Pre-Package Git, Docker, Security & 44-Scenario Evidence
 # ------------------------------------------------------------------------------
-Write-Host "`n[Step 1/7] Executing capture-evidence.ps1 (post-commit, non-circular)..."
+Write-Host "`n[Step 1/8] Executing capture-evidence.ps1 (post-commit pre-package)..."
 $captureScript = Join-Path $scriptDir "capture-evidence.ps1"
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $captureScript -EvidenceDir $evRoot -RequireCleanGit
 if ($LASTEXITCODE -ne 0) {
@@ -103,13 +102,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ------------------------------------------------------------------------------
-# Step 2: Build Source Package (StockFlow_Final_v8_4.zip) from git archive HEAD
+# Step 2: Build Source Package (StockFlow_Final_v8_5.zip) using POSIX '/'
 # ------------------------------------------------------------------------------
-Write-Host "`n[Step 2/7] Building StockFlow_Final_v8_4.zip from committed Git HEAD..."
-$sourceZipPath = Join-Path $releaseDir "StockFlow_Final_v8_4.zip"
+Write-Host "`n[Step 2/8] Building StockFlow_Final_v8_5.zip from Git HEAD using POSIX '/' entries..."
+$sourceZipPath = Join-Path $releaseDir "StockFlow_Final_v8_5.zip"
 $scannerScript = Join-Path $scriptDir "scan-secrets.ps1"
 
-$tempWork = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_pkg_src_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
+$tempWork = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_pkg_src_v165_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
 $headZipTmp = Join-Path $tempWork "head.zip"
 $headRawDir = Join-Path $tempWork "head_raw"
 $srcStageDir = Join-Path $tempWork "src_stage"
@@ -124,10 +123,6 @@ try {
     }
     [System.IO.Compression.ZipFile]::ExtractToDirectory($headZipTmp, $headRawDir)
 
-    # Precise explicit exclusions on committed tree:
-    # - Historical / release checksum manifests
-    # - Prior release evidence & handover bundles (packaged separately)
-    # - Secrets / env active files / build artifacts
     $excludeRegexes = @(
         "(?:^|[\\/])StockFlow_Release_Checksums_.*\.txt$",
         "(?:^|[\\/])RELEASE_CHECKSUMS.*\.txt$",
@@ -138,9 +133,8 @@ try {
         "(?:^|[\\/])(?:results\.json|[^\\/]*\.tsbuildinfo|[^\\/]*\.secret|[^\\/]*\.log)$"
     )
 
-    $exportedFiles = @(Get-ChildItem -Path $headRawDir -Recurse -File | Sort-Object FullName)
+    $exportedFiles = @(Get-ChildItem -LiteralPath $headRawDir -Recurse -File | Sort-Object FullName)
     $excludedList = [System.Collections.Generic.List[string]]::new()
-    $includedList = [System.Collections.Generic.List[string]]::new()
 
     foreach ($ef in $exportedFiles) {
         $rel = $ef.FullName.Substring($headRawDir.Length).TrimStart('\', '/')
@@ -161,15 +155,17 @@ try {
                 New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
             }
             Copy-Item -LiteralPath $ef.FullName -Destination $dst -Force
-            $includedList.Add($relUnix)
         }
     }
 
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($srcStageDir, $sourceZipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+    New-PortableZipArchive -SourceDirectory $srcStageDir -DestinationZipPath $sourceZipPath | Out-Null
+    $srcStruct = Test-ZipArchiveEntries -ZipPath $sourceZipPath
+    if (-not $srcStruct.Valid) {
+        throw "POSIX entry check failed for Source ZIP: $($srcStruct.Violations -join '; ')"
+    }
 
-    # Source Package Extraction & Hygiene Verification
     [System.IO.Compression.ZipFile]::ExtractToDirectory($sourceZipPath, $srcVerifyExtract)
-    $extFiles = @(Get-ChildItem -Path $srcVerifyExtract -Recurse -File | Sort-Object FullName)
+    $extFiles = @(Get-ChildItem -LiteralPath $srcVerifyExtract -Recurse -File | Sort-Object FullName)
 
     $envTemplatesOk = $true
     $templateReportLines = [System.Collections.Generic.List[string]]::new()
@@ -187,7 +183,6 @@ try {
         throw "Historical or release checksum manifest illegally found inside Source ZIP!"
     }
 
-    # Scan Source ZIP
     $srcScanOut = Join-Path $evRoot "security\source_package_scan.txt"
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
@@ -203,13 +198,14 @@ try {
 
     $srcVerReport = [System.Collections.Generic.List[string]]::new()
     $srcVerReport.Add("================================================================================")
-    $srcVerReport.Add("STOCKFLOW v1.6.4 - SOURCE PACKAGE HYGIENE AND EXTRACTION VERIFICATION")
+    $srcVerReport.Add("STOCKFLOW v1.6.5 - SOURCE PACKAGE HYGIENE AND POSIX STRUCTURE VERIFICATION")
     $srcVerReport.Add("================================================================================")
     $srcVerReport.Add("Timestamp: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))")
     $srcVerReport.Add("Archive Path: $sourceZipPath")
     $srcVerReport.Add("Git Commit Origin: $finalCommit")
     $srcVerReport.Add("Archive Byte Size: $srcSize bytes")
     $srcVerReport.Add("Archive SHA-256: $srcHash")
+    $srcVerReport.Add("ZIP Entries Checked: $($srcStruct.EntryCount) | Backslash Entries: $($srcStruct.BackslashCount) (PASS)")
     $srcVerReport.Add("Total Extracted Files: $($extFiles.Count)")
     $srcVerReport.Add("Historical Checksum Manifests Found: 0 (PASS)")
     $srcVerReport.Add("Secret Scan Exit Code: $srcScanExit (0 Findings - CLEAN)")
@@ -225,7 +221,7 @@ try {
         $srcVerReport.Add($ef.FullName.Substring($srcVerifyExtract.Length).TrimStart('\', '/').Replace('\', '/'))
     }
     [System.IO.File]::WriteAllLines((Join-Path $evRoot "release\source_package_verification.txt"), $srcVerReport, $utf8NoBom)
-    Write-Host "[OK] Source ZIP verified ($($extFiles.Count) files, $srcSize bytes, SHA-256: $srcHash)."
+    Write-Host "[OK] Source ZIP verified ($($extFiles.Count) files, $srcSize bytes, 0 backslashes, SHA-256: $srcHash)."
 } finally {
     if (Test-Path -LiteralPath $tempWork) {
         Remove-Item -LiteralPath $tempWork -Recurse -Force -ErrorAction SilentlyContinue
@@ -233,61 +229,68 @@ try {
 }
 
 # ------------------------------------------------------------------------------
-# Step 3: Build & Verify Complete Audit Handover (StockFlow_Audit_Handover_v8_4.zip)
+# Step 3: Build & Verify Audit Handover ZIP (StockFlow_Audit_Handover_v8_5.zip)
 # ------------------------------------------------------------------------------
-Write-Host "`n[Step 3/7] Assembling and verifying StockFlow_Audit_Handover_v8_4.zip..."
+Write-Host "`n[Step 3/8] Assembling and verifying StockFlow_Audit_Handover_v8_5.zip..."
 $handoverScript = Join-Path $scriptDir "assemble-handover.ps1"
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $handoverScript -ReleaseOutputDir $releaseDir -GitCommitHash $finalCommit
 if ($LASTEXITCODE -ne 0) {
     throw "assemble-handover.ps1 failed (Exit: $LASTEXITCODE)."
 }
-$handoverZipPath = Join-Path $releaseDir "StockFlow_Audit_Handover_v8_4.zip"
+$handoverZipPath = Join-Path $releaseDir "StockFlow_Audit_Handover_v8_5.zip"
 
-# Update test_reconciliation.txt with actual Source & Handover check results BEFORE Verification ZIP is sealed
 $recPath = Join-Path $evRoot "release\test_reconciliation.txt"
 $recText = [System.IO.File]::ReadAllText($recPath)
-$recText = [regex]::Replace($recText, 'Source Package Hygiene & Extraction Verification\s+Post-ZIP\s+Pending\s+-\s+Executed during packaging', 'Source Package Hygiene & Extraction Verification                 1/1        1       0  Re-executed in v1.6.4 (PASS)')
-$recText = [regex]::Replace($recText, 'Audit Handover Completeness & Hash Verification\s+Post-ZIP\s+Pending\s+-\s+Executed during handover', 'Audit Handover Completeness & Hash Verification                  1/1        1       0  Re-executed in v1.6.4 (PASS)')
-$recText = [regex]::Replace($recText, 'Package ZIP Secret Scans \(Source, Verification, Handover\)\s+Post-ZIP\s+Pending\s+-\s+Executed during packaging', 'Package ZIP Secret Scans (Source & Handover complete)            2/3        2       0  Re-executed in v1.6.4 (Verify ZIP scanned at Gate 11)')
+$recText = [regex]::Replace($recText, 'Source Package Hygiene & POSIX Structure Verification\s+Post-ZIP\s+Pending\s+-\s+Executed during packaging', 'Source Package Hygiene & POSIX Structure Verification            1/1        1       0  Re-executed in v1.6.5 (PASS)')
+$recText = [regex]::Replace($recText, 'Bidirectional Audit Handover & Manifest Verification\s+Post-ZIP\s+Pending\s+-\s+Executed during handover', 'Bidirectional Audit Handover & Manifest Verification             1/1        1       0  Re-executed in v1.6.5 (PASS)')
 [System.IO.File]::WriteAllText($recPath, $recText, $utf8NoBom)
 
 # ------------------------------------------------------------------------------
-# Step 4: Build Verification Archive (StockFlow_Final_Verification_v8_4.zip)
+# Step 4: Build Verification Archive (StockFlow_Final_Verification_v8_5.zip)
 # ------------------------------------------------------------------------------
-Write-Host "`n[Step 4/7] Building StockFlow_Final_Verification_v8_4.zip..."
-$verifyZipPath = Join-Path $releaseDir "StockFlow_Final_Verification_v8_4.zip"
-$tempVerWork = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_pkg_ver_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
+Write-Host "`n[Step 4/8] Building StockFlow_Final_Verification_v8_5.zip using POSIX '/'..."
+$verifyZipPath = Join-Path $releaseDir "StockFlow_Final_Verification_v8_5.zip"
+$tempVerWork = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_pkg_ver_v165_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
 
 try {
     New-Item -ItemType Directory -Path (Join-Path $tempVerWork "evidence"), (Join-Path $tempVerWork "documentation") -Force | Out-Null
     Copy-Item -Path (Join-Path $evRoot "*") -Destination (Join-Path $tempVerWork "evidence") -Recurse -Force
     Copy-Item -Path (Join-Path $projectRoot "docs\engineering\*") -Destination (Join-Path $tempVerWork "documentation") -Recurse -Force
 
-    # Add concise README index inside Verification ZIP explaining external post-ZIP artifacts
     $verNote = @"
-=== STOCKFLOW v1.6.4 VERIFICATION ARCHIVE INDEX ===
+=== STOCKFLOW v1.6.5 VERIFICATION ARCHIVE INDEX ===
 Git Commit: $finalCommit
 Git Branch: $actualBranch
 
-Included in this archive:
-- evidence/git/*                  : Git identity & clean status recorded post-commit
+Included pre-package evidence & documentation in this archive:
+- evidence/git/*                  : Git identity & clean marker-delimited git_status.txt + negative test logs
 - evidence/docker/*               : Docker Compose raw & summarized config validation
-- evidence/security/*             : Repository, Source ZIP, Handover ZIP scans & SelfTest
-- evidence/release/*              : Negative tests, source package check, handover check, reconciliation
-- evidence/operational/*          : Main stack pre-remediation baseline (plus after-check generated post-gates)
-- evidence/{backend,frontend,windows-acl,bootstrap,e2e}/* : Inherited v1.6.3 technical tests with original provenance
+- evidence/security/*             : Repository, Source ZIP, Handover ZIP secret scans & SelfTest
+- evidence/release/*              : 44-scenario verifier tests, source verification, provenance, reconciliation
+- evidence/handover/*             : Handover completeness verification & Gate 09 negative test log
+- evidence/portability/*          : Gate 14 negative test log
+- evidence/pre-package/*          : Pre-package pipeline log
+- evidence/operational/*          : Main stack, health, DB read-only row counts & volume baseline (before)
+- evidence/{backend,frontend,windows-acl,bootstrap,e2e}/* : Inherited app test logs (origin e7bccf7)
 - documentation/*                 : Committed engineering documentation
 
-External deliverables generated AFTER all 3 ZIP checksums are computed (in release-output/v1.6.4/):
-- StockFlow_Release_Checksums_v8_4.txt
+External post-package evidence generated AFTER sealing all 3 ZIPs (in release-output/v1.6.5/):
+- StockFlow_Release_Checksums_v8_5.txt
 - evidence/security/verification_package_scan.txt
+- evidence/portability/zip_portability_verification.txt
+- evidence/release/writing_constraint_verification.txt
 - evidence/release/release_verification_summary.md
-- FINAL_RELEASE_REPORT_V1_6_4.md
+- evidence/post-package/post_package_pipeline_log.txt
+- FINAL_RELEASE_REPORT_V1_6_5.md
 "@
     [System.IO.File]::WriteAllText((Join-Path $tempVerWork "VERIFICATION_ARCHIVE_INDEX.txt"), $verNote, $utf8NoBom)
 
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($tempVerWork, $verifyZipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
-    Write-Host "[OK] Verification ZIP built: $verifyZipPath"
+    New-PortableZipArchive -SourceDirectory $tempVerWork -DestinationZipPath $verifyZipPath | Out-Null
+    $verStruct = Test-ZipArchiveEntries -ZipPath $verifyZipPath
+    if (-not $verStruct.Valid) {
+        throw "POSIX entry check failed for Verification ZIP: $($verStruct.Violations -join '; ')"
+    }
+    Write-Host "[OK] Verification ZIP built ($($verStruct.EntryCount) entries, 0 backslashes): $verifyZipPath"
 } finally {
     if (Test-Path -LiteralPath $tempVerWork) {
         Remove-Item -LiteralPath $tempVerWork -Recurse -Force -ErrorAction SilentlyContinue
@@ -297,14 +300,14 @@ External deliverables generated AFTER all 3 ZIP checksums are computed (in relea
 # ------------------------------------------------------------------------------
 # Step 5: Compute Checksums & Write External Manifest Outside ZIPs
 # ------------------------------------------------------------------------------
-Write-Host "`n[Step 5/7] Computing SHA-256 checksums and writing StockFlow_Release_Checksums_v8_4.txt..."
+Write-Host "`n[Step 5/8] Computing SHA-256 checksums and writing StockFlow_Release_Checksums_v8_5.txt..."
 $size1 = (Get-Item -LiteralPath $sourceZipPath).Length;    $hash1 = (Get-FileHash -LiteralPath $sourceZipPath -Algorithm SHA256).Hash.ToUpperInvariant()
 $size2 = (Get-Item -LiteralPath $verifyZipPath).Length;    $hash2 = (Get-FileHash -LiteralPath $verifyZipPath -Algorithm SHA256).Hash.ToUpperInvariant()
 $size3 = (Get-Item -LiteralPath $handoverZipPath).Length;  $hash3 = (Get-FileHash -LiteralPath $handoverZipPath -Algorithm SHA256).Hash.ToUpperInvariant()
 
-$manifestPath = Join-Path $releaseDir "StockFlow_Release_Checksums_v8_4.txt"
+$manifestPath = Join-Path $releaseDir "StockFlow_Release_Checksums_v8_5.txt"
 $manifestContent = @"
-=== STOCKFLOW OFFICIAL RELEASE MANIFEST (v1.6.4) ===
+=== STOCKFLOW OFFICIAL RELEASE MANIFEST (v1.6.5) ===
 
 Release Version: $ReleaseVersion
 Generated At: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))
@@ -313,20 +316,20 @@ Git Commit: $finalCommit
 Working Tree: Clean
 
 Package 1:
-Name: StockFlow_Final_v8_4.zip
-Description: Source Code Package (Clean committed source from Git HEAD with env templates; zero historical manifests or secrets)
+Name: StockFlow_Final_v8_5.zip
+Description: Source Code Package (Clean committed source from Git HEAD with POSIX '/' paths and env templates)
 Size: $size1 bytes
 SHA-256: $hash1
 
 Package 2:
-Name: StockFlow_Final_Verification_v8_4.zip
-Description: Verification Evidence Package (v1.6.4 verification evidence, inherited v1.6.3 technical logs with provenance, engineering docs)
+Name: StockFlow_Final_Verification_v8_5.zip
+Description: Verification Evidence Package (v1.6.5 pre-package evidence with POSIX '/' paths, inherited logs, engineering docs)
 Size: $size2 bytes
 SHA-256: $hash2
 
 Package 3:
-Name: StockFlow_Audit_Handover_v8_4.zip
-Description: Audit Handover Package (Complete backend & frontend source, lockfiles, Dockerfiles, tests, evidence, docs, exact AUDIT_FILE_MANIFEST.md)
+Name: StockFlow_Audit_Handover_v8_5.zip
+Description: Audit Handover Package (Complete backend/frontend source, lockfiles, Dockerfiles, tests, evidence, docs, bidirectional AUDIT_FILE_MANIFEST.md, POSIX '/' paths)
 Size: $size3 bytes
 SHA-256: $hash3
 "@
@@ -334,12 +337,40 @@ SHA-256: $hash3
 Write-Host $manifestContent
 
 # ------------------------------------------------------------------------------
-# Step 6: Execute Fail-Closed Release Verification Gates (13/13)
+# Step 6: Execute Post-Package Secret Scan on Verification ZIP Before Gate Check
 # ------------------------------------------------------------------------------
-Write-Host "`n[Step 6/7] Running fail-closed verify-release.ps1 across all 13 gates..."
+Write-Host "`n[Step 6/8] Running post-package secret scan on Verification ZIP..."
+$verifyScanOut = Join-Path $evRoot "security\verification_package_scan.txt"
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scannerScript -TargetScanPath $verifyZipPath -OutputFile $verifyScanOut | Out-Null
+$verScanExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+if ($verScanExit -ne 0) {
+    throw "Secret scan failed on $verifyZipPath (Exit: $verScanExit)"
+}
+Write-Host "[OK] Verification ZIP secret scan clean (Exit: $verScanExit)."
+
+$postPipeLog = @(
+    "=== STOCKFLOW v1.6.5 POST-PACKAGE PIPELINE LOG ===",
+    "Timestamp: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))",
+    "External Checksum Manifest: $manifestPath",
+    "Source ZIP SHA-256: $hash1 ($size1 bytes)",
+    "Verification ZIP SHA-256: $hash2 ($size2 bytes)",
+    "Handover ZIP SHA-256: $hash3 ($size3 bytes)",
+    "Post-Package Verification ZIP Scan: Exit Code $verScanExit -> $verifyScanOut",
+    "Proceeding to 14 fail-closed release quality gates..."
+)
+[System.IO.File]::WriteAllLines((Join-Path $evRoot "post-package\post_package_pipeline_log.txt"), $postPipeLog, $utf8NoBom)
+
+# ------------------------------------------------------------------------------
+# Step 7: Execute Fail-Closed Release Verification Gates (14/14)
+# ------------------------------------------------------------------------------
+Write-Host "`n[Step 7/8] Running fail-closed verify-release.ps1 across all 14 gates..."
 $verifyScript = Join-Path $scriptDir "verify-release.ps1"
 $summaryPath = Join-Path $evRoot "release\release_verification_summary.md"
-$verifyScanOut = Join-Path $evRoot "security\verification_package_scan.txt"
+$portabilityReportOut = Join-Path $evRoot "portability\zip_portability_verification.txt"
+$dashReportOut = Join-Path $evRoot "release\writing_constraint_verification.txt"
 
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $verifyScript `
     -TargetDirectory $releaseDir `
@@ -347,25 +378,28 @@ $verifyScanOut = Join-Path $evRoot "security\verification_package_scan.txt"
     -ExpectedBranch $ExpectedBranch `
     -ExpectedVersion $ReleaseVersion `
     -OutputSummaryPath $summaryPath `
-    -VerificationScanOutputPath $verifyScanOut
+    -OutputPortabilityPath $portabilityReportOut `
+    -OutputDashCheckPath $dashReportOut
 
 if ($LASTEXITCODE -ne 0) {
     throw "Release verification gate failed (Exit: $LASTEXITCODE)!"
 }
 
 # ------------------------------------------------------------------------------
-# Step 7: Capture Operational Stack After-State & Final Clean Git Confirmation
+# Step 8: Capture Operational Stack + DB Row Counts After & Final Clean Git Check
 # ------------------------------------------------------------------------------
-Write-Host "`n[Step 7/7] Capturing post-packaging operational stack health and confirming clean Git tree..."
+Write-Host "`n[Step 8/8] Capturing post-packaging operational stack health, DB counts & Git status..."
 $tsAfter = Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"
-$psAfter = (& docker.exe ps -a --filter "name=stockflow" --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}") | Out-String
-$portsAfter = (netstat -ano -p TCP | Select-String -Pattern ":3000\s|:3100\s|:3306\s|:3307\s|:4000\s") | Out-String
+$psAfter = (& docker.exe ps -a --filter "name=stockflow" --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}" 2>&1 | Out-String)
+$portsAfter = (netstat -ano -p TCP | Select-String -Pattern ":3000\s|:3100\s|:3306\s|:3307\s|:4000\s" | Out-String)
 [System.IO.File]::WriteAllText((Join-Path $evRoot "operational\main_stack_after.txt"), "Timestamp: $tsAfter`n=== DOCKER CONTAINERS ===`n$psAfter`n=== TCP LISTENING PORTS ===`n$portsAfter", $utf8NoBom)
 
-$healthAfter = Invoke-WebRequest -Uri "http://127.0.0.1:3000/api/v1/health" -UseBasicParsing
-[System.IO.File]::WriteAllText((Join-Path $evRoot "operational\main_database_after.txt"), "Timestamp: $tsAfter`nEndpoint: http://127.0.0.1:3000/api/v1/health`nHTTP Status: $($healthAfter.StatusCode) $($healthAfter.StatusDescription)`nResponse Body:`n$($healthAfter.Content)`n", $utf8NoBom)
+$healthAfter = Invoke-WebRequest -Uri "http://127.0.0.1:3000/api/v1/health" -UseBasicParsing -TimeoutSec 5
+$nodeDbScript = "const { PrismaClient } = require('@prisma/client'); const p = new PrismaClient(); async function go() { const r = { users: await p.user.count(), warehouses: await p.warehouse.count(), categories: await p.category.count(), products: await p.product.count(), balances: await p.inventoryBalance.count(), transactions: await p.stockTransaction.count(), movements: await p.stockMovement.count() }; console.log(JSON.stringify(r)); await p['\x24disconnect'](); } go();"
+$dbCountsAfter = (& docker.exe exec stockflow_backend_prod node -e $nodeDbScript 2>&1 | Out-String).Trim()
+[System.IO.File]::WriteAllText((Join-Path $evRoot "operational\main_database_after.txt"), "Timestamp: $tsAfter`nEndpoint: http://127.0.0.1:3000/api/v1/health`nHTTP Status: $($healthAfter.StatusCode) $($healthAfter.StatusDescription)`nResponse Body:`n$($healthAfter.Content)`nRead-Only Table Row Counts (stockflow_db_prod):`n$dbCountsAfter`n", $utf8NoBom)
 
-$volAfter = (& docker.exe volume inspect stockflow-prod_mysql_prod_data) | Out-String
+$volAfter = (& docker.exe volume inspect stockflow-prod_mysql_prod_data 2>&1 | Out-String)
 [System.IO.File]::WriteAllText((Join-Path $evRoot "operational\main_volume_after.txt"), "Timestamp: $tsAfter`nVolume: stockflow-prod_mysql_prod_data`n$volAfter", $utf8NoBom)
 
 $stFinal = Invoke-GitPack @("status", "--porcelain", "--untracked-files=all")

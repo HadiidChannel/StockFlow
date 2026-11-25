@@ -347,3 +347,33 @@ Audit independen terhadap v1.6.3 mengidentifikasi empat masalah integritas rilis
 ### Konsekuensi
 - Positif: Konsistensi 100% antara Git HEAD, Git evidence, ketiga ZIP, external manifest, dan laporan akhir; mustahil meloloskan commit mismatch atau manifest tidak akurat; serta tidak ada lagi circular dependency atau manifest historis bocor ke Source ZIP.
 - Negatif: Laporan akhir `FINAL_RELEASE_REPORT_V1_6_4.md` dan `StockFlow_Release_Checksums_v8_4.txt` ditempatkan di `release-output/v1.6.4/` di luar pelacakan Git agar hash kriptografis tidak memicu perubahan commit tambahan.
+
+---
+
+## ADR-016: POSIX Forward-Slash ZIP Portability, Raw Binary Central Directory Inspection, Bidirectional Handover Validation, and 14-Gate Release Verification
+
+### Status
+Accepted & Implemented (v1.6.5)
+
+### Konteks
+Audit terhadap artefak v1.6.4 mengungkap enam celah verifikasi dan portabilitas:
+1. Pembuatan ZIP via .NET Framework `ZipFile::CreateFromDirectory` di Windows menyisipkan byte pemisah backslash (`0x5C`) ke dalam header Central Directory yang menyebabkan ketidakkompatibilitasan ekstraksi pada Python/Linux/macOS/Info-ZIP, sementara API pembacaan ZIP standar di Windows menyamarkan `\` menjadi `/`.
+2. Belum adanya pengujian ekstraksi silang antara Python `zipfile`, Info-ZIP `unzip`, dan .NET beserta komparasi paritas 3-arah.
+3. Validasi Gate 09 belum mengecek berkas ekstra tidak terdaftar dari arsip ke manifest dan belum memverifikasi ukuran byte bersama aturan non-self-reference manifest.
+4. Bukti `git_status.txt` tidak memuat marker output dan metadata eksekusi Git secara terstruktur untuk divalidasi terpisah di kedua arsip.
+5. Gate 11 belum memvalidasi empat laporan pemindaian rahasia terpisah beserta kecocokan target masing-masing.
+6. Gate 13 belum memindai Source ZIP, direktori evidence, maupun laporan rilis eksternal.
+
+### Keputusan
+1. **Modul Bersama `scripts/zip-utils.ps1`**:
+   - Seluruh skrip pengemasan memakai `New-PortableZipArchive` berbasis `ZipArchive::CreateEntry($entryName)` dengan entry POSIX `/`, penyortiran deterministik, dan larangan symlink/reparse point.
+   - `Get-RawZipCentralDirectoryEntries` membaca langsung signature `PK 05 06`, `PK 01 02`, dan `PK 03 04` pada tingkat biner agar karakter backslash `0x5C` terdeteksi 100% di Windows sekalipun pustaka level tinggi melakukan normalisasi otomatis.
+   - `Invoke-CrossPlatformZipValidation` mewajibkan ketersediaan sekaligus kelulusan Python `zipfile`, Info-ZIP `unzip`, dan .NET `ZipFile`, memblokir rilis secara fail-closed (`NOT VERIFIED - ENVIRONMENT BLOCKED`) apabila salah satu alat tidak tersedia.
+2. **Gerbang Verifikasi 14-Gate Fail-Closed & Ekspansi 44 Skenario**:
+   - Menempatkan `GATE-14` sebelum ekstraksi disk pada `GATE-07` untuk mencegah eksploitasi Zip Slip/symlink sebelum validasi biner selesai.
+   - Meningkatkan `GATE-09` (dua arah), `GATE-11` (empat laporan eksplisit + pemindaian ulang langsung), `GATE-12` (inspeksi independen Verification & Handover ZIP dengan metadata & marker lengkap `git_status.txt`), dan `GATE-13` (seluruh Markdown lintas 5 scope).
+   - Memperluas `tests/test-verify-release.ps1` menjadi 44 skenario terisolasi dengan laporan kategori terpisah.
+
+### Konsekuensi
+- Positif: Ketiga arsip v1.6.5 dijamin 100% bebas byte `0x5C`, terverifikasi identik secara kriptografis oleh tiga engine ekstraksi lintas OS, dan setiap inkonsistensi manifest/Git/secret/dash tertolak secara otomatis.
+- Negatif: Pipeline rilis dan verifier memerlukan Python 3 serta Info-ZIP `unzip` yang aktif di host eksekusi.

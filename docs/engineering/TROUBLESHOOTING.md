@@ -208,3 +208,25 @@ Dokumen ini memuat panduan identifikasi dan pemecahan masalah teknis yang sering
   - Daftar file pada `AUDIT_FILE_MANIFEST.md` tidak sinkron dengan isi aktual `StockFlow_Audit_Handover_v8_4.zip`.
 - **Solusi**:
   - Gunakan `scripts/assemble-handover.ps1` untuk menyusun manifest secara otomatis langsung dari direktori staging aktual serta memvalidasi hash SHA-256 pasca-ekstraksi.
+
+---
+
+## 12. Portabilitas ZIP Lintas Platform & Fail-Closed Release Gates (v1.6.5)
+
+### Gejala: `[GATE-14] FAIL - NOT VERIFIED - ENVIRONMENT BLOCKED: Info-ZIP unzip executable unavailable or blocked`
+- **Penyebab**:
+  - Utilitas Info-ZIP `unzip` tidak ditemukan pada `PATH` maupun instalasi Git for Windows (`C:\Program Files\Git\usr\bin\unzip.exe`), atau proses diblokir oleh kebijakan sandbox/ACL saat inisialisasi MSYS2 (`NtCreateDirectoryObject ... 0xC0000022`).
+- **Solusi**:
+  - Pasang Info-ZIP `unzip` atau jalankan PowerShell pada konteks host Windows standar di luar pembatasan ACL MSYS2 agar `unzip.exe` dapat mengeksekusi `-t` dan ekstraksi penuh. Jangan pernah meloloskan gerbang secara manual apabila salah satu alat ekstraksi terblokir.
+
+### Gejala: `[GATE-14] FAIL - Backslash path separator (0x5C) in raw ZIP entry`
+- **Penyebab**:
+  - Arsip ZIP dibuat memakai `[System.IO.Compression.ZipFile]::CreateFromDirectory` pada .NET Framework Windows yang menyisipkan `\` ke header biner Central Directory meskipun beberapa alat baca di Windows menerjemahkannya secara otomatis menjadi `/`.
+- **Solusi**:
+  - Selalu gunakan fungsi `New-PortableZipArchive` dari `scripts/zip-utils.ps1` sehingga seluruh entry ditulis eksplisit via `ZipArchive::CreateEntry($entryName.Replace('\', '/'))`.
+
+### Gejala: `[GATE-12] FAIL - git_status.txt ... missing required metadata` atau `[GATE-09] FAIL - Extra unlisted file(s)`
+- **Penyebab**:
+  - File `git_status.txt` berupa teks kosong/ringkas tanpa blok `PORCELAIN_OUTPUT_BEGIN`..`PORCELAIN_OUTPUT_END`, `Timestamp`, atau `Exit Code: 0`; atau ada file ekstra di dalam `StockFlow_Audit_Handover` yang belum terdaftar di tabel inventaris `AUDIT_FILE_MANIFEST.md`.
+- **Solusi**:
+  - Gunakan `scripts/capture-evidence.ps1` dan `scripts/assemble-handover.ps1` v1.6.5 lalu kemas ulang dari commit Git bersih melalui `scripts/package-release.ps1`.
