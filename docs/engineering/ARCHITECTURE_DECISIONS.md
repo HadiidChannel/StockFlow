@@ -377,3 +377,30 @@ Audit terhadap artefak v1.6.4 mengungkap enam celah verifikasi dan portabilitas:
 ### Konsekuensi
 - Positif: Ketiga arsip v1.6.5 dijamin 100% bebas byte `0x5C`, terverifikasi identik secara kriptografis oleh tiga engine ekstraksi lintas OS, dan setiap inkonsistensi manifest/Git/secret/dash tertolak secara otomatis.
 - Negatif: Pipeline rilis dan verifier memerlukan Python 3 serta Info-ZIP `unzip` yang aktif di host eksekusi.
+
+---
+
+## ADR-017: Exhaustive Binary Local File Header Consistency, TLV Extra Field Validation, and 15-Gate Release Verification
+
+### Status
+Accepted & Implemented (v1.6.6)
+
+### Konteks
+Evaluasi keamanan biner terhadap validator ZIP v1.6.5 mengungkap celah fail-open pada lapisan Local File Header (`PK 03 04`):
+1. Validator v1.6.5 hanya memastikan keberadaan signature `0x04034B50` namun melewatkan perbandingan panjang dan byte mentah filename lokal, General Purpose Bit Flag (termasuk enkripsi bit `0x0001` dan UTF-8 bit `0x0800`), compression method, ModTime/ModDate, CRC-32, serta ukuran terkompresi/tak terkompresi terhadap Central Directory (`PK 01 02`).
+2. Tidak ada validasi Data Descriptor (`PK 07 08` atau 12/20-byte descriptor saat bit `0x0008` aktif), tidak ada parser TLV Extra Field untuk mencegah out-of-bounds read pada `0x0001` ZIP64 / `0x5455` / `0x7075`, serta tidak ada pemeriksaan tumpang tindih/gap Local Header.
+3. Pengujian TDD fase RED membuktikan validator lama hanya menolak 8 dari 22 arsip bermutasi (`18/32` total sesuai ekspektasi, `14` bypass).
+
+### Keputusan
+1. **Engine Inspeksi Biner Menyeluruh (`Inspect-ZipBinaryHeaders` & `Test-ZipExtraFieldBlock` di `scripts/zip-utils.ps1`)**:
+   - Memparse EOCD (`PK 05 06`), ZIP64 Locator (`PK 06 07`) & ZIP64 EOCD (`PK 06 06`), setiap record Central Directory (`PK 01 02`), dan setiap record Local File Header (`PK 03 04`).
+   - Membandingkan seluruh header LH <-> CD secara ketat, memverifikasi payload Data Descriptor apabila bit `0x0008` aktif, memvalidasi panjang subfield TLV pada Extra Field agar tidak melampaui batas blok, menolak enkripsi (`0x0001`) maupun metode kompresi selain STORE (`0`) dan DEFLATE (`8`), dan mendeteksi duplikasi offset Local Header serta gap/orphan header.
+2. **Gerbang 15 Pre-Extraction (`GATE-15`) & Ekspansi Matrix Pengujian**:
+   - Menempatkan `GATE-15` pada urutan terawal sebelum ekstraksi atau uji lintas-engine (`GATE-14` & `GATE-07`) di `scripts/verify-release.ps1`, menghasilkan artefak mentah `local_header_archive_verification.txt`, `local_header_binary_details.txt`, dan `release_gate_15_results.txt`.
+   - Menambahkan suite pengujian biner khusus `tests/test-local-header.ps1` (32 kasus: `LH-01`..`LH-10` positif, `LH-11`..`LH-32` negatif) dan memperluas `tests/test-verify-release.ps1` menjadi 51 skenario (`S45`..`S51` untuk `GATE-15`).
+3. **Pemisahan Paket Rilis v1.6.6 dan Bundel Bukti Post-Package**:
+   - Menyimpan ketiga ZIP resmi + `StockFlow_Release_Checksums_v8_6.txt` + `FINAL_RELEASE_REPORT_V1_6_6.md` serta membungkus seluruh log pasca-pengemasan ke dalam `StockFlow_PostPackage_Evidence_v8_6.zip` disertai sidecar checksum eksternal `StockFlow_PostPackage_Evidence_Checksum_v8_6.txt`.
+
+### Konsekuensi
+- Positif: Parser dan release verifier tertutup total (fail-closed) terhadap manipulasi header ganda ZIP (parser-differential attacks), mutasi bit flag, maupun korupsi struktur biner pada 100% entry arsip.
+- Negatif: Memerlukan ruang bukti pasca-pengemasan terpisah di `post-package-evidence/v1.6.6/` agar `StockFlow_Release_Checksums_v8_6.txt` dan ketiga ZIP utama tetap imutabel setelah penandatanganan SHA-256.

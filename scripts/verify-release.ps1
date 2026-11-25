@@ -1,22 +1,13 @@
 # ==============================================================================
-# StockFlow - Fail-Closed Official Release Integrity Verifier (v1.6.5)
+# StockFlow - Fail-Closed Official Release Integrity Verifier (v1.6.6)
 # Script: scripts/verify-release.ps1
-# Description: Strictly enforces all 14 fail-closed release quality gates:
-#              GATE-01: Git binary & worktree integrity
-#              GATE-02: Archive & manifest existence + schema validation
-#              GATE-03: Active branch matches expected & manifest
-#              GATE-04: 40-char HEAD commit matches manifest
-#              GATE-05: Working tree clean
-#              GATE-06: Byte sizes & SHA-256 checksums across all 3 ZIPs
-#              GATE-14: Pre-extraction POSIX entry safety + 3-engine extraction
-#                       parity (Python zipfile, Info-ZIP unzip, .NET ZipFile)
-#              GATE-07: .NET Extraction non-empty file integrity check
-#              GATE-08: Source hygiene, 3 env templates, 0 embedded manifests
-#              GATE-09: Bidirectional Audit Handover manifest <-> archive checks
-#              GATE-10: Loopback 127.0.0.1 Docker Compose port bindings
-#              GATE-11: All 4 secret scan reports valid/targeted + live ZIP scan
-#              GATE-12: Independent Git evidence & marker-complete git_status.txt
-#              GATE-13: Zero en dash / em dash across all 3 ZIPs + evidence + report
+# Description: Strictly enforces all 15 fail-closed release quality gates:
+#              GATE-01..06: Git worktree, artifacts/manifest, branch, 40-char commit, clean tree, SHA-256
+#              GATE-15: Exhaustive binary Local File Header <-> Central Directory consistency
+#              GATE-14: Pre-extraction POSIX entry safety + 3-engine extraction parity
+#              GATE-07..13: Extraction integrity, source hygiene, bidirectional handover,
+#                           Compose loopback, 4 secret scan reports, independent Git evidence,
+#                           all-scope Markdown dash checks
 # Target OS: Windows (PowerShell 7+ / Windows PowerShell 5.1)
 # ==============================================================================
 
@@ -29,10 +20,10 @@ param(
     [string]$RepositoryRoot,
 
     [Parameter(Mandatory = $false)]
-    [string]$ExpectedBranch = "fix/stockflow-v16-5-zip-portability",
+    [string]$ExpectedBranch = "fix/stockflow-v16-6-zip-header-validation",
 
     [Parameter(Mandatory = $false)]
-    [string]$ExpectedVersion = "v1.6.5",
+    [string]$ExpectedVersion = "v1.6.6",
 
     [Parameter(Mandatory = $false)]
     [string]$OutputSummaryPath,
@@ -41,7 +32,28 @@ param(
     [string]$OutputPortabilityPath,
 
     [Parameter(Mandatory = $false)]
-    [string]$OutputDashCheckPath
+    [string]$OutputRawBytesPath,
+
+    [Parameter(Mandatory = $false)]
+    [string]$OutputPythonLogPath,
+
+    [Parameter(Mandatory = $false)]
+    [string]$OutputInfoZipLogPath,
+
+    [Parameter(Mandatory = $false)]
+    [string]$OutputDotNetLogPath,
+
+    [Parameter(Mandatory = $false)]
+    [string]$OutputDashCheckPath,
+
+    [Parameter(Mandatory = $false)]
+    [string]$OutputLocalHeaderArchivePath,
+
+    [Parameter(Mandatory = $false)]
+    [string]$OutputLocalHeaderDetailsPath,
+
+    [Parameter(Mandatory = $false)]
+    [string]$OutputGate15Path
 )
 
 Set-StrictMode -Version Latest
@@ -58,15 +70,15 @@ if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($TargetDirectory)) {
-    $releaseDir = Join-Path $repoRoot "release-output\v1.6.5"
+    $releaseDir = Join-Path $repoRoot "release-output\v1.6.6"
 } else {
     $releaseDir = (Resolve-Path $TargetDirectory).Path
 }
 
-$sourceZipName = "StockFlow_Final_v8_5.zip"
-$verifyZipName = "StockFlow_Final_Verification_v8_5.zip"
-$handoverZipName = "StockFlow_Audit_Handover_v8_5.zip"
-$manifestName = "StockFlow_Release_Checksums_v8_5.txt"
+$sourceZipName = "StockFlow_Final_v8_6.zip"
+$verifyZipName = "StockFlow_Final_Verification_v8_6.zip"
+$handoverZipName = "StockFlow_Audit_Handover_v8_6.zip"
+$manifestName = "StockFlow_Release_Checksums_v8_6.txt"
 
 $sourceZipPath = Join-Path $releaseDir $sourceZipName
 $verifyZipPath = Join-Path $releaseDir $verifyZipName
@@ -76,18 +88,22 @@ $scannerScript = Join-Path $scriptDir "scan-secrets.ps1"
 
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $gateRecords = [System.Collections.Generic.List[object]]::new()
-$totalGates = 14
+$totalGates = 15
 $checksPassed = 0
 $tempTestDir = $null
 
+function Write-LinesIfRequested([string]$outPath, $lines) {
+    if ([string]::IsNullOrWhiteSpace($outPath)) { return }
+    $dir = Split-Path -Parent $outPath
+    if (-not [string]::IsNullOrWhiteSpace($dir) -and -not (Test-Path -LiteralPath $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
+    [string[]]$strLines = @($lines | ForEach-Object { [string]$_ })
+    [System.IO.File]::WriteAllLines($outPath, $strLines, $utf8NoBom)
+}
+
 function Write-SummaryIfRequested([string]$overallStatus) {
-    if ([string]::IsNullOrWhiteSpace($OutputSummaryPath)) {
-        return
-    }
-    $sumDir = Split-Path -Parent $OutputSummaryPath
-    if (-not [string]::IsNullOrWhiteSpace($sumDir) -and -not (Test-Path -LiteralPath $sumDir)) {
-        New-Item -ItemType Directory -Path $sumDir -Force | Out-Null
-    }
+    if ([string]::IsNullOrWhiteSpace($OutputSummaryPath)) { return }
     $md = [System.Collections.Generic.List[string]]::new()
     $md.Add("# StockFlow $ExpectedVersion Release Verification Summary")
     $md.Add("")
@@ -97,7 +113,7 @@ function Write-SummaryIfRequested([string]$overallStatus) {
     $md.Add("- Passed Gates: $checksPassed / $totalGates")
     $md.Add("- Overall Status: $overallStatus")
     $md.Add("")
-    $md.Add("## Gate Results Matrix (GATE-01 through GATE-14)")
+    $md.Add("## Gate Results Matrix (GATE-01 through GATE-15)")
     $md.Add("")
     $md.Add("| Gate ID | Criteria | Command | Actual Result | Exit Code | Status | Evidence File |")
     $md.Add("| :--- | :--- | :--- | :--- | :---: | :---: | :--- |")
@@ -107,7 +123,7 @@ function Write-SummaryIfRequested([string]$overallStatus) {
         $safeCmd = ($rec.Command -replace '\|', '/' -replace "`r?`n", ' ').Trim()
         $md.Add("| $($rec.GateId) | $($rec.Criteria) | ``$safeCmd`` | $safeActual | $($rec.ExitCode) | $($rec.Status) | $($rec.EvidenceFile) |")
     }
-    [System.IO.File]::WriteAllLines($OutputSummaryPath, $md, $utf8NoBom)
+    Write-LinesIfRequested $OutputSummaryPath $md
 }
 
 function Fail-Gate([string]$gateId, [string]$criteria, [string]$command, [string]$reason, [string]$evidenceFile = "-") {
@@ -148,10 +164,7 @@ function Invoke-GitStrict([string[]]$gitArgs) {
     try {
         $allArgs = @("-C", $repoRoot) + $gitArgs
         $output = & git.exe $allArgs 2>&1 | Out-String
-        return [PSCustomObject]@{
-            Output = $output
-            ExitCode = $LASTEXITCODE
-        }
+        return [PSCustomObject]@{ Output = $output; ExitCode = $LASTEXITCODE }
     } finally {
         $ErrorActionPreference = $prevEap
     }
@@ -165,9 +178,7 @@ Write-Host " Gates:      $totalGates Strict Fail-Closed Checks"
 Write-Host "======================================================================"
 
 try {
-    # --------------------------------------------------------------------------
     # GATE-01: Git Executable & Worktree Integrity
-    # --------------------------------------------------------------------------
     $gitCmd = Get-Command git.exe -ErrorAction SilentlyContinue
     if ($null -eq $gitCmd) { $gitCmd = Get-Command git -ErrorAction SilentlyContinue }
     if ($null -eq $gitCmd) {
@@ -177,11 +188,9 @@ try {
     if ($wtCheck.ExitCode -ne 0 -or $wtCheck.Output.Trim() -ne "true") {
         Fail-Gate "GATE-01" "Git binary available and worktree valid" "git rev-parse --is-inside-work-tree" "Target path '$repoRoot' is not a valid Git worktree (Exit: $($wtCheck.ExitCode))"
     }
-    Pass-Gate "GATE-01" "Git binary available and worktree valid" "git rev-parse --is-inside-work-tree" "Git binary available and '$repoRoot' verified as active worktree" "evidence/git/git_identity_verification.txt"
+    Pass-Gate "GATE-01" "Git binary available and worktree valid" "git rev-parse --is-inside-work-tree" "Git binary available and '$repoRoot' verified as active worktree" "git/git_identity_verification.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-02: Release Artifacts & External Manifest Existence and Structure
-    # --------------------------------------------------------------------------
     foreach ($art in @($sourceZipPath, $verifyZipPath, $handoverZipPath, $manifestPath)) {
         if (-not (Test-Path -LiteralPath $art -PathType Leaf)) {
             Fail-Gate "GATE-02" "All 3 release ZIPs and external manifest exist and valid" "Test-Path $art" "Required release artifact missing: $art"
@@ -237,9 +246,7 @@ try {
     }
     Pass-Gate "GATE-02" "All 3 ZIPs and well-formed manifest exist" "Inspect $releaseDir deliverables" "Verified 3 ZIPs and complete manifest ($manifestName)" $manifestName
 
-    # --------------------------------------------------------------------------
     # GATE-03: Git Branch Validation
-    # --------------------------------------------------------------------------
     $branchRes = Invoke-GitStrict @("branch", "--show-current")
     if ($branchRes.ExitCode -ne 0) {
         Fail-Gate "GATE-03" "Git branch matches expected and manifest" "git branch --show-current" "Failed to query active branch (Exit: $($branchRes.ExitCode))"
@@ -248,11 +255,9 @@ try {
     if ([string]::IsNullOrWhiteSpace($actualBranch) -or $actualBranch -cne $ExpectedBranch -or $actualBranch -cne $manifestBranch) {
         Fail-Gate "GATE-03" "Git branch matches expected and manifest" "git branch --show-current" "Branch mismatch (actual='$actualBranch', expected='$ExpectedBranch', manifest='$manifestBranch')"
     }
-    Pass-Gate "GATE-03" "Git branch matches expected and manifest" "git branch --show-current" "Branch exact match: $actualBranch" "evidence/git/git_branch.txt"
+    Pass-Gate "GATE-03" "Git branch matches expected and manifest" "git branch --show-current" "Branch exact match: $actualBranch" "git/git_branch.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-04: Full 40-Character Commit Hash Exact Validation
-    # --------------------------------------------------------------------------
     $headRes = Invoke-GitStrict @("rev-parse", "HEAD")
     if ($headRes.ExitCode -ne 0) {
         Fail-Gate "GATE-04" "Full 40-character HEAD commit matches manifest" "git rev-parse HEAD" "Failed to resolve Git HEAD commit (Exit: $($headRes.ExitCode))"
@@ -261,11 +266,9 @@ try {
     if ($actualHeadCommit -notmatch '^[a-f0-9]{40}$' -or $actualHeadCommit -cne $manifestCommit) {
         Fail-Gate "GATE-04" "Full 40-character HEAD commit matches manifest" "Compare git rev-parse HEAD with manifest" "Git commit mismatch (HEAD='$actualHeadCommit' vs Manifest='$manifestCommit')"
     }
-    Pass-Gate "GATE-04" "Full 40-character HEAD commit matches manifest" "git rev-parse HEAD" "Full 40-char commit exact match: $actualHeadCommit" "evidence/git/git_commit.txt"
+    Pass-Gate "GATE-04" "Full 40-character HEAD commit matches manifest" "git rev-parse HEAD" "Full 40-char commit exact match: $actualHeadCommit" "git/git_commit.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-05: Clean Working Tree Verification
-    # --------------------------------------------------------------------------
     $statusRes = Invoke-GitStrict @("status", "--porcelain", "--untracked-files=all")
     if ($statusRes.ExitCode -ne 0) {
         Fail-Gate "GATE-05" "Git working tree completely clean" "git status --porcelain --untracked-files=all" "Failed to query git status (Exit: $($statusRes.ExitCode))"
@@ -277,11 +280,9 @@ try {
     if ($manifestTree -cne "Clean") {
         Fail-Gate "GATE-05" "Manifest declares Clean working tree" "Check Working Tree field in manifest" "Manifest Working Tree is '$manifestTree', expected 'Clean'"
     }
-    Pass-Gate "GATE-05" "Git working tree completely clean" "git status --porcelain --untracked-files=all" "Working tree verified clean (0 modified, staged, or untracked changes)" "evidence/git/git_status.txt"
+    Pass-Gate "GATE-05" "Git working tree completely clean" "git status --porcelain --untracked-files=all" "Working tree verified clean (0 modified, staged, or untracked changes)" "git/git_status.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-06: Byte Size & SHA-256 Checksum Comparison Across All 3 Packages
-    # --------------------------------------------------------------------------
     foreach ($idx in @(1, 2, 3)) {
         $pkg = $parsedPackages[$idx]
         $actualLen = (Get-Item -LiteralPath $pkg.Path).Length
@@ -296,11 +297,100 @@ try {
     }
     Pass-Gate "GATE-06" "Byte sizes and SHA-256 match across all 3 ZIPs" "Get-FileHash -Algorithm SHA256" "All 3 ZIP byte sizes and SHA-256 hashes match external manifest 100%" $manifestName
 
-    # --------------------------------------------------------------------------
-    # GATE-14 (Pre-Extraction Guard + 3-Engine Cross-Platform Extraction Parity)
-    # Executed BEFORE extracting ZIP payloads onto host filesystem for safety.
-    # --------------------------------------------------------------------------
-    $tempTestDir = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_gate165_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
+    # GATE-15: Exhaustive Binary Local File Header <-> Central Directory Consistency (All 3 ZIPs, Every Entry)
+    # Executed BEFORE extraction onto host filesystem so corrupt headers never reach extraction.
+    $lhArchiveReport = [System.Collections.Generic.List[string]]::new()
+    $lhArchiveReport.Add("================================================================================")
+    $lhArchiveReport.Add("STOCKFLOW $ExpectedVersion - LOCAL FILE HEADER & CENTRAL DIRECTORY ARCHIVE VERIFICATION")
+    $lhArchiveReport.Add("================================================================================")
+    $lhArchiveReport.Add("Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')")
+    $lhArchiveReport.Add("Target Release Directory: $releaseDir")
+    $lhArchiveReport.Add("")
+
+    $lhDetailsReport = [System.Collections.Generic.List[string]]::new()
+    $lhDetailsReport.Add("================================================================================")
+    $lhDetailsReport.Add("STOCKFLOW $ExpectedVersion - EXHAUSTIVE PER-ENTRY BINARY HEADER DETAILS")
+    $lhDetailsReport.Add("================================================================================")
+    $lhDetailsReport.Add("Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')")
+    $lhDetailsReport.Add("")
+
+    $gate15Summaries = [System.Collections.Generic.List[string]]::new()
+    $gate15FailedReason = $null
+    $gate15Exit = 0
+
+    foreach ($zipCheck in @(
+        @{ Label = $sourceZipName; Path = $sourceZipPath },
+        @{ Label = $verifyZipName; Path = $verifyZipPath },
+        @{ Label = $handoverZipName; Path = $handoverZipPath }
+    )) {
+        $binRes = Inspect-ZipBinaryHeaders -ZipPath $zipCheck.Path
+        $c = $binRes.Counts
+        $archExit = if ($binRes.Valid) { 0 } else { 1 }
+        $archResult = if ($binRes.Valid) { "PASS" } else { "FAIL" }
+
+        $lhArchiveReport.Add("=== ARCHIVE: $($c.ArchiveName) ===")
+        $lhArchiveReport.Add("Archive Size: $($c.ArchiveSize) bytes")
+        $lhArchiveReport.Add("Total Entries: $($c.TotalEntries)")
+        $lhArchiveReport.Add("Valid Entries: $($c.ValidEntries)")
+        $lhArchiveReport.Add("Invalid Entries: $($c.InvalidEntries)")
+        $lhArchiveReport.Add("Valid Directory Entries: $($c.ValidDirectoryEntries)")
+        $lhArchiveReport.Add("Local Header Signature Errors: $($c.LocalHeaderSignatureErrors)")
+        $lhArchiveReport.Add("Central Directory Signature Errors: $($c.CentralDirectorySignatureErrors)")
+        $lhArchiveReport.Add("Filename Length Mismatches: $($c.FilenameLengthMismatches)")
+        $lhArchiveReport.Add("Filename Byte Mismatches: $($c.FilenameByteMismatches)")
+        $lhArchiveReport.Add("General Purpose Flag Mismatches: $($c.GeneralPurposeFlagMismatches)")
+        $lhArchiveReport.Add("Compression Method Mismatches: $($c.CompressionMethodMismatches)")
+        $lhArchiveReport.Add("ModTime/ModDate Mismatches: $($c.ModTimeDateMismatches)")
+        $lhArchiveReport.Add("CRC Mismatches: $($c.CrcMismatches)")
+        $lhArchiveReport.Add("Compressed Size Mismatches: $($c.CompressedSizeMismatches)")
+        $lhArchiveReport.Add("Uncompressed Size Mismatches: $($c.UncompressedSizeMismatches)")
+        $lhArchiveReport.Add("Data Descriptor Errors: $($c.DataDescriptorErrors)")
+        $lhArchiveReport.Add("Extra Field Errors: $($c.ExtraFieldErrors)")
+        $lhArchiveReport.Add("Bounds Violations: $($c.BoundsViolations)")
+        $lhArchiveReport.Add("ZIP64 Status: $($c.Zip64Status)")
+        $lhArchiveReport.Add("Duplicate Local Header Offsets: $($c.DuplicateLocalHeaderOffsets)")
+        $lhArchiveReport.Add("Final Result: $archResult")
+        $lhArchiveReport.Add("Exit Code: $archExit")
+        if (-not $binRes.Valid) {
+            $lhArchiveReport.Add("Errors: $($binRes.Errors -join ' | ')")
+            $gate15Exit = 1
+            if ($null -eq $gate15FailedReason) {
+                $gate15FailedReason = "$($c.ArchiveName): $($binRes.Errors[0])"
+            }
+        }
+        $lhArchiveReport.Add("")
+
+        $lhDetailsReport.Add("=== ARCHIVE: $($c.ArchiveName) ($($c.TotalEntries) entries inspected, Result: $archResult) ===")
+        foreach ($ent in $binRes.Entries) {
+            $lhDetailsReport.Add("  Entry='$($ent.RawName)' | Offset=$($ent.LocalHeaderOffset) | Method=$($ent.CompressionMethod) | Flag=0x$($ent.BitFlag.ToString('X4')) | CRC=$($ent.Crc32Hex) | Comp=$($ent.CompressedSize) | Uncomp=$($ent.UncompressedSize) | ModDate=$($ent.ModDate)/$($ent.ModTime) | DD=$($ent.DataDescriptor) | HeaderValid=$($ent.HeaderValid)")
+        }
+        $lhDetailsReport.Add("")
+
+        $gate15Summaries.Add("$($c.ArchiveName)=$($c.ValidEntries)/$($c.TotalEntries) valid (0 errors)")
+    }
+
+    Write-LinesIfRequested $OutputLocalHeaderArchivePath $lhArchiveReport
+    Write-LinesIfRequested $OutputLocalHeaderDetailsPath $lhDetailsReport
+
+    $gate15SummaryText = @(
+        "================================================================================",
+        "STOCKFLOW $ExpectedVersion - RELEASE GATE 15 RESULTS",
+        "================================================================================",
+        "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')",
+        "Command: Inspect-ZipBinaryHeaders across Source, Verification, and Handover ZIPs",
+        "Exit Code: $gate15Exit",
+        "Overall Gate 15 Status: $(if ($gate15Exit -eq 0) { 'PASS' } else { 'FAIL' })",
+        "Summary: $(if ($gate15Exit -eq 0) { $gate15Summaries -join '; ' } else { $gate15FailedReason })"
+    )
+    Write-LinesIfRequested $OutputGate15Path $gate15SummaryText
+
+    if ($gate15Exit -ne 0) {
+        Fail-Gate "GATE-15" "Exhaustive binary Local File Header & Central Directory consistency" "Inspect-ZipBinaryHeaders on 3 ZIPs" $gate15FailedReason "local-header/local_header_archive_verification.txt"
+    }
+    Pass-Gate "GATE-15" "Exhaustive binary Local File Header & Central Directory consistency (all entries)" "Inspect-ZipBinaryHeaders across all 3 ZIPs" ($gate15Summaries -join "; ") "local-header/local_header_archive_verification.txt"
+
+    # GATE-14: Pre-Extraction POSIX Hygiene + 3-Engine Cross-Platform Extraction Parity
+    $tempTestDir = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_gate166_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
     New-Item -ItemType Directory -Path $tempTestDir -Force | Out-Null
 
     $portLines = [System.Collections.Generic.List[string]]::new()
@@ -311,6 +401,11 @@ try {
     $portLines.Add("Target Directory: $releaseDir")
     $portLines.Add("Required Extractors: Python zipfile | Info-ZIP unzip | .NET ZipFile")
     $portLines.Add("")
+
+    $rawByteReport = [System.Collections.Generic.List[string]]::new()
+    $pyExtractReport = [System.Collections.Generic.List[string]]::new()
+    $uzExtractReport = [System.Collections.Generic.List[string]]::new()
+    $dnExtractReport = [System.Collections.Generic.List[string]]::new()
 
     $xplatWork = Join-Path $tempTestDir "portability"
     New-Item -ItemType Directory -Path $xplatWork -Force | Out-Null
@@ -323,26 +418,25 @@ try {
     )) {
         $xpRes = Invoke-CrossPlatformZipValidation -ZipPath $zipCheck.Path -ArchiveLabel $zipCheck.Label -TempWorkRoot $xplatWork
         foreach ($rl in $xpRes.ReportLines) { $portLines.Add($rl) }
+        foreach ($rb in $xpRes.RawByteLines) { $rawByteReport.Add($rb) }
+        foreach ($pl in $xpRes.PythonLogLines) { $pyExtractReport.Add($pl) }
+        foreach ($ul in $xpRes.InfoZipLogLines) { $uzExtractReport.Add($ul) }
+        foreach ($dl in $xpRes.DotNetLogLines) { $dnExtractReport.Add($dl) }
+
         if (-not $xpRes.Passed) {
-            if (-not [string]::IsNullOrWhiteSpace($OutputPortabilityPath)) {
-                $pDir = Split-Path -Parent $OutputPortabilityPath
-                if ($pDir -and -not (Test-Path -LiteralPath $pDir)) { New-Item -ItemType Directory -Path $pDir -Force | Out-Null }
-                [System.IO.File]::WriteAllLines($OutputPortabilityPath, $portLines, $utf8NoBom)
-            }
-            Fail-Gate "GATE-14" "POSIX ZIP hygiene & 3-engine cross-platform parity" "Python + Info-ZIP + .NET on $($zipCheck.Label)" $xpRes.FailureReason "evidence/portability/zip_portability_verification.txt"
+            Write-LinesIfRequested $OutputPortabilityPath $portLines
+            Fail-Gate "GATE-14" "POSIX ZIP hygiene & 3-engine cross-platform parity" "Python + Info-ZIP + .NET on $($zipCheck.Label)" $xpRes.FailureReason "portability/zip_portability_verification.txt"
         }
         $xplatSummaryParts.Add("$($zipCheck.Label)=$($xpRes.EntryCount) entries/0 backslashes/3-way match")
     }
-    if (-not [string]::IsNullOrWhiteSpace($OutputPortabilityPath)) {
-        $pDir = Split-Path -Parent $OutputPortabilityPath
-        if ($pDir -and -not (Test-Path -LiteralPath $pDir)) { New-Item -ItemType Directory -Path $pDir -Force | Out-Null }
-        [System.IO.File]::WriteAllLines($OutputPortabilityPath, $portLines, $utf8NoBom)
-    }
-    Pass-Gate "GATE-14" "POSIX ZIP hygiene & 3-engine cross-platform parity (Python/Info-ZIP/.NET)" "Validate entries + CRC + Python/Info-ZIP/.NET extraction & 3-way SHA-256 parity" ($xplatSummaryParts -join "; ") "evidence/portability/zip_portability_verification.txt"
+    Write-LinesIfRequested $OutputPortabilityPath $portLines
+    Write-LinesIfRequested $OutputRawBytesPath $rawByteReport
+    Write-LinesIfRequested $OutputPythonLogPath $pyExtractReport
+    Write-LinesIfRequested $OutputInfoZipLogPath $uzExtractReport
+    Write-LinesIfRequested $OutputDotNetLogPath $dnExtractReport
+    Pass-Gate "GATE-14" "POSIX ZIP hygiene & 3-engine cross-platform parity (Python/Info-ZIP/.NET)" "Validate entries + CRC + Python/Info-ZIP/.NET extraction & 3-way SHA-256 parity" ($xplatSummaryParts -join "; ") "portability/zip_portability_verification.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-07: Safe Archive Extraction Integrity Verification
-    # --------------------------------------------------------------------------
     $srcExtDir = Join-Path $tempTestDir "source"
     $verExtDir = Join-Path $tempTestDir "verify"
     $hanExtDir = Join-Path $tempTestDir "handover"
@@ -362,11 +456,9 @@ try {
     if ($srcFiles.Count -eq 0 -or $verFiles.Count -eq 0 -or $hanFiles.Count -eq 0) {
         Fail-Gate "GATE-07" "Extracted ZIPs are non-empty" "Count extracted files" "One or more archives extracted 0 files ($($srcFiles.Count) / $($verFiles.Count) / $($hanFiles.Count))"
     }
-    Pass-Gate "GATE-07" "All 3 ZIP archives extract cleanly" "ZipFile::ExtractToDirectory on 3 ZIPs" "Clean extraction: Source=$($srcFiles.Count) files, Verification=$($verFiles.Count) files, Handover=$($hanFiles.Count) files" "release_verification_summary.md"
+    Pass-Gate "GATE-07" "All 3 ZIP archives extract cleanly" "ZipFile::ExtractToDirectory on 3 ZIPs" "Clean extraction: Source=$($srcFiles.Count) files, Verification=$($verFiles.Count) files, Handover=$($hanFiles.Count) files" "release/release_verification_summary.md"
 
-    # --------------------------------------------------------------------------
     # GATE-08: Source Package Hygiene, Env Templates & Manifest Exclusion
-    # --------------------------------------------------------------------------
     foreach ($tpl in @(".env.example", "backend\.env.example", "frontend\.env.example")) {
         if (-not (Test-Path -LiteralPath (Join-Path $srcExtDir $tpl) -PathType Leaf)) {
             Fail-Gate "GATE-08" "Required environment templates present in Source ZIP" "Test-Path $tpl" "Required template '$tpl' missing from Source ZIP"
@@ -381,18 +473,16 @@ try {
         $label = $dirCheck[0]
         $rootCheck = $dirCheck[1]
         $leakedManifests = @(Get-ChildItem -LiteralPath $rootCheck -Recurse -File | Where-Object {
-            $_.Name -match '^StockFlow_Release_Checksums.*\.txt$' -or $_.Name -eq 'RELEASE_CHECKSUMS.txt'
+            $_.Name -match '^StockFlow_Release_Checksums.*\.txt$' -or $_.Name -eq 'RELEASE_CHECKSUMS.txt' -or $_.Name -match '^StockFlow_PostPackage_Evidence.*\.txt$'
         })
         if ($leakedManifests.Count -gt 0) {
             $names = ($leakedManifests | ForEach-Object { $_.FullName.Substring($rootCheck.Length).TrimStart('\', '/') }) -join ", "
             Fail-Gate "GATE-08" "No historical/external checksum manifests inside ZIPs" "Scan checksum manifests in $label" "Checksum manifest file(s) embedded inside ${label}: $names"
         }
     }
-    Pass-Gate "GATE-08" "Source hygiene, 3 env templates, and zero embedded checksum manifests" "Inspect Source/Verify/Handover extracted contents" "All 3 env templates present; zero secrets and zero embedded checksum manifests in any ZIP" "evidence/release/source_package_verification.txt"
+    Pass-Gate "GATE-08" "Source hygiene, 3 env templates, and zero embedded checksum manifests" "Inspect Source/Verify/Handover extracted contents" "All 3 env templates present; zero secrets and zero embedded checksum manifests in any ZIP" "release/source_package_verification.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-09: Bidirectional Audit Handover Completeness & Manifest Accuracy
-    # --------------------------------------------------------------------------
     $hanManifestPath = Join-Path $hanExtDir "AUDIT_FILE_MANIFEST.md"
     if (-not (Test-Path -LiteralPath $hanManifestPath -PathType Leaf)) {
         Fail-Gate "GATE-09" "Bidirectional Audit Handover manifest accuracy" "Test-Path AUDIT_FILE_MANIFEST.md" "AUDIT_FILE_MANIFEST.md missing inside Handover ZIP"
@@ -403,43 +493,27 @@ try {
     $isInventorySection = $false
     $colIndex = @{}
     $inventoryManifestSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    $traceRowsChecked = 0
 
     foreach ($line in $hanManifestLines) {
         if ($line -match '^##\s+.*External Post-') {
-            $inExternalSection = $true
-            $isInventorySection = $false
-            $colIndex = @{}
-            continue
+            $inExternalSection = $true; $isInventorySection = $false; $colIndex = @{}; continue
         }
         if ($line -match '^##\s+.*Complete Handover Archive File Inventory') {
-            $inExternalSection = $false
-            $isInventorySection = $true
-            $colIndex = @{}
-            continue
+            $inExternalSection = $false; $isInventorySection = $true; $colIndex = @{}; continue
         }
         if ($line -match '^##\s+') {
-            $inExternalSection = $false
-            $isInventorySection = $false
-            $colIndex = @{}
-            continue
+            $inExternalSection = $false; $isInventorySection = $false; $colIndex = @{}; continue
         }
         if ($inExternalSection) { continue }
 
         $trimmed = $line.Trim()
-        if (-not $trimmed.StartsWith("|")) {
-            $colIndex = @{}
-            continue
-        }
-
+        if (-not $trimmed.StartsWith("|")) { $colIndex = @{}; continue }
         $rawCells = @($trimmed.Trim('|').Split('|') | ForEach-Object { $_.Trim() })
         if ($rawCells.Count -eq 0 -or $rawCells[0] -match '^:?-{2,}:?$') { continue }
 
         if ($rawCells -contains "Archive Path" -and ($rawCells -contains "Verification Status" -or $rawCells -contains "File Exists")) {
             $colIndex = @{}
-            for ($ci = 0; $ci -lt $rawCells.Count; $ci++) {
-                $colIndex[$rawCells[$ci]] = $ci
-            }
+            for ($ci = 0; $ci -lt $rawCells.Count; $ci++) { $colIndex[$rawCells[$ci]] = $ci }
             continue
         }
 
@@ -467,8 +541,6 @@ try {
                 if (-not $inventoryManifestSet.Add($archPathCell)) {
                     Fail-Gate "GATE-09" "Zero duplicate inventory paths" "Check uniqueness of '$archPathCell'" "Duplicate normalized path in AUDIT_FILE_MANIFEST.md inventory: '$archPathCell'"
                 }
-            } else {
-                $traceRowsChecked++
             }
 
             $candidatePath = Join-Path $hanExtDir ($archPathCell.Replace('/', '\'))
@@ -479,11 +551,8 @@ try {
             $actualItem = Get-Item -LiteralPath $candidatePath
             if (-not [string]::IsNullOrWhiteSpace($sizeCell)) {
                 $parsedSize = 0L
-                if (-not [int64]::TryParse($sizeCell, [ref]$parsedSize)) {
-                    Fail-Gate "GATE-09" "Manifest -> Archive byte size validation" "Parse size for $archPathCell" "Invalid size value '$sizeCell' for '$archPathCell'"
-                }
-                if ([int64]$actualItem.Length -ne $parsedSize) {
-                    Fail-Gate "GATE-09" "Manifest -> Archive byte size match" "Compare size of $archPathCell" "Size Mismatch on '$archPathCell': actual=$($actualItem.Length) vs manifest=$parsedSize"
+                if (-not [int64]::TryParse($sizeCell, [ref]$parsedSize) -or [int64]$actualItem.Length -ne $parsedSize) {
+                    Fail-Gate "GATE-09" "Manifest -> Archive byte size match" "Compare size of $archPathCell" "Size Mismatch on '$archPathCell': actual=$($actualItem.Length) vs manifest=$sizeCell"
                 }
             } elseif ($isInventorySection) {
                 Fail-Gate "GATE-09" "Inventory byte size required" "Check Size column" "Missing Size (bytes) in inventory for '$archPathCell'"
@@ -503,7 +572,6 @@ try {
         Fail-Gate "GATE-09" "Audit Handover inventory non-empty" "Parse Section Complete Handover Archive File Inventory" "AUDIT_FILE_MANIFEST.md contains zero inventory file rows"
     }
 
-    # Reverse Direction: Archive -> Manifest (reject ANY extra unlisted or disallowed path)
     $extraFiles = [System.Collections.Generic.List[string]]::new()
     foreach ($hf in $hanFiles) {
         $relUnix = $hf.FullName.Substring($hanExtDir.Length).TrimStart('\', '/').Replace('\', '/')
@@ -518,11 +586,9 @@ try {
     if ($extraFiles.Count -gt 0) {
         Fail-Gate "GATE-09" "Archive -> Manifest exact match (0 unlisted files)" "Reverse compare Handover ZIP files vs manifest" "Extra unlisted file(s) found inside Handover ZIP: $($extraFiles -join ', ')"
     }
-    Pass-Gate "GATE-09" "Bidirectional Audit Handover completeness & accuracy" "Verify Manifest <-> Handover ZIP ($($inventoryManifestSet.Count) inventory + AUDIT_FILE_MANIFEST.md)" "Bidirectional match 100%: $($inventoryManifestSet.Count) inventory verified (+1 manifest), 0 Missing, 0 Extra, 0 Duplicates, 0 Mismatches" "evidence/handover/audit_handover_completeness.txt"
+    Pass-Gate "GATE-09" "Bidirectional Audit Handover completeness & accuracy" "Verify Manifest <-> Handover ZIP ($($inventoryManifestSet.Count) inventory + AUDIT_FILE_MANIFEST.md)" "Bidirectional match 100%: $($inventoryManifestSet.Count) inventory verified (+1 manifest), 0 Missing, 0 Extra, 0 Duplicates, 0 Mismatches" "handover/audit_handover_completeness.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-10: Loopback Port Binding Enforcement Across Compose Files
-    # --------------------------------------------------------------------------
     $composeFiles = @(Get-ChildItem -LiteralPath $srcExtDir -Filter "docker-compose*.yml")
     foreach ($cf in $composeFiles) {
         $yamlLines = [System.IO.File]::ReadAllLines($cf.FullName)
@@ -548,12 +614,13 @@ try {
             }
         }
     }
-    Pass-Gate "GATE-10" "All Compose ports bound strictly to 127.0.0.1" "Inspect docker-compose*.yml ports blocks" "Checked $($composeFiles.Count) compose file(s); 100% bound to loopback 127.0.0.1" "evidence/docker/docker_compose_verification.txt"
+    Pass-Gate "GATE-10" "All Compose ports bound strictly to 127.0.0.1" "Inspect docker-compose*.yml ports blocks" "Checked $($composeFiles.Count) compose file(s); 100% bound to loopback 127.0.0.1" "docker/docker_compose_verification.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-11: All 4 Secret Scan Reports Present/Targeted/Clean + Live ZIP Scans
-    # --------------------------------------------------------------------------
-    $secEvDir = Join-Path $releaseDir "evidence\security"
+    $postSecDir = Join-Path $releaseDir "post-package-evidence\v1.6.6\security"
+    $legacySecDir = Join-Path $releaseDir "evidence\security"
+    $secEvDir = if (Test-Path -LiteralPath $postSecDir) { $postSecDir } else { $legacySecDir }
+
     $requiredScanReports = @(
         @{ File = "secret_scan_repository.txt"; Kind = "repo"; ExpectedMatch = [regex]::Escape((Split-Path -Leaf $repoRoot)) },
         @{ File = "source_package_scan.txt"; Kind = "zip"; ExpectedMatch = [regex]::Escape($sourceZipName) },
@@ -574,15 +641,12 @@ try {
         $mCount  = [regex]::Match($rpRaw, '(?m)^Total Files Scanned:\s*(\d+)\s*$')
 
         if (-not $mTarget.Success -or -not $mFound.Success -or -not $mStatus.Success -or -not $mExit.Success -or -not $mCount.Success) {
-            Fail-Gate "GATE-11" "Secret scan report schema complete" "Parse $($sr.File)" "Scan report '$($sr.File)' missing required metadata fields (Target/Findings/Status/Exit Code/Files Scanned)"
+            Fail-Gate "GATE-11" "Secret scan report schema complete" "Parse $($sr.File)" "Scan report '$($sr.File)' missing required metadata fields"
         }
         $tVal = $mTarget.Groups[1].Value.Trim()
         if ($sr.Kind -eq "repo") {
-            if ($tVal -match '\.zip$') {
-                Fail-Gate "GATE-11" "Repository scan report targets repository" "Verify target in $($sr.File)" "Repository scan '$($sr.File)' wrongly targets ZIP archive '$tVal'"
-            }
-            if ($tVal -notmatch $sr.ExpectedMatch) {
-                Fail-Gate "GATE-11" "Repository scan report targets active repository" "Verify target in $($sr.File)" "Repository scan target '$tVal' mismatches expected repository '$repoRoot'"
+            if ($tVal -match '\.zip$' -or $tVal -notmatch $sr.ExpectedMatch) {
+                Fail-Gate "GATE-11" "Repository scan report targets active repository" "Verify target in $($sr.File)" "Repository scan '$($sr.File)' points to wrong target '$tVal'"
             }
         } else {
             if ($tVal -notmatch ($sr.ExpectedMatch + '$')) {
@@ -590,14 +654,13 @@ try {
             }
         }
         if ([int]$mFound.Groups[1].Value -ne 0 -or $mStatus.Groups[1].Value.Trim() -cne "100% CLEAN" -or [int]$mExit.Groups[1].Value -ne 0) {
-            Fail-Gate "GATE-11" "Secret scan report passed cleanly" "Check Findings & Exit in $($sr.File)" "Security scan report '$($sr.File)' did not pass cleanly (Findings=$($mFound.Groups[1].Value), Status=$($mStatus.Groups[1].Value.Trim()), Exit=$($mExit.Groups[1].Value))"
+            Fail-Gate "GATE-11" "Secret scan report passed cleanly" "Check Findings & Exit in $($sr.File)" "Security scan report '$($sr.File)' failed (Findings=$($mFound.Groups[1].Value), Status=$($mStatus.Groups[1].Value.Trim()), Exit=$($mExit.Groups[1].Value))"
         }
         if ([int]$mCount.Groups[1].Value -le 0) {
             Fail-Gate "GATE-11" "Secret scan inspected >0 files" "Check Files Scanned in $($sr.File)" "Security scan report '$($sr.File)' recorded 0 scanned files"
         }
     }
 
-    # Also run live verification scan on extracted Source, Verification, Handover contents
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     try {
@@ -615,11 +678,9 @@ try {
     } finally {
         $ErrorActionPreference = $prevEap
     }
-    Pass-Gate "GATE-11" "All 4 secret scan reports valid & live scans 100% CLEAN" "Verify 4 scan reports + live ZIP secret scans" "All 4 reports (repo, source, verification, handover) verified 100% CLEAN (Exit 0, 0 findings)" "evidence/security/verification_package_scan.txt"
+    Pass-Gate "GATE-11" "All 4 secret scan reports valid & live scans 100% CLEAN" "Verify 4 scan reports + live ZIP secret scans" "All 4 reports (repo, source, verification, handover) verified 100% CLEAN (Exit 0, 0 findings)" "security/verification_package_scan.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-12: Independent Git Evidence Verification (Verification ZIP & Handover ZIP)
-    # --------------------------------------------------------------------------
     $gitAuditSummaries = [System.Collections.Generic.List[string]]::new()
     foreach ($evPkg in @(@("Verification ZIP", $verExtDir), @("Handover ZIP", $hanExtDir))) {
         $pkgLabel = $evPkg[0]
@@ -640,7 +701,7 @@ try {
         $mBrVal = [regex]::Match($branchRaw, '(?m)^Branch:\s*(\S+)\s*$')
         $evBranchVal = if ($mBrVal.Success) { $mBrVal.Groups[1].Value.Trim() } else { $branchRaw.Trim() }
         if ($evBranchVal -cne $actualBranch -or $branchRaw -notmatch '(?m)^Timestamp:\s*\S+' -or $branchRaw -notmatch '(?m)^Exit Code:\s*0\s*$') {
-            Fail-Gate "GATE-12" "Valid Branch evidence inside $pkgLabel" "Inspect git_branch.txt in $pkgLabel" "git_branch.txt invalid or mismatched in $pkgLabel (branch='$evBranchVal' vs HEAD branch='$actualBranch')"
+            Fail-Gate "GATE-12" "Valid Branch evidence inside $pkgLabel" "Inspect git_branch.txt in $pkgLabel" "git_branch.txt invalid or mismatched in $pkgLabel"
         }
 
         $mCmVal = [regex]::Match($commitRaw, '(?m)^Commit:\s*([a-fA-F0-9]{40})\s*$')
@@ -649,7 +710,6 @@ try {
             Fail-Gate "GATE-12" "Valid 40-char Commit evidence inside $pkgLabel" "Inspect git_commit.txt in $pkgLabel" "git_commit.txt invalid or mismatched in $pkgLabel (commit='$evCommitVal' vs HEAD='$actualHeadCommit')"
         }
 
-        # Strict Fail-Closed validation on git_status.txt (reject empty files, missing metadata, non-zero exit, or non-empty porcelain section)
         if ([string]::IsNullOrWhiteSpace($statusRaw)) {
             Fail-Gate "GATE-12" "Non-empty metadata-complete git_status.txt in $pkgLabel" "Inspect git_status.txt in $pkgLabel" "git_status.txt inside $pkgLabel is completely empty (0 metadata)"
         }
@@ -675,11 +735,9 @@ try {
         }
         $gitAuditSummaries.Add("$pkgLabel=OK($($evCommitVal.Substring(0,8))/Clean)")
     }
-    Pass-Gate "GATE-12" "Independent Git evidence & metadata-complete git_status.txt verified across Verification & Handover ZIPs" "Verify 5 Git evidence files + metadata/markers in Verification & Handover ZIPs" ($gitAuditSummaries -join "; ") "evidence/git/git_status.txt"
+    Pass-Gate "GATE-12" "Independent Git evidence & metadata-complete git_status.txt verified across Verification & Handover ZIPs" "Verify 5 Git evidence files + metadata/markers in Verification & Handover ZIPs" ($gitAuditSummaries -join "; ") "git/git_status.txt"
 
-    # --------------------------------------------------------------------------
     # GATE-13: Writing Constraint Verification Across ALL 3 ZIPs + Evidence + Report
-    # --------------------------------------------------------------------------
     $enDashChar = [char]0x2013
     $emDashChar = [char]0x2014
     $dashViolations = [System.Collections.Generic.List[string]]::new()
@@ -694,10 +752,14 @@ try {
     $srcMdFiles = @(Get-ChildItem -LiteralPath $srcExtDir -Filter "*.md" -Recurse -File)
     $verMdFiles = @(Get-ChildItem -LiteralPath $verExtDir -Filter "*.md" -Recurse -File)
     $hanMdFiles = @(Get-ChildItem -LiteralPath $hanExtDir -Filter "*.md" -Recurse -File)
-    $evMdDir = Join-Path $releaseDir "evidence"
+    $evMdDirPost = Join-Path $releaseDir "post-package-evidence"
+    $evMdDirLeg = Join-Path $releaseDir "evidence"
     $evMdFiles = @()
-    if (Test-Path -LiteralPath $evMdDir) {
-        $evMdFiles = @(Get-ChildItem -LiteralPath $evMdDir -Filter "*.md" -Recurse -File)
+    if (Test-Path -LiteralPath $evMdDirPost) {
+        $evMdFiles += @(Get-ChildItem -LiteralPath $evMdDirPost -Filter "*.md" -Recurse -File)
+    }
+    if (Test-Path -LiteralPath $evMdDirLeg) {
+        $evMdFiles += @(Get-ChildItem -LiteralPath $evMdDirLeg -Filter "*.md" -Recurse -File)
     }
     $extReportFiles = @(Get-ChildItem -LiteralPath $releaseDir -Filter "*.md" -File)
 
@@ -734,17 +796,12 @@ try {
     $dashReportLines.Add("Total Markdown Files Checked Across All Scopes: $totalMdChecked")
     $dashReportLines.Add("Total Forbidden Dash Violations: $($dashViolations.Count)")
     $dashReportLines.Add("Overall Status: $(if ($dashViolations.Count -eq 0) { 'PASS (100% ASCII Dash Compliant)' } else { 'FAIL' })")
-
-    if (-not [string]::IsNullOrWhiteSpace($OutputDashCheckPath)) {
-        $dDir = Split-Path -Parent $OutputDashCheckPath
-        if ($dDir -and -not (Test-Path -LiteralPath $dDir)) { New-Item -ItemType Directory -Path $dDir -Force | Out-Null }
-        [System.IO.File]::WriteAllLines($OutputDashCheckPath, $dashReportLines, $utf8NoBom)
-    }
+    Write-LinesIfRequested $OutputDashCheckPath $dashReportLines
 
     if ($dashViolations.Count -gt 0) {
         Fail-Gate "GATE-13" "Zero en dash / em dash in all ZIPs, evidence & external report" "Scan markdown files across all 3 ZIPs + evidence + report" ($dashViolations -join "; ")
     }
-    Pass-Gate "GATE-13" "Zero en dash / em dash in all ZIPs, evidence & external report" "Scan $totalMdChecked markdown files across 3 ZIPs + evidence + external reports" "Checked $totalMdChecked markdown files (Src=$($srcMdFiles.Count), Ver=$($verMdFiles.Count), Han=$($hanMdFiles.Count), Ev=$($evMdFiles.Count), Ext=$($extReportFiles.Count)): 0 en/em dashes" "evidence/release/writing_constraint_verification.txt"
+    Pass-Gate "GATE-13" "Zero en dash / em dash in all ZIPs, evidence & external report" "Scan $totalMdChecked markdown files across 3 ZIPs + evidence + external reports" "Checked $totalMdChecked markdown files (Src=$($srcMdFiles.Count), Ver=$($verMdFiles.Count), Han=$($hanMdFiles.Count), Ev=$($evMdFiles.Count), Ext=$($extReportFiles.Count)): 0 en/em dashes" "release/writing_constraint_verification.txt"
 
     Write-SummaryIfRequested "PASSED"
 

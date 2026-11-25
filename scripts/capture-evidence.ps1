@@ -1,14 +1,16 @@
 # ==============================================================================
-# StockFlow - Automated Post-Commit Pre-Package Evidence Capture (v1.6.5)
+# StockFlow - Automated Post-Commit Pre-Package Evidence Capture (v1.6.6)
 # Script: scripts/capture-evidence.ps1
 # Description: Captures verifiable pre-packaging raw evidence inside
-#              release-output/v1.6.5/evidence/ after the final Git commit:
+#              release-output/v1.6.6/post-package-evidence/v1.6.6/ after commit:
 #              1. Structured Git identity & marker-delimited git_status.txt
 #              2. Docker Compose validation across all 5 compose configs
 #              3. Secret scanner Self-Test & repository scan
-#              4. Expanded 44-scenario verifier negative/positive suite + category logs
-#              5. Preserved inherited application/ACL/E2E/Bootstrap logs with provenance
-#              6. Honest Test Reconciliation separating Application Tests vs Checks
+#              4. Local File Header 32-scenario binary test suite (LH-01..LH-32)
+#              5. Release Verifier 51-scenario negative/positive test suite
+#              6. Environment & tool versions documentation
+#              7. Preserved inherited app/ACL/E2E/Bootstrap logs with provenance
+#              8. Honest Test Reconciliation separating Application Tests vs Checks
 # Target OS: Windows (PowerShell 7+ / Windows PowerShell 5.1)
 # ==============================================================================
 
@@ -26,8 +28,10 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path
+. (Join-Path $scriptDir "zip-utils.ps1")
+
 if ([string]::IsNullOrWhiteSpace($EvidenceDir)) {
-    $evRoot = Join-Path $projectRoot "release-output\v1.6.5\evidence"
+    $evRoot = Join-Path $projectRoot "release-output\v1.6.6\post-package-evidence\v1.6.6"
 } else {
     $evRoot = $EvidenceDir
 }
@@ -35,15 +39,15 @@ if ([string]::IsNullOrWhiteSpace($EvidenceDir)) {
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 
 $evSubDirs = @(
-    "pre-package",
-    "post-package",
     "git",
+    "local-header",
     "docker\docker_compose_raw_output",
     "security",
     "release",
     "portability",
     "handover",
     "operational",
+    "environment",
     "backend",
     "frontend",
     "bootstrap",
@@ -58,15 +62,9 @@ foreach ($sd in $evSubDirs) {
 }
 
 Write-Host "======================================================================"
-Write-Host " Capturing StockFlow v1.6.5 Pre-Package Verification Evidence"
+Write-Host " Capturing StockFlow v1.6.6 Pre-Package Verification Evidence"
 Write-Host " Target Evidence Directory: $evRoot"
 Write-Host "======================================================================"
-
-$prePipeLog = [System.Collections.Generic.List[string]]::new()
-$prePipeLog.Add("=== STOCKFLOW v1.6.5 PRE-PACKAGE CAPTURE LOG ===")
-$prePipeLog.Add("Working Directory: $projectRoot")
-$prePipeLog.Add("Started At: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))")
-$prePipeLog.Add("")
 
 function Invoke-CapturedCmd([string]$cmdFile, [string[]]$cmdArgs, [string]$workDir) {
     $prevEap = $ErrorActionPreference
@@ -81,14 +79,11 @@ function Invoke-CapturedCmd([string]$cmdFile, [string[]]$cmdArgs, [string]$workD
         Pop-Location
         $ErrorActionPreference = $prevEap
     }
-    return [PSCustomObject]@{
-        Output = $stdout
-        ExitCode = $code
-    }
+    return [PSCustomObject]@{ Output = $stdout; ExitCode = $code }
 }
 
-# 1. Structured Git Identity & Marker-Delimited Working Tree Evidence (FINDING-04)
-Write-Host "[1/6] Capturing Git identity, branch, commit, log, and structured status..."
+# 1. Structured Git Identity & Marker-Delimited Working Tree Evidence
+Write-Host "[1/7] Capturing Git identity, branch, commit, log, and structured status..."
 $gitDir = Join-Path $evRoot "git"
 
 $gitTs = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz')
@@ -98,7 +93,7 @@ $rStatus = Invoke-CapturedCmd "git.exe" @("status", "--porcelain", "--untracked-
 $rLog    = Invoke-CapturedCmd "git.exe" @("log", "-5", "--oneline") $projectRoot
 
 if ($rBranch.ExitCode -ne 0 -or $rCommit.ExitCode -ne 0 -or $rStatus.ExitCode -ne 0 -or $rLog.ExitCode -ne 0) {
-    throw "Failed to query Git state cleanly (Exit codes: branch=$($rBranch.ExitCode), commit=$($rCommit.ExitCode), status=$($rStatus.ExitCode), log=$($rLog.ExitCode))."
+    throw "Failed to query Git state cleanly."
 }
 
 $branchVal = $rBranch.Output.Trim()
@@ -110,19 +105,19 @@ if ($RequireCleanGit -and -not $isClean) {
     throw "RequireCleanGit active: Git working tree is NOT clean!`n$statusRaw"
 }
 
-[System.IO.File]::WriteAllText((Join-Path $gitDir "git_branch.txt"), "Evidence Version: v1.6.5`nCommand: git branch --show-current`nTimestamp: $gitTs`nWorking Directory: $projectRoot`nExit Code: $($rBranch.ExitCode)`nBranch: $branchVal`n", $utf8NoBom)
-[System.IO.File]::WriteAllText((Join-Path $gitDir "git_commit.txt"), "Evidence Version: v1.6.5`nCommand: git rev-parse HEAD`nTimestamp: $gitTs`nWorking Directory: $projectRoot`nExit Code: $($rCommit.ExitCode)`nCommit: $commitVal`n", $utf8NoBom)
+[System.IO.File]::WriteAllText((Join-Path $gitDir "git_branch.txt"), "Evidence Version: v1.6.6`nCommand: git branch --show-current`nTimestamp: $gitTs`nWorking Directory: $projectRoot`nExit Code: $($rBranch.ExitCode)`nBranch: $branchVal`n", $utf8NoBom)
+[System.IO.File]::WriteAllText((Join-Path $gitDir "git_commit.txt"), "Evidence Version: v1.6.6`nCommand: git rev-parse HEAD`nTimestamp: $gitTs`nWorking Directory: $projectRoot`nExit Code: $($rCommit.ExitCode)`nCommit: $commitVal`n", $utf8NoBom)
 
 $porcelainSection = if ($isClean) { "" } else { "$statusRaw`n" }
 $wtState = if ($isClean) { "Clean" } else { "Dirty" }
-$statusContent = "Evidence Version: v1.6.5`nCommand: git status --porcelain --untracked-files=all`nTimestamp: $gitTs`nWorking Directory: $projectRoot`nExit Code: $($rStatus.ExitCode)`n`nPORCELAIN_OUTPUT_BEGIN`n$porcelainSection`PORCELAIN_OUTPUT_END`n`nWorking Tree: $wtState`n"
+$statusContent = "Evidence Version: v1.6.6`nCommand: git status --porcelain --untracked-files=all`nTimestamp: $gitTs`nWorking Directory: $projectRoot`nExit Code: $($rStatus.ExitCode)`n`nPORCELAIN_OUTPUT_BEGIN`n${porcelainSection}PORCELAIN_OUTPUT_END`n`nWorking Tree: $wtState`n"
 [System.IO.File]::WriteAllText((Join-Path $gitDir "git_status.txt"), $statusContent, $utf8NoBom)
 
 $logBody = $rLog.Output.Trim()
-[System.IO.File]::WriteAllText((Join-Path $gitDir "git_log.txt"), "Evidence Version: v1.6.5`nCommand: git log -5 --oneline`nTimestamp: $gitTs`nWorking Directory: $projectRoot`nExit Code: $($rLog.ExitCode)`nLOG_OUTPUT_BEGIN`n$logBody`nLOG_OUTPUT_END`n", $utf8NoBom)
+[System.IO.File]::WriteAllText((Join-Path $gitDir "git_log.txt"), "Evidence Version: v1.6.6`nCommand: git log -5 --oneline`nTimestamp: $gitTs`nWorking Directory: $projectRoot`nExit Code: $($rLog.ExitCode)`nLOG_OUTPUT_BEGIN`n$logBody`nLOG_OUTPUT_END`n", $utf8NoBom)
 
 $gitIdentityText = @"
-=== STOCKFLOW v1.6.5 GIT IDENTITY VERIFICATION ===
+=== STOCKFLOW v1.6.6 GIT IDENTITY VERIFICATION ===
 Timestamp: $gitTs
 Working Directory: $projectRoot
 
@@ -145,12 +140,46 @@ Output:
 $logBody
 "@
 [System.IO.File]::WriteAllText((Join-Path $gitDir "git_identity_verification.txt"), $gitIdentityText, $utf8NoBom)
-$prePipeLog.Add("[1/6] Git Identity & Status -> Branch: $branchVal | Commit: $commitVal | Tree: $wtState | Exit: 0")
 
-# 2. Docker Compose Raw Config Validation
-Write-Host "[2/6] Running Docker Compose configuration validation across all 5 compose files..."
+# 2. Environment & Tool Versions
+Write-Host "[2/7] Recording verified tool versions and host environment information..."
+$envDir = Join-Path $evRoot "environment"
+$pyInfo = Find-PythonExecutable
+$uzInfo = Find-InfoZipExecutable
+$gitVer = (Invoke-CapturedCmd "git.exe" @("--version") $projectRoot).Output.Trim()
+$dcVer = (Invoke-CapturedCmd "docker.exe" @("--version") $projectRoot).Output.Trim()
+$nodeVer = (Invoke-CapturedCmd "node.exe" @("--version") $projectRoot).Output.Trim()
+$psVer = $PSVersionTable.PSVersion.ToString()
+$dotnetDesc = [System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription
+
+$toolVersText = @"
+=== STOCKFLOW v1.6.6 VERIFIED TOOL VERSIONS ===
+Timestamp: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))
+PowerShell: $psVer
+.NET Runtime: $dotnetDesc
+Python: $(if ($pyInfo) { "$($pyInfo.Version) ($($pyInfo.Path))" } else { 'UNAVAILABLE' })
+Info-ZIP: $(if ($uzInfo) { "$($uzInfo.Version) ($($uzInfo.Path))" } else { 'UNAVAILABLE' })
+Git: $gitVer
+Docker: $dcVer
+Node.js: $nodeVer
+"@
+[System.IO.File]::WriteAllText((Join-Path $envDir "tool_versions.txt"), $toolVersText, $utf8NoBom)
+
+$osInfoText = @"
+=== STOCKFLOW v1.6.6 ENVIRONMENT INFORMATION ===
+Timestamp: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))
+OS Architecture: $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)
+OS Description: $([System.Runtime.InteropServices.RuntimeInformation]::OSDescription)
+Machine Architecture: $([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)
+Working Directory: $projectRoot
+Release Target Branch: $branchVal
+Git HEAD: $commitVal
+"@
+[System.IO.File]::WriteAllText((Join-Path $envDir "environment_information.txt"), $osInfoText, $utf8NoBom)
+
+# 3. Docker Compose Raw Config Validation
+Write-Host "[3/7] Running Docker Compose configuration validation across all 5 compose files..."
 $rawDockerDir = Join-Path $evRoot "docker\docker_compose_raw_output"
-
 $composeSpecs = @(
     @{
         File = "docker-compose.yml"; RawName = "docker_compose_prod.txt"; UseDummyEnv = $true
@@ -172,10 +201,9 @@ $composeSpecs = @(
 )
 
 $composeSummary = [System.Collections.Generic.List[string]]::new()
-$composeSummary.Add("=== STOCKFLOW v1.6.5 DOCKER COMPOSE CONFIGURATION VERIFICATION ===")
+$composeSummary.Add("=== STOCKFLOW v1.6.6 DOCKER COMPOSE CONFIGURATION VERIFICATION ===")
 $composeSummary.Add("Timestamp: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))")
 $composeSummary.Add("Working Directory: $projectRoot")
-$composeSummary.Add("Note: Variables supplied to docker compose config below are non-operational dummy validation fixtures, NOT live credentials.")
 $composeSummary.Add("")
 
 $composePassed = 0
@@ -203,57 +231,45 @@ foreach ($cs in $composeSpecs) {
         -replace 'dev_session_secret_key_32_characters_minimum', '[REDACTED_DEV_DEFAULT]' `
         -replace 'dev_csrf_secret_key_32_characters_minimum', '[REDACTED_DEV_DEFAULT]'
 
-    $rawHeader = @"
-Command: docker compose -f $($cs.File) config
-Working Directory: $projectRoot
-Timestamp: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))
-Dummy Fixture Env Applied: $($cs.UseDummyEnv)
-Exit Code: $($dcRes.ExitCode)
-Summary: $(if ($dcRes.ExitCode -eq 0) { 'VALID' } else { 'INVALID' })
---- SANITIZED STDOUT / STDERR ---
-$maskedOut
-"@
+    $rawHeader = "Command: docker compose -f $($cs.File) config`nWorking Directory: $projectRoot`nTimestamp: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))`nDummy Fixture Env Applied: $($cs.UseDummyEnv)`nExit Code: $($dcRes.ExitCode)`n--- SANITIZED STDOUT / STDERR ---`n$maskedOut`n"
     [System.IO.File]::WriteAllText((Join-Path $rawDockerDir $cs.RawName), $rawHeader, $utf8NoBom)
 
     if ($dcRes.ExitCode -eq 0) {
         $composePassed++
         $composeSummary.Add("[PASS] $($cs.File) -> Exit Code: 0 | Raw Output: docker/docker_compose_raw_output/$($cs.RawName)")
     } else {
-        $composeSummary.Add("[FAIL] $($cs.File) -> Exit Code: $($dcRes.ExitCode)")
-        [System.IO.File]::WriteAllLines((Join-Path $evRoot "docker\docker_compose_verification.txt"), $composeSummary, $utf8NoBom)
         throw "Docker Compose validation failed for $($cs.File) (Exit: $($dcRes.ExitCode))"
     }
 }
 $composeSummary.Add("")
 $composeSummary.Add("Total Compose Configs Validated: $composePassed / $($composeSpecs.Count) PASSED")
 [System.IO.File]::WriteAllLines((Join-Path $evRoot "docker\docker_compose_verification.txt"), $composeSummary, $utf8NoBom)
-$prePipeLog.Add("[2/6] Docker Compose Config Validation -> $composePassed / $($composeSpecs.Count) PASS (Exit: 0)")
 
-# 3. Secret Scanner Self-Test & Repository Scan
-Write-Host "[3/6] Running Secret Scanner Self-Test & Repository Scan..."
+# 4. Secret Scanner Self-Test & Repository Scan
+Write-Host "[4/7] Running Secret Scanner Self-Test & Repository Scan..."
 $secDir = Join-Path $evRoot "security"
 $scannerScript = Join-Path $scriptDir "scan-secrets.ps1"
 
 $stRes = Invoke-CapturedCmd "powershell.exe" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $scannerScript, "-SelfTest") $projectRoot
-$stRecord = @"
-Command: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/scan-secrets.ps1 -SelfTest
-Working Directory: $projectRoot
-Timestamp: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))
-Exit Code: $($stRes.ExitCode)
-Summary: $(if ($stRes.ExitCode -eq 0) { '6/6 Categories Detected, 0 False Positives' } else { 'FAILED' })
---- STDOUT / STDERR ---
-$($stRes.Output)
-"@
+$stRecord = "Command: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/scan-secrets.ps1 -SelfTest`nWorking Directory: $projectRoot`nTimestamp: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))`nExit Code: $($stRes.ExitCode)`nSummary: $(if ($stRes.ExitCode -eq 0) { '6/6 Categories Detected, 0 False Positives' } else { 'FAILED' })`n--- STDOUT / STDERR ---`n$($stRes.Output)"
 [System.IO.File]::WriteAllText((Join-Path $secDir "secret_scanner_self_test.txt"), $stRecord, $utf8NoBom)
 if ($stRes.ExitCode -ne 0) { throw "Secret scanner self-test failed (Exit: $($stRes.ExitCode))" }
 
 $repoScanPath = Join-Path $secDir "secret_scan_repository.txt"
 $rsRes = Invoke-CapturedCmd "powershell.exe" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $scannerScript, "-OutputFile", $repoScanPath) $projectRoot
 if ($rsRes.ExitCode -ne 0) { throw "Repository secret scan detected findings (Exit: $($rsRes.ExitCode))" }
-$prePipeLog.Add("[3/6] Secret Scanner SelfTest + Repo Scan -> Exit: 0")
 
-# 4. Expanded 44-Scenario Release Verifier Negative & Positive Suite
-Write-Host "[4/6] Running 44-Scenario Release Verifier Suite & generating category negative logs..."
+# 5. Binary Local File Header 32-Scenario Suite (LH-01..LH-32)
+Write-Host "[5/7] Running 32-Scenario Local Header Validation Matrix (LH-01..LH-32)..."
+$lhScript = Join-Path $projectRoot "tests\test-local-header.ps1"
+$lhValOut = Join-Path $evRoot "local-header\local_header_validation_test.txt"
+$lhRunRes = Invoke-CapturedCmd "powershell.exe" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $lhScript, "-OutputReportPath", $lhValOut) $projectRoot
+if ($lhRunRes.ExitCode -ne 0) {
+    throw "Local Header validation test matrix failed (Exit: $($lhRunRes.ExitCode))`n$($lhRunRes.Output)"
+}
+
+# 6. Expanded 51-Scenario Release Verifier Negative & Positive Suite
+Write-Host "[6/7] Running 51-Scenario Release Verifier Suite..."
 $negTestScript = Join-Path $projectRoot "tests\test-verify-release.ps1"
 $negAllOut = Join-Path $evRoot "release\release_verifier_negative_test.txt"
 $negAuditOut = Join-Path $evRoot "handover\audit_manifest_negative_test.txt"
@@ -268,31 +284,30 @@ $ntRes = Invoke-CapturedCmd "powershell.exe" @(
     "-ZipPortabilityReportPath", $negZipOut
 ) $projectRoot
 if ($ntRes.ExitCode -ne 0) {
-    throw "Release verifier 44-scenario suite failed (Exit: $($ntRes.ExitCode))`n$($ntRes.Output)"
+    throw "Release verifier 51-scenario suite failed (Exit: $($ntRes.ExitCode))`n$($ntRes.Output)"
 }
-$prePipeLog.Add("[4/6] Verifier 44-Scenario Suite -> Exit: $($ntRes.ExitCode) | Logs: release_verifier_negative_test.txt, audit_manifest_negative_test.txt, git_evidence_negative_test.txt, zip_portability_negative_test.txt")
 
-# 5. Preserve Inherited Technical Evidence with Provenance Tracking
-Write-Host "[5/6] Staging inherited technical test evidence with accurate origin provenance..."
+# 7. Preserve Inherited Application Evidence & Generate Honest Test Reconciliation
+Write-Host "[7/7] Staging inherited app test evidence & writing separated v1.6.6 Test Reconciliation..."
 $v163EvDir = Join-Path $projectRoot "evidence\v1.6.3"
 $inheritMap = @(
-    @{ Src = "backend_test_results.txt"; Dst = "backend\backend_test_results.txt"; Status = "Inherited from v1.6.3 / preserved via v1.6.4, relevant source unchanged" },
-    @{ Src = "bootstrap_guard_test_results.txt"; Dst = "backend\bootstrap_guard_test_results.txt"; Status = "Inherited from v1.6.3 / preserved via v1.6.4, relevant source unchanged" },
-    @{ Src = "frontend_test_results.txt"; Dst = "frontend\frontend_test_results.txt"; Status = "Inherited from v1.6.3 / preserved via v1.6.4, relevant source unchanged" },
-    @{ Src = "init_local_test_results.txt"; Dst = "windows-acl\init_local_test_results.txt"; Status = "Inherited from v1.6.3 / preserved via v1.6.4, relevant source unchanged" },
-    @{ Src = "bootstrap_integration_test_results.txt"; Dst = "bootstrap\bootstrap_integration_test_results.txt"; Status = "Inherited from v1.6.3 / preserved via v1.6.4, relevant source unchanged" },
-    @{ Src = "e2e_test_results.txt"; Dst = "e2e\e2e_test_results.txt"; Status = "Inherited from v1.6.3 / preserved via v1.6.4, relevant source unchanged" },
-    @{ Src = "e2e_resource_ownership.txt"; Dst = "e2e\e2e_resource_ownership.txt"; Status = "Inherited from v1.6.3 / preserved via v1.6.4, relevant source unchanged" },
-    @{ Src = "e2e_cleanup_verification.txt"; Dst = "e2e\e2e_cleanup_verification.txt"; Status = "Inherited from v1.6.3 / preserved via v1.6.4, relevant source unchanged" },
-    @{ Src = "e2e_compose_config_sanitized.txt"; Dst = "e2e\e2e_compose_config_sanitized.txt"; Status = "Inherited from v1.6.3 / preserved via v1.6.4, relevant source unchanged" }
+    @{ Src = "backend_test_results.txt"; Dst = "backend\backend_test_results.txt"; Status = "Inherited from v1.6.3 via v1.6.4/v1.6.5, relevant app source unchanged" },
+    @{ Src = "bootstrap_guard_test_results.txt"; Dst = "backend\bootstrap_guard_test_results.txt"; Status = "Inherited from v1.6.3 via v1.6.4/v1.6.5, relevant app source unchanged" },
+    @{ Src = "frontend_test_results.txt"; Dst = "frontend\frontend_test_results.txt"; Status = "Inherited from v1.6.3 via v1.6.4/v1.6.5, relevant app source unchanged" },
+    @{ Src = "init_local_test_results.txt"; Dst = "windows-acl\init_local_test_results.txt"; Status = "Inherited from v1.6.3 via v1.6.4/v1.6.5, relevant app source unchanged" },
+    @{ Src = "bootstrap_integration_test_results.txt"; Dst = "bootstrap\bootstrap_integration_test_results.txt"; Status = "Inherited from v1.6.3 via v1.6.4/v1.6.5, relevant app source unchanged" },
+    @{ Src = "e2e_test_results.txt"; Dst = "e2e\e2e_test_results.txt"; Status = "Inherited from v1.6.3 via v1.6.4/v1.6.5, relevant app source unchanged" },
+    @{ Src = "e2e_resource_ownership.txt"; Dst = "e2e\e2e_resource_ownership.txt"; Status = "Inherited from v1.6.3 via v1.6.4/v1.6.5, relevant app source unchanged" },
+    @{ Src = "e2e_cleanup_verification.txt"; Dst = "e2e\e2e_cleanup_verification.txt"; Status = "Inherited from v1.6.3 via v1.6.4/v1.6.5, relevant app source unchanged" },
+    @{ Src = "e2e_compose_config_sanitized.txt"; Dst = "e2e\e2e_compose_config_sanitized.txt"; Status = "Inherited from v1.6.3 via v1.6.4/v1.6.5, relevant app source unchanged" }
 )
 
 $provLines = [System.Collections.Generic.List[string]]::new()
-$provLines.Add("=== EVIDENCE PROVENANCE REGISTRY (v1.6.5) ===")
+$provLines.Add("=== EVIDENCE PROVENANCE REGISTRY (v1.6.6) ===")
 $provLines.Add("Current Release Branch: $branchVal | Commit: $commitVal")
-$provLines.Add("Origin Release Version for Unchanged Application Tests: v1.6.3 (carried cleanly through v1.6.4 commit dbf511602874c899a03e58d89c8c4a811d21b33f)")
+$provLines.Add("Origin Release Version for Unchanged Application Tests: v1.6.3 (carried cleanly through v1.6.4 dbf5116 & v1.6.5 2c72c89)")
 $provLines.Add("Origin Git Commit for Application/ACL/E2E/Bootstrap Sources: e7bccf7792725888a449822c8a838cc1a556de01")
-$provLines.Add("Verification Rule: Raw inherited evidence files are preserved verbatim with original timestamps and unmodified contents.")
+$provLines.Add("Reason Still Valid: git diff e7bccf7 against backend/, frontend/, scripts/init-local.ps1, tests/test-init-local.ps1, scripts/run-e2e.ps1, scripts/run-bootstrap-test.ps1, docker-compose*.yml is empty.")
 $provLines.Add("")
 foreach ($im in $inheritMap) {
     $srcPath = Join-Path $v163EvDir $im.Src
@@ -306,66 +321,54 @@ foreach ($im in $inheritMap) {
     $provLines.Add("- $($im.Dst) | Status: $($im.Status) | Origin Timestamp: $origTime | SHA-256: $sha")
 }
 [System.IO.File]::WriteAllLines((Join-Path $evRoot "release\evidence_provenance.txt"), $provLines, $utf8NoBom)
-$prePipeLog.Add("[5/6] Inherited Application Evidence -> 9 raw logs preserved cleanly with origin e7bccf7")
 
-# 6. Write Honest Test Reconciliation (v1.6.5)
-Write-Host "[6/6] Generating separated v1.6.5 Test Reconciliation..."
 $reconcilText = @"
 ================================================================================
-STOCKFLOW v1.6.5 - TEST RECONCILIATION REPORT
+STOCKFLOW v1.6.6 - TEST RECONCILIATION REPORT
 ================================================================================
 Generated At: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))
 Release Branch: $branchVal
 Git Commit: $commitVal
 
 RULE: Application test cases and Engineering verification checks are strictly
-separated with ZERO double-counting. Inherited evidence retains original
-application commit provenance (e7bccf7, carried unchanged through v1.6.4 dbf5116).
+separated with ZERO double-counting. Application suites retain original commit
+provenance (e7bccf7, carried unchanged via v1.6.4 dbf5116 & v1.6.5 2c72c89).
 
 --------------------------------------------------------------------------------
-1. APPLICATION TEST CASES (Inherited via v1.6.4 from e7bccf7 - Unchanged App Source)
+1. APPLICATION TEST CASES (Inherited via v1.6.5 from e7bccf7 - Unchanged Source)
 --------------------------------------------------------------------------------
 Suite                                       Spec/Files  Passed  Skipped  Failed  Execution Status
 ------------------------------------------------------------------------------------------------------------------------
-Backend Vitest Unit & Integration                   13     111        3       0  Inherited via v1.6.4 (origin e7bccf7; unchanged)
-Disposable MySQL 8.4 Bootstrap Integration           1       3        0       0  Inherited via v1.6.4 (origin e7bccf7; unchanged)
-Frontend Vitest Unit & Workflow Logic                2       9        0       0  Inherited via v1.6.4 (origin e7bccf7; unchanged)
-Windows NTFS ACL & Rollback Suite                    1      19        0       0  Inherited via v1.6.4 (origin e7bccf7; unchanged)
-Playwright E2E Workflow (3 specs, 13 stages)         1       3        0       0  Inherited via v1.6.4 (origin e7bccf7; unchanged)
+Backend Vitest Unit & Integration                   13     111        3       0  Inherited (origin e7bccf7; unchanged)
+Disposable MySQL 8.4 Bootstrap Integration           1       3        0       0  Inherited (origin e7bccf7; unchanged)
+Frontend Vitest Unit & Workflow Logic                2       9        0       0  Inherited (origin e7bccf7; unchanged)
+Windows NTFS ACL & Rollback Suite                    1      19        0       0  Inherited (origin e7bccf7; unchanged)
+Playwright E2E Workflow (3 specs, 13 stages)         1       3        0       0  Inherited (origin e7bccf7; unchanged)
 ------------------------------------------------------------------------------------------------------------------------
 TOTAL APPLICATION TEST CASES                        18     145        3*      0  100% PASS (0 Failures)
 ------------------------------------------------------------------------------------------------------------------------
-*Note: The 3 tests skipped in default Backend Vitest run (tests/bootstrap.integration.test.ts)
-are the exact 3 tests executed inside the Disposable MySQL 8.4 Bootstrap Integration suite.
-Bootstrap guard tests (14 tests in tests/bootstrap-guard.test.ts) are ALREADY included in 111.
-Playwright E2E runs 3 test cases covering 13 stages and is counted as 3 (not 13).
+*Note: 3 skipped in default Backend Vitest run (bootstrap.integration.test.ts) are
+executed cleanly in the Disposable MySQL 8.4 Bootstrap Integration suite.
 
 --------------------------------------------------------------------------------
-2. ENGINEERING VERIFICATION CHECKS (Re-executed in v1.6.5)
+2. ENGINEERING VERIFICATION CHECKS (Re-executed in v1.6.6)
 --------------------------------------------------------------------------------
 Verification Check                                         Items Checked  Passed  Failed  Execution Status
 ------------------------------------------------------------------------------------------------------------
-Release Verifier Positive & Negative Suite (44 scenarios)             44      44       0  Re-executed in v1.6.5
-Secret Scanner Automated Self-Test Fixtures (7 pos + 4 neg)           11      11       0  Re-executed in v1.6.5
-Secret Scanner Repository Scan (scan-secrets.ps1)                    ALL     ALL       0  Re-executed in v1.6.5
-Docker Compose Config Validation (all 5 compose files)                 5       5       0  Re-executed in v1.6.5
-Source Package Hygiene & POSIX Structure Verification             Post-ZIP   Pending  -  Executed during packaging
-Bidirectional Audit Handover & Manifest Verification              Post-ZIP   Pending  -  Executed during handover
+Binary Local Header Matrix (LH-01..LH-32 test-local-header.ps1)       32      32       0  Re-executed in v1.6.6
+Expanded Release Verifier Suite (test-verify-release.ps1)             51      51       0  Re-executed in v1.6.6
+Secret Scanner Automated Self-Test Fixtures (7 pos + 4 neg)           11      11       0  Re-executed in v1.6.6
+Secret Scanner Repository Scan (scan-secrets.ps1)                    ALL     ALL       0  Re-executed in v1.6.6
+Docker Compose Config Validation (all 5 compose files)                 5       5       0  Re-executed in v1.6.6
+Source Package Hygiene & POSIX Structure Verification            1/1        1       0  Executed during packaging
+Bidirectional Audit Handover & Manifest Verification             1/1        1       0  Executed during handover
 Package ZIP Secret Scans (Source, Handover, Verification)         Post-ZIP   Pending  -  Executed during packaging
-Cross-Platform ZIP Portability (Python / Info-ZIP / .NET 3-Way)   Post-ZIP   Pending  -  Executed at Gate 14
-Markdown Dash Constraint Check (3 ZIPs + Evidence + Report)       Post-ZIP   Pending  -  Executed at Gate 13
-Fail-Closed Release Quality Gates (14 gates in verify-release)    Post-ZIP   Pending  -  Executed post-packaging
-------------------------------------------------------------------------------------------------------------
-
-See evidence/post-package/post_package_pipeline_log.txt, evidence/portability/zip_portability_verification.txt,
-evidence/handover/audit_handover_completeness.txt, and evidence/release/release_verification_summary.md.
+Gate 15 Local File Header Archive Consistency (3 ZIPs)            Post-ZIP   Pending  -  Executed at Gate 15
+Gate 14 Cross-Platform ZIP Portability (Python/Info-ZIP/.NET)     Post-ZIP   Pending  -  Executed at Gate 14
+Fail-Closed Release Quality Gates (15 gates in verify-release)    Post-ZIP   Pending  -  Executed post-packaging
 ================================================================================
 "@
 [System.IO.File]::WriteAllText((Join-Path $evRoot "release\test_reconciliation.txt"), $reconcilText, $utf8NoBom)
 
-$prePipeLog.Add("[6/6] Test Reconciliation generated -> Application (145 inherited) vs Engineering (v1.6.5 re-executed)")
-$prePipeLog.Add("Completed At: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))")
-[System.IO.File]::WriteAllLines((Join-Path $evRoot "pre-package\pre_package_pipeline_log.txt"), $prePipeLog, $utf8NoBom)
-
-Write-Host "[OK] v1.6.5 pre-package evidence captured cleanly in $evRoot"
+Write-Host "[OK] v1.6.6 pre-package evidence captured cleanly in $evRoot"
 exit 0

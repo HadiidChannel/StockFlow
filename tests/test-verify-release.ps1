@@ -1,12 +1,12 @@
 # ==============================================================================
-# StockFlow v1.6.5 - Expanded Fail-Closed Release Verifier Test Suite
+# StockFlow v1.6.6 - Expanded Fail-Closed Release Verifier Test Suite (51 Scenarios)
 # File: tests/test-verify-release.ps1
-# Description: Executes 44 isolated positive & negative scenarios covering all
-#              14 release gates (Core Git/Manifest/Checksums + Gate 09
+# Description: Executes 51 isolated positive & negative scenarios covering all
+#              15 release gates (Core Git/Manifest/Checksums + Gate 09
 #              bidirectional Audit Handover + Gate 11 4-report Secret Scans +
 #              Gate 12 Git Evidence & metadata + Gate 13 Markdown dash rules +
-#              Gate 14 Cross-Platform ZIP Portability across Python/Info-ZIP/.NET).
-#              Also emits separated category reports for Gates 09, 12, and 14.
+#              Gate 14 Cross-Platform ZIP Portability + Gate 15 Binary Local
+#              File Header <-> Central Directory consistency).
 # Target OS: Windows (PowerShell 7+ / Windows PowerShell 5.1)
 # ==============================================================================
 
@@ -54,7 +54,7 @@ function Write-TestLog([string]$msg, [string]$category = "") {
 $execStamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz')
 foreach ($hdr in @(
     "======================================================================",
-    " StockFlow v1.6.5 Release Verifier Test Suite (44 Positive & Negative)",
+    " StockFlow v1.6.6 Release Verifier Test Suite (51 Positive & Negative)",
     " Target Script: $verifyScript",
     " Execution Time: $execStamp",
     "======================================================================"
@@ -84,8 +84,8 @@ function Invoke-Verifier {
     param(
         [string]$RepoPath,
         [string]$ReleaseDir,
-        [string]$Branch = "fix/stockflow-v16-5-zip-portability",
-        [string]$Version = "v1.6.5",
+        [string]$Branch = "fix/stockflow-v16-6-zip-header-validation",
+        [string]$Version = "v1.6.6",
         [string]$CustomPathEnv = ""
     )
     $prevEap = $ErrorActionPreference
@@ -139,17 +139,17 @@ function New-FormattedGitEvidenceFiles {
     }
     $ts = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz')
 
-    [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_branch.txt"), "Evidence Version: v1.6.5`nCommand: git branch --show-current`nTimestamp: $ts`nWorking Directory: $WorkDir`nExit Code: 0`nBranch: $BranchName`n", $utf8NoBom)
-    [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_commit.txt"), "Evidence Version: v1.6.5`nCommand: git rev-parse HEAD`nTimestamp: $ts`nWorking Directory: $WorkDir`nExit Code: 0`nCommit: $CommitHash`n", $utf8NoBom)
-    [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_log.txt"), "Evidence Version: v1.6.5`nCommand: git log -5 --oneline`nTimestamp: $ts`nWorking Directory: $WorkDir`nExit Code: 0`nLOG_OUTPUT_BEGIN`n$($CommitHash.Substring(0,7)) Initial fixture baseline`nLOG_OUTPUT_END`n", $utf8NoBom)
-    [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_identity_verification.txt"), "=== STOCKFLOW v1.6.5 GIT IDENTITY ===`nTimestamp: $ts`nWorking Directory: $WorkDir`nBranch: $BranchName`nCommit: $CommitHash`nExit Code: 0`n", $utf8NoBom)
+    [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_branch.txt"), "Evidence Version: v1.6.6`nCommand: git branch --show-current`nTimestamp: $ts`nWorking Directory: $WorkDir`nExit Code: 0`nBranch: $BranchName`n", $utf8NoBom)
+    [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_commit.txt"), "Evidence Version: v1.6.6`nCommand: git rev-parse HEAD`nTimestamp: $ts`nWorking Directory: $WorkDir`nExit Code: 0`nCommit: $CommitHash`n", $utf8NoBom)
+    [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_log.txt"), "Evidence Version: v1.6.6`nCommand: git log -5 --oneline`nTimestamp: $ts`nWorking Directory: $WorkDir`nExit Code: 0`nLOG_OUTPUT_BEGIN`n$($CommitHash.Substring(0,7)) Initial fixture baseline`nLOG_OUTPUT_END`n", $utf8NoBom)
+    [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_identity_verification.txt"), "=== STOCKFLOW v1.6.6 GIT IDENTITY ===`nTimestamp: $ts`nWorking Directory: $WorkDir`nBranch: $BranchName`nCommit: $CommitHash`nExit Code: 0`n", $utf8NoBom)
 
     if (-not $OmitStatusFile) {
         if ($UseRawStatusOverride) {
             [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_status.txt"), $RawStatusOverride, $utf8NoBom)
         } else {
             $bodyBlock = if ([string]::IsNullOrEmpty($StatusPorcelainText)) { "" } else { "$StatusPorcelainText`n" }
-            $statusTxt = "Evidence Version: v1.6.5`nCommand: git status --porcelain --untracked-files=all`nTimestamp: $ts`nWorking Directory: $WorkDir`nExit Code: $StatusExitCode`n`nPORCELAIN_OUTPUT_BEGIN`n${bodyBlock}PORCELAIN_OUTPUT_END`n`nWorking Tree: $WorkingTreeLabel`n"
+            $statusTxt = "Evidence Version: v1.6.6`nCommand: git status --porcelain --untracked-files=all`nTimestamp: $ts`nWorking Directory: $WorkDir`nExit Code: $StatusExitCode`n`nPORCELAIN_OUTPUT_BEGIN`n${bodyBlock}PORCELAIN_OUTPUT_END`n`nWorking Tree: $WorkingTreeLabel`n"
             [System.IO.File]::WriteAllText((Join-Path $GitOutDir "git_status.txt"), $statusTxt, $utf8NoBom)
         }
     }
@@ -169,8 +169,8 @@ function New-FormattedScanReport {
     if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
     $ts = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz')
     $body = @"
-=== STOCKFLOW CREDENTIAL AND SECRET SCAN REPORT (v1.6.5) ===
-Scanner Version: v1.6.5
+=== STOCKFLOW CREDENTIAL AND SECRET SCAN REPORT (v1.6.6) ===
+Scanner Version: v1.6.6
 Scan Date: $ts
 Scan Target: $ScanTarget
 Total Files Scanned: $FilesScanned
@@ -200,10 +200,10 @@ function New-HandoverManifestFromStage {
     )
     $files = @(Get-ChildItem -LiteralPath $StageDir -Recurse -File | Where-Object { $_.Name -ne "AUDIT_FILE_MANIFEST.md" } | Sort-Object FullName)
     $md = [System.Collections.Generic.List[string]]::new()
-    $md.Add("# StockFlow v1.6.5 Audit Handover Manifest")
+    $md.Add("# StockFlow v1.6.6 Audit Handover Manifest")
     $md.Add("")
     $md.Add("- Generated At: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))")
-    $md.Add("- Release Version: v1.6.5")
+    $md.Add("- Release Version: v1.6.6")
     $md.Add("- Git Branch: $BranchName")
     $md.Add("- Git Commit: $CommitHash")
     $md.Add("- Total Files in Handover Archive: $($files.Count + 1) (including AUDIT_FILE_MANIFEST.md; Section 2 lists $($files.Count) non-manifest payload files)")
@@ -255,28 +255,28 @@ function Update-FixtureChecksumsManifest {
     $s3 = (Get-Item -LiteralPath $HanZip).Length; $h3 = (Get-FileHash -LiteralPath $HanZip -Algorithm SHA256).Hash.ToUpperInvariant()
 
     $manifestTxt = @"
-=== STOCKFLOW OFFICIAL RELEASE MANIFEST (v1.6.5) ===
+=== STOCKFLOW OFFICIAL RELEASE MANIFEST (v1.6.6) ===
 
-Release Version: v1.6.5
+Release Version: v1.6.6
 Generated At: $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz'))
 Git Branch: $BranchName
 Git Commit: $CommitHash
 Working Tree: Clean
 
 Package 1:
-Name: StockFlow_Final_v8_5.zip
+Name: StockFlow_Final_v8_6.zip
 Description: Source Code Package
 Size: $s1 bytes
 SHA-256: $h1
 
 Package 2:
-Name: StockFlow_Final_Verification_v8_5.zip
+Name: StockFlow_Final_Verification_v8_6.zip
 Description: Verification Evidence Package
 Size: $s2 bytes
 SHA-256: $h2
 
 Package 3:
-Name: StockFlow_Audit_Handover_v8_5.zip
+Name: StockFlow_Audit_Handover_v8_6.zip
 Description: Audit Handover Package
 Size: $s3 bytes
 SHA-256: $h3
@@ -287,7 +287,7 @@ SHA-256: $h3
 function New-IsolatedFixture {
     param(
         [string]$BaseDir,
-        [string]$BranchName = "fix/stockflow-v16-5-zip-portability",
+        [string]$BranchName = "fix/stockflow-v16-6-zip-header-validation",
         [switch]$IncludeHistoricalManifestInSource,
         [switch]$IncludeMissingVerifiedClaimInHandover,
         [switch]$CorruptHandoverSha,
@@ -345,14 +345,14 @@ function New-IsolatedFixture {
     Invoke-GitSafe $repoDir @("commit", "-m", "Initial fixture baseline") | Out-Null
     $commitHash = (Invoke-GitSafe $repoDir @("rev-parse", "HEAD")).ToLowerInvariant()
 
-    $releaseDir = Join-Path $repoDir "release-output\v1.6.5"
+    $releaseDir = Join-Path $repoDir "release-output\v1.6.6"
     $evSecDir = Join-Path $releaseDir "evidence\security"
     New-Item -ItemType Directory -Path $releaseDir, $evSecDir -Force | Out-Null
 
-    $srcZip = Join-Path $releaseDir "StockFlow_Final_v8_5.zip"
-    $verZip = Join-Path $releaseDir "StockFlow_Final_Verification_v8_5.zip"
-    $hanZip = Join-Path $releaseDir "StockFlow_Audit_Handover_v8_5.zip"
-    $manifestPath = Join-Path $releaseDir "StockFlow_Release_Checksums_v8_5.txt"
+    $srcZip = Join-Path $releaseDir "StockFlow_Final_v8_6.zip"
+    $verZip = Join-Path $releaseDir "StockFlow_Final_Verification_v8_6.zip"
+    $hanZip = Join-Path $releaseDir "StockFlow_Audit_Handover_v8_6.zip"
+    $manifestPath = Join-Path $releaseDir "StockFlow_Release_Checksums_v8_6.txt"
 
     # Stage Source ZIP
     $srcStage = Join-Path $BaseDir "stage_src"
@@ -424,7 +424,7 @@ function New-IsolatedFixture {
     New-FormattedScanReport -OutPath $verScanPath -ScanTarget $verZip -FilesScanned 8
 
     if (-not [string]::IsNullOrWhiteSpace($ExternalReportDash)) {
-        [System.IO.File]::WriteAllText((Join-Path $releaseDir "FINAL_RELEASE_REPORT_V1_6_5.md"), "# Final Report`nBad dash: $ExternalReportDash`n", $utf8NoBom)
+        [System.IO.File]::WriteAllText((Join-Path $releaseDir "FINAL_RELEASE_REPORT_V1_6_6.md"), "# Final Report`nBad dash: $ExternalReportDash`n", $utf8NoBom)
     }
 
     Update-FixtureChecksumsManifest -ManifestPath $manifestPath -BranchName $BranchName -CommitHash $commitHash -SrcZip $srcZip -VerZip $verZip -HanZip $hanZip
@@ -467,17 +467,17 @@ function Assert-Scenario {
     }
 }
 
-$workRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_verifier_v165_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
-$totalScenarios = 44
+$workRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_verifier_v166_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
+$totalScenarios = 51
 $passed = 0
 
 try {
     # --- GROUP A: CORE BASELINE (S01..S11) ---
     $f1 = New-IsolatedFixture (Join-Path $workRoot "s01")
-    Assert-Scenario 1 $totalScenarios "All gates pass cleanly (v1.6.5 baseline + bidirectional manifest + 4 scans + 3-engine ZIP)" $true "" "Core" (Invoke-Verifier $f1.RepoDir $f1.ReleaseDir); $passed++
+    Assert-Scenario 1 $totalScenarios "All gates pass cleanly (v1.6.6 baseline + bidirectional manifest + 4 scans + 3-engine ZIP + Gate 15 LH binary)" $true "" "Core" (Invoke-Verifier $f1.RepoDir $f1.ReleaseDir); $passed++
     # Also record positive pass in category logs
     foreach ($c in @("AuditManifest", "GitEvidence", "ZipPortability")) {
-        Write-TestLog "[Baseline Positive PASS] Clean fixture passed Gate 09, Gate 12, and Gate 14 (Exit: 0)" $c
+        Write-TestLog "[Baseline Positive PASS] Clean fixture passed Gate 09, Gate 12, Gate 14, and Gate 15 (Exit: 0)" $c
     }
 
     $f2 = New-IsolatedFixture (Join-Path $workRoot "s02")
@@ -486,7 +486,7 @@ try {
     Assert-Scenario 2 $totalScenarios "Full commit hash mismatch" $false "GATE-04" "" (Invoke-Verifier $f2.RepoDir $f2.ReleaseDir); $passed++
 
     $f3 = New-IsolatedFixture (Join-Path $workRoot "s03") -BranchName "wrong-branch"
-    Assert-Scenario 3 $totalScenarios "Active branch mismatch" $false "GATE-03" "" (Invoke-Verifier $f3.RepoDir $f3.ReleaseDir -Branch "fix/stockflow-v16-5-zip-portability"); $passed++
+    Assert-Scenario 3 $totalScenarios "Active branch mismatch" $false "GATE-03" "" (Invoke-Verifier $f3.RepoDir $f3.ReleaseDir -Branch "fix/stockflow-v16-6-zip-header-validation"); $passed++
 
     $f4 = New-IsolatedFixture (Join-Path $workRoot "s04")
     [IO.File]::AppendAllText((Join-Path $f4.RepoDir "README.md"), "dirty edit`n", $utf8NoBom)
@@ -684,9 +684,116 @@ with zipfile.ZipFile(zp, 'a') as zf:
     }
     $passed++
 
+    # --- GROUP G: GATE 15 EXHAUSTIVE LOCAL FILE HEADER BINARY TESTS (S45..S51) ---
+    $f45 = New-IsolatedFixture (Join-Path $workRoot "s45") -AdversarialZipScript @"
+import sys, struct
+zp = sys.argv[1]
+data = bytearray(open(zp, 'rb').read())
+pos = data.find(b'PK\x03\x04')
+assert pos >= 0
+fn_len = struct.unpack_from('<H', data, pos + 26)[0]
+struct.pack_into('<H', data, pos + 26, fn_len + 2)
+with open(zp, 'wb') as f:
+    f.write(data)
+"@
+    Assert-Scenario 45 $totalScenarios "Local File Header filename length mismatch vs Central Directory" $false "GATE-15" "ZipPortability" (Invoke-Verifier $f45.RepoDir $f45.ReleaseDir); $passed++
+
+    $f46 = New-IsolatedFixture (Join-Path $workRoot "s46") -AdversarialZipScript @"
+import sys
+zp = sys.argv[1]
+data = bytearray(open(zp, 'rb').read())
+pos = data.find(b'PK\x03\x04')
+assert pos >= 0
+# Flip first byte of LH filename only (CD filename bytes untouched)
+data[pos + 30] ^= 0x01
+with open(zp, 'wb') as f:
+    f.write(data)
+"@
+    Assert-Scenario 46 $totalScenarios "Local File Header raw filename byte mismatch with equal length" $false "GATE-15" "ZipPortability" (Invoke-Verifier $f46.RepoDir $f46.ReleaseDir); $passed++
+
+    $f47 = New-IsolatedFixture (Join-Path $workRoot "s47") -AdversarialZipScript @"
+import sys, struct
+zp = sys.argv[1]
+data = bytearray(open(zp, 'rb').read())
+pos = data.find(b'PK\x03\x04')
+assert pos >= 0
+meth = struct.unpack_from('<H', data, pos + 8)[0]
+struct.pack_into('<H', data, pos + 8, 99 if meth != 99 else 0)
+with open(zp, 'wb') as f:
+    f.write(data)
+"@
+    Assert-Scenario 47 $totalScenarios "Local File Header compression method mismatch vs Central Directory" $false "GATE-15" "ZipPortability" (Invoke-Verifier $f47.RepoDir $f47.ReleaseDir); $passed++
+
+    $f48 = New-IsolatedFixture (Join-Path $workRoot "s48") -AdversarialZipScript @"
+import sys
+zp = sys.argv[1]
+data = bytearray(open(zp, 'rb').read())
+pos = data.find(b'PK\x03\x04')
+assert pos >= 0
+# Mismatch CRC32 in LH only (CD CRC untouched)
+data[pos + 14] ^= 0xFF
+with open(zp, 'wb') as f:
+    f.write(data)
+"@
+    Assert-Scenario 48 $totalScenarios "Local File Header CRC-32 mismatch vs Central Directory on non-DD entry" $false "GATE-15" "ZipPortability" (Invoke-Verifier $f48.RepoDir $f48.ReleaseDir); $passed++
+
+    $f49 = New-IsolatedFixture (Join-Path $workRoot "s49") -AdversarialZipScript @"
+import sys, struct
+zp = sys.argv[1]
+data = bytearray(open(zp, 'rb').read())
+pos = data.find(b'PK\x03\x04')
+cd = data.find(b'PK\x01\x02')
+assert pos >= 0 and cd >= 0
+# Enable bit 3 (Data Descriptor) in both LH and CD without appending Data Descriptor bytes
+flag = struct.unpack_from('<H', data, pos + 6)[0] | 0x0008
+struct.pack_into('<H', data, pos + 6, flag)
+struct.pack_into('<H', data, cd + 8, flag)
+with open(zp, 'wb') as f:
+    f.write(data)
+"@
+    Assert-Scenario 49 $totalScenarios "Bit 3 Data Descriptor flag set without valid Data Descriptor bytes" $false "GATE-15" "ZipPortability" (Invoke-Verifier $f49.RepoDir $f49.ReleaseDir); $passed++
+
+    $f50 = New-IsolatedFixture (Join-Path $workRoot "s50") -AdversarialZipScript @"
+import sys, struct
+zp = sys.argv[1]
+data = bytearray(open(zp, 'rb').read())
+pos = data.find(b'PK\x03\x04')
+cd = data.find(b'PK\x01\x02')
+assert pos >= 0 and cd >= 0
+flag = struct.unpack_from('<H', data, pos + 6)[0] | 0x0001
+struct.pack_into('<H', data, pos + 6, flag)
+struct.pack_into('<H', data, cd + 8, flag)
+with open(zp, 'wb') as f:
+    f.write(data)
+"@
+    Assert-Scenario 50 $totalScenarios "Unsupported encryption General Purpose Bit Flag (0x0001)" $false "GATE-15" "ZipPortability" (Invoke-Verifier $f50.RepoDir $f50.ReleaseDir); $passed++
+
+    $f51 = New-IsolatedFixture (Join-Path $workRoot "s51") -AdversarialZipScript @"
+import sys, struct
+zp = sys.argv[1]
+data = bytearray(open(zp, 'rb').read())
+# Inject malformed Extra Field TLV in first Central Directory entry whose subfield length exceeds block boundary
+cd = data.find(b'PK\x01\x02')
+assert cd >= 0
+fn_len, ex_len, cm_len = struct.unpack_from('<HHH', data, cd + 28)
+eocd = data.rfind(b'PK\x05\x06')
+assert eocd >= 0
+cd_size, cd_off = struct.unpack_from('<II', data, eocd + 12)
+# Insert 8-byte malformed extra block (ID=0x5455, size=20 > remaining 4 bytes) right after CD filename
+ins_at = cd + 46 + fn_len
+bad_ef = struct.pack('<HH', 0x5455, 20) + b'ABCD'
+new_data = bytearray(data[:ins_at]) + bad_ef + bytearray(data[ins_at:])
+struct.pack_into('<H', new_data, cd + 30, ex_len + len(bad_ef))
+new_eocd = new_data.rfind(b'PK\x05\x06')
+struct.pack_into('<I', new_data, new_eocd + 12, cd_size + len(bad_ef))
+with open(zp, 'wb') as f:
+    f.write(new_data)
+"@
+    Assert-Scenario 51 $totalScenarios "Malformed Extra Field TLV subfield exceeding block boundary" $false "GATE-15" "ZipPortability" (Invoke-Verifier $f51.RepoDir $f51.ReleaseDir); $passed++
+
     foreach ($footer in @(
         "`n======================================================================",
-        " StockFlow v1.6.5 Release Verifier Test Suite Summary:",
+        " StockFlow v1.6.6 Release Verifier Test Suite Summary:",
         " Passed: $passed / $totalScenarios (100% PASS)",
         "======================================================================"
     )) {

@@ -230,3 +230,19 @@ Dokumen ini memuat panduan identifikasi dan pemecahan masalah teknis yang sering
   - File `git_status.txt` berupa teks kosong/ringkas tanpa blok `PORCELAIN_OUTPUT_BEGIN`..`PORCELAIN_OUTPUT_END`, `Timestamp`, atau `Exit Code: 0`; atau ada file ekstra di dalam `StockFlow_Audit_Handover` yang belum terdaftar di tabel inventaris `AUDIT_FILE_MANIFEST.md`.
 - **Solusi**:
   - Gunakan `scripts/capture-evidence.ps1` dan `scripts/assemble-handover.ps1` v1.6.5 lalu kemas ulang dari commit Git bersih melalui `scripts/package-release.ps1`.
+
+---
+
+## 13. Kegagalan Validasi Header Biner Lokal ZIP (Gate 15 - v1.6.6)
+
+### Gejala: `[GATE-15] FAIL - Local File Header filename length/byte/CRC/Data Descriptor mismatch`
+- **Penyebab**:
+  - Terjadi ketidaksinkronan antara record Central Directory (`PK 01 02`) dan Local File Header (`PK 03 04`) akibat alat pengarsipan yang korup, mutasi biner pasca-pembuatan, atau penyisipan Data Descriptor (`0x0008`) / Extra Field TLV (`0x0001`, `0x5455`, `0x7075`) yang terpotong/melebihi batas blok.
+- **Solusi**:
+  - Jalankan `powershell -NoProfile -ExecutionPolicy Bypass -File tests/test-local-header.ps1` untuk memastikan modul `scripts/zip-utils.ps1` sehat (32/32 PASS), lalu bentuk ulang arsip rilis secara deterministik menggunakan `New-PortableZipArchive` via `scripts/package-release.ps1` pada commit Git yang bersih.
+
+### Gejala: `[GATE-15] FAIL - Unsupported encryption flag (bit 0 = 0x0001)` atau `Unsupported compression method`
+- **Penyebab**:
+  - Salah satu entry memakai enkripsi ZipCrypto/AES atau metode kompresi non-standar (selain STORE `0` dan DEFLATE `8`).
+- **Solusi**:
+  - Pastikan arsip portabel dibuat tanpa enkripsi dan hanya memakai metode kompresi DEFLATE/STORE standar melalui `New-PortableZipArchive` di `scripts/zip-utils.ps1`.

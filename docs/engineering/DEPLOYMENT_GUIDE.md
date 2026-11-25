@@ -256,3 +256,18 @@ Mulai v1.6.5, keluaran rilis resmi StockFlow dikemas ke `release-output/v1.6.5/`
    - Manifest eksternal `StockFlow_Release_Checksums_v8_5.txt` dan laporan scan post-package Verification ZIP (`verification_package_scan.txt`) dibangkitkan sebelum pengecekan gerbang.
    - `scripts/verify-release.ps1` mengeksekusi **14 gerbang fail-closed** (`GATE-01` s.d. `GATE-14`) termasuk uji ekstraksi 3-arah Python `zipfile` + Info-ZIP `unzip` + .NET `ZipFile`, validasi Handover dua arah (Gate 09), audit 4 laporan secret scan (Gate 11), bukti Git independen Verification & Handover (Gate 12), dan pindaian dash di seluruh Markdown (Gate 13).
    - Skrip menangkap status stack produksi beserta jumlah baris read-only tabel database sesudah pengemasan (`main_stack_after.txt`, `main_database_after.txt`, `main_volume_after.txt`).
+
+---
+
+## 9. Verifikasi Header Biner ZIP (Gate 15) & Pipeline Rilis Final v1.6.6
+
+Mulai v1.6.6, artefak rilis resmi StockFlow disimpan di `release-output/v1.6.6/` dan diverifikasi dengan **15 gerbang fail-closed** (`GATE-01` s.d. `GATE-15`) plus bundel bukti pasca-pengemasan tersendiri.
+
+### A. Prosedur Eksekusi Pipeline v1.6.6
+1. Pastikan branch aktif adalah `fix/stockflow-v16-6-zip-header-validation` dengan working tree Git 100% bersih pasca-commit.
+2. Tangkap baseline operasional awal (`main_stack_before.txt`, `main_database_before.txt`, `main_volume_before.txt`) ke `release-output/v1.6.6/post-package-evidence/v1.6.6/operational/` secara read-only.
+3. Jalankan `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1`:
+   - `capture-evidence.ps1` mengeksekusi validasi 32-skenario biner `tests/test-local-header.ps1` (`LH-01`..`LH-32`), suite verifier 51-skenario `tests/test-verify-release.ps1`, Docker Compose 5-config check, dan secret scanner self-test + repo scan.
+   - `New-PortableZipArchive` mengemas `StockFlow_Final_v8_6.zip`, `StockFlow_Audit_Handover_v8_6.zip`, dan `StockFlow_Final_Verification_v8_6.zip` beserta `StockFlow_Release_Checksums_v8_6.txt`.
+   - `scripts/verify-release.ps1` mengeksekusi **15 gerbang fail-closed**, dengan **GATE-15** berjalan pertama pra-ekstraksi melalui `Inspect-ZipBinaryHeaders` (`local_header_archive_verification.txt`, `local_header_binary_details.txt`, `release_gate_15_results.txt`) sebelum `GATE-14` (ekstraksi 3-engine Python + Info-ZIP + .NET) dan `GATE-07`..`GATE-13`.
+   - Pipeline mengarsipkan bundel bukti lengkap pasca-pengemasan menjadi `StockFlow_PostPackage_Evidence_v8_6.zip` dengan manifest indeks `POST_PACKAGE_EVIDENCE_INDEX.md` serta sidecar checksum eksternal `StockFlow_PostPackage_Evidence_Checksum_v8_6.txt`.

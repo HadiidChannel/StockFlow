@@ -1,5 +1,5 @@
 # ==============================================================================
-# StockFlow - Comprehensive Secret & Credential Exposure Scanner (v1.6.5)
+# StockFlow - Comprehensive Secret & Credential Exposure Scanner (v1.6.6)
 # Script: scripts/scan-secrets.ps1
 # Description: Rigorously scans directories or ZIP archives for credentials,
 #              CLI arguments, connection strings, YAML/JSON secrets, tokens,
@@ -66,7 +66,7 @@ $secretPatterns = @(
 
 if ($SelfTest) {
     Write-Host "======================================================================"
-    Write-Host " Running Secret Scanner Automated Self-Test Fixtures (v1.6.5)"
+    Write-Host " Running Secret Scanner Automated Self-Test Fixtures (v1.6.6)"
     Write-Host "======================================================================"
 
     $fixtureDir = Join-Path ([System.IO.Path]::GetTempPath()) ("stockflow_scanner_fixture_" + [Guid]::NewGuid().ToString().Substring(0, 8))
@@ -150,7 +150,7 @@ try {
 }
 
 Write-Host "======================================================================"
-Write-Host " StockFlow Credential and Sensitive Secret Scanner (v1.6.5)"
+Write-Host " StockFlow Credential and Sensitive Secret Scanner (v1.6.6)"
 Write-Host " Target Path: $scanPath"
 Write-Host " Zero Secret Output Policy: Enabled ([REDACTED] Masking)"
 Write-Host "======================================================================"
@@ -285,8 +285,8 @@ try {
     $allowText = if ($allowlistedItems.Count -gt 0) { "$($allowlistedItems.Count) -> $($allowlistedItems -join '; ')" } else { "0 (None)" }
 
     $reportLines = [System.Collections.Generic.List[string]]::new()
-    $reportLines.Add("=== STOCKFLOW CREDENTIAL AND SECRET SCAN REPORT (v1.6.5) ===")
-    $reportLines.Add("Scanner Version: v1.6.5 (commit $scannerCommit)")
+    $reportLines.Add("=== STOCKFLOW CREDENTIAL AND SECRET SCAN REPORT (v1.6.6) ===")
+    $reportLines.Add("Scanner Version: v1.6.6 (commit $scannerCommit)")
     $reportLines.Add("Scan Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')")
     $reportLines.Add("Scan Target: $scanPath")
     $reportLines.Add("Total Files Scanned: $($filesToScan.Count)")

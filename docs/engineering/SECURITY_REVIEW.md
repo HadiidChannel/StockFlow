@@ -280,3 +280,11 @@ StockFlow menerapkan filosofi Security by Design dan Defense in Depth. Keamanan 
    - `scripts/verify-release.ps1` Gate 11 memvalidasi keberadaan, target, kebersihan status (`100% CLEAN`, `0` temuan, `Exit Code: 0`) dari `secret_scan_repository.txt`, `source_package_scan.txt`, `verification_package_scan.txt`, dan `audit_handover_package_scan.txt`, serta menjalankan pemindaian langsung ke seluruh isi ekstraksi ketiga ZIP.
 3. **Verifikasi 3-Engine Lintas Platform (`GATE-14`) & Validasi Handover Dua Arah (`GATE-09`)**:
    - Memastikan ketiga arsip lulus uji CRC dan ekstraksi identik di Python `zipfile`, Info-ZIP `unzip`, dan .NET `ZipFile` (0 perbedaan struktur, jumlah file, ukuran byte, maupun SHA-256), serta memastikan `StockFlow_Audit_Handover_v8_5.zip` 100% sinkron dua arah dengan `AUDIT_FILE_MANIFEST.md`.
+
+---
+
+### J. Hardening Konsistensi Biner Local File Header & Gerbang Verifikasi Ke-15 (v1.6.6)
+1. **Mitigasi Parser-Differential & Header Mismatch pada ZIP (`scripts/zip-utils.ps1`)**:
+   - `Inspect-ZipBinaryHeaders` bersama `Test-ZipExtraFieldBlock` memverifikasi 100% konsistensi biner antara Central Directory (`PK 01 02`) dan Local File Header (`PK 03 04`) pada tingkat byte mentah, menutup kerentanan pemotongan ukuran nama file, pemalsuan byte nama file antara CD dan LH, manipulasi flag enkripsi (`0x0001`), metode kompresi ilegal, CRC/ukuran payload palsu, Data Descriptor (`PK 07 08`) hilang/rusak, Extra Field TLV out-of-bounds, serta tumpang tindih offset maupun orphan `PK 03 04`.
+2. **Gerbang 15 Pre-Extraction Fail-Closed (`GATE-15`) & Bukti 32 Skenario Biner**:
+   - `scripts/verify-release.ps1` menjalankan `GATE-15` sebelum menyentuh disk ekstraksi (`GATE-07`/`GATE-14`) dan `tests/test-verify-release.ps1` membuktikannya lewat 51 skenario (`S45`..`S51` khusus `GATE-15`), dilengkapi `tests/test-local-header.ps1` (32 skenario biner `LH-01`..`LH-32` yang diverifikasi lewat fase TDD RED `18/32` -> GREEN `32/32`).
